@@ -1,0 +1,699 @@
+{
+  "user": "whatiskeptiname",
+  "fetched_at": "2026-10-05T16:48:09.346Z",
+  "repos": [
+    {
+      "name": "4-6_Control",
+      "description": "Optimized library for bot (vehicle) control for Arduino boards.",
+      "html_url": "https://github.com/whatiskeptiname/4-6_Control",
+      "homepage": null,
+      "language": "C++",
+      "topics": [
+        "bluetooth",
+        "serial-communication"
+      ],
+      "stargazers_count": 1,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2019-11-18T14:20:46Z",
+      "pushed_at": "2021-07-19T18:41:16Z"
+    },
+    {
+      "name": "Air-Play",
+      "description": "Arduino based instrument to play music by waving hand in the air.",
+      "html_url": "https://github.com/whatiskeptiname/Air-Play",
+      "homepage": null,
+      "language": "C++",
+      "topics": [
+        "arduino",
+        "buzzer",
+        "hc-sr04",
+        "ultrasonic-sensor"
+      ],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-07-20T16:18:27Z",
+      "pushed_at": "2021-08-08T17:54:34Z"
+    },
+    {
+      "name": "Autonomous-Plough",
+      "description": "Arduino based bot to plough field.",
+      "html_url": "https://github.com/whatiskeptiname/Autonomous-Plough",
+      "homepage": null,
+      "language": "C++",
+      "topics": [
+        "arduino",
+        "bluetooth-module",
+        "hc-05",
+        "hc-sr04",
+        "ultrasonic-sensor"
+      ],
+      "stargazers_count": 1,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-07-22T08:31:25Z",
+      "pushed_at": "2021-07-22T11:36:17Z"
+    },
+    {
+      "name": "Bee-Classifier",
+      "description": "Classifies bees using SVM (rbf kernel).",
+      "html_url": "https://github.com/whatiskeptiname/Bee-Classifier",
+      "homepage": null,
+      "language": "Jupyter Notebook",
+      "topics": [
+        "jupyter-notebook",
+        "svm-classifier"
+      ],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-11-24T17:44:58Z",
+      "pushed_at": "2021-11-28T16:00:23Z"
+    },
+    {
+      "name": "CAN-Bot",
+      "description": "An arduino based bot developed for CAN InfoTech Birgunj 2019.",
+      "html_url": "https://github.com/whatiskeptiname/CAN-Bot",
+      "homepage": null,
+      "language": "C++",
+      "topics": [
+        "arduino",
+        "bluetooth-module",
+        "hc-05",
+        "hc-sr04",
+        "servo-motor",
+        "ultrasonic-sensor"
+      ],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-07-19T19:02:36Z",
+      "pushed_at": "2021-08-08T17:53:21Z"
+    },
+    {
+      "name": "Covid-Classifier",
+      "description": "Detects if a patient is suffering from covid using X-ray images.",
+      "html_url": "https://github.com/whatiskeptiname/Covid-Classifier",
+      "homepage": null,
+      "language": "Jupyter Notebook",
+      "topics": [],
+      "stargazers_count": 1,
+      "forks_count": 2,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-12-22T16:08:51Z",
+      "pushed_at": "2022-05-08T15:25:16Z"
+    },
+    {
+      "name": "demo",
+      "description": "This is a repo created to explain git/github to participants of Git/Github workshop. Workshop details:",
+      "html_url": "https://github.com/whatiskeptiname/demo",
+      "homepage": "https://www.facebook.com/photo/?fbid=320408376758621&set=a.168574635275330",
+      "language": "HTML",
+      "topics": [],
+      "stargazers_count": 0,
+      "forks_count": 1,
+      "fork": true,
+      "archived": false,
+      "created_at": "2022-01-09T16:53:50Z",
+      "pushed_at": "2022-01-09T19:26:02Z"
+    },
+    {
+      "name": "DLwP",
+      "description": "DLwP practice.",
+      "html_url": "https://github.com/whatiskeptiname/DLwP",
+      "homepage": null,
+      "language": "Jupyter Notebook",
+      "topics": [],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2022-04-23T15:51:27Z",
+      "pushed_at": "2022-04-23T15:53:19Z"
+    },
+    {
+      "name": "dotfiles",
+      "description": "i3 and polybar configuration files.",
+      "html_url": "https://github.com/whatiskeptiname/dotfiles",
+      "homepage": null,
+      "language": "Shell",
+      "topics": [
+        "i3",
+        "i3-config",
+        "polybar",
+        "polybar-config"
+      ],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-07-10T17:21:26Z",
+      "pushed_at": "2026-09-30T07:33:52Z"
+    },
+    {
+      "name": "facebook360_dep",
+      "description": "Facebook360 Depth Estimation Pipeline - https://facebook.github.io/facebook360_dep",
+      "html_url": "https://github.com/whatiskeptiname/facebook360_dep",
+      "homepage": null,
+      "language": "HTML",
+      "topics": [],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": true,
+      "archived": false,
+      "created_at": "2023-11-24T05:56:10Z",
+      "pushed_at": "2023-11-24T06:01:26Z"
+    },
+    {
+      "name": "Flask-Blog",
+      "description": "Blog Web App using Flask.",
+      "html_url": "https://github.com/whatiskeptiname/Flask-Blog",
+      "homepage": null,
+      "language": "HTML",
+      "topics": [
+        "flask",
+        "sql-alchemy"
+      ],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-08-02T15:45:21Z",
+      "pushed_at": "2021-08-03T16:11:54Z"
+    },
+    {
+      "name": "handshake",
+      "description": "API for covid tracker app.",
+      "html_url": "https://github.com/whatiskeptiname/handshake",
+      "homepage": null,
+      "language": "JavaScript",
+      "topics": [
+        "covid-19",
+        "covid19-tracker"
+      ],
+      "stargazers_count": 1,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2020-05-31T18:06:01Z",
+      "pushed_at": "2023-02-02T00:29:30Z"
+    },
+    {
+      "name": "HOML-Notes",
+      "description": "Hands-on Machine Learning with Scikit-Learn and Tensorflow  2nd edition notes along with code.",
+      "html_url": "https://github.com/whatiskeptiname/HOML-Notes",
+      "homepage": null,
+      "language": "Jupyter Notebook",
+      "topics": [
+        "handson-ml2",
+        "machine-learning",
+        "python-notebook",
+        "scikit-learn"
+      ],
+      "stargazers_count": 13,
+      "forks_count": 2,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-08-05T15:59:14Z",
+      "pushed_at": "2021-11-16T04:06:46Z"
+    },
+    {
+      "name": "Mimicker",
+      "description": "Arduino based bot to mimic robotic arm movement.",
+      "html_url": "https://github.com/whatiskeptiname/Mimicker",
+      "homepage": null,
+      "language": "C++",
+      "topics": [
+        "arduino",
+        "potentiometer",
+        "servo-motor"
+      ],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-07-23T12:54:33Z",
+      "pushed_at": "2021-07-23T13:42:56Z"
+    },
+    {
+      "name": "Minor-Arduino-Programs",
+      "description": "Collection of minor arduino programs.",
+      "html_url": "https://github.com/whatiskeptiname/Minor-Arduino-Programs",
+      "homepage": null,
+      "language": "C++",
+      "topics": [
+        "arduino"
+      ],
+      "stargazers_count": 1,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-07-23T14:07:18Z",
+      "pushed_at": "2021-07-27T14:27:27Z"
+    },
+    {
+      "name": "Minor-Python-Scripts",
+      "description": "Collection of minor python scripts.",
+      "html_url": "https://github.com/whatiskeptiname/Minor-Python-Scripts",
+      "homepage": null,
+      "language": "Python",
+      "topics": [
+        "python"
+      ],
+      "stargazers_count": 0,
+      "forks_count": 1,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-07-30T12:36:35Z",
+      "pushed_at": "2022-05-31T04:23:53Z"
+    },
+    {
+      "name": "Minor-WebDev-Programs",
+      "description": "Collection of small Web Development projects.",
+      "html_url": "https://github.com/whatiskeptiname/Minor-WebDev-Programs",
+      "homepage": null,
+      "language": "HTML",
+      "topics": [
+        "css",
+        "html",
+        "js",
+        "sass"
+      ],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-07-30T11:46:17Z",
+      "pushed_at": "2021-07-30T11:51:12Z"
+    },
+    {
+      "name": "Mobile-AQI-Device",
+      "description": "Arduino / NodeMCU ESP8266 based project which displays the current Air Quality Index (AQI) on a seven-segment display.",
+      "html_url": "https://github.com/whatiskeptiname/Mobile-AQI-Device",
+      "homepage": null,
+      "language": "C",
+      "topics": [
+        "airquality",
+        "aqi",
+        "arduino",
+        "dust-sensor",
+        "gp2y1010au0f",
+        "nodemcu-esp8266"
+      ],
+      "stargazers_count": 3,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-06-11T19:01:43Z",
+      "pushed_at": "2021-10-20T11:38:14Z"
+    },
+    {
+      "name": "movie_mixer",
+      "description": "Recommends similar movies based on user ratings or tags.",
+      "html_url": "https://github.com/whatiskeptiname/movie_mixer",
+      "homepage": null,
+      "language": "Jupyter Notebook",
+      "topics": [
+        "movie-recommendation",
+        "recomendation-system"
+      ],
+      "stargazers_count": 1,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-11-14T17:03:58Z",
+      "pushed_at": "2021-12-11T17:06:01Z"
+    },
+    {
+      "name": "myName",
+      "description": "List of candidates on 3 day git/github workshop.",
+      "html_url": "https://github.com/whatiskeptiname/myName",
+      "homepage": null,
+      "language": "HTML",
+      "topics": [
+        "git",
+        "github"
+      ],
+      "stargazers_count": 1,
+      "forks_count": 38,
+      "fork": false,
+      "archived": false,
+      "created_at": "2022-01-10T13:59:35Z",
+      "pushed_at": "2022-12-26T22:10:44Z"
+    },
+    {
+      "name": "news_scraper",
+      "description": "Scraps news.",
+      "html_url": "https://github.com/whatiskeptiname/news_scraper",
+      "homepage": null,
+      "language": "Python",
+      "topics": [],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2022-03-20T16:05:29Z",
+      "pushed_at": "2022-04-03T10:33:19Z"
+    },
+    {
+      "name": "NN_from_scratch",
+      "description": "Neural Network implementation using Python and NumPy.",
+      "html_url": "https://github.com/whatiskeptiname/NN_from_scratch",
+      "homepage": null,
+      "language": "Jupyter Notebook",
+      "topics": [],
+      "stargazers_count": 1,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2022-05-01T13:56:37Z",
+      "pushed_at": "2022-05-02T18:00:10Z"
+    },
+    {
+      "name": "NYBWD",
+      "description": "Flask API for Autonomous Farming Vehicle.",
+      "html_url": "https://github.com/whatiskeptiname/NYBWD",
+      "homepage": null,
+      "language": "Python",
+      "topics": [
+        "compass",
+        "flask-restful",
+        "gpio",
+        "gps",
+        "raspberry-pi",
+        "ultrasonic-sensor"
+      ],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-01-03T05:11:00Z",
+      "pushed_at": "2021-08-03T06:16:28Z"
+    },
+    {
+      "name": "NYBWD-Web-Basic",
+      "description": "Web App for NYBWD Project with limited functionality.",
+      "html_url": "https://github.com/whatiskeptiname/NYBWD-Web-Basic",
+      "homepage": null,
+      "language": "JavaScript",
+      "topics": [
+        "reactjs"
+      ],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-08-04T17:29:41Z",
+      "pushed_at": "2021-08-04T17:35:08Z"
+    },
+    {
+      "name": "Obstacle-and-fall-avoiding-bot",
+      "description": "An arduino-based autonomous bot which avoids obstacle and prevents itself from falling.",
+      "html_url": "https://github.com/whatiskeptiname/Obstacle-and-fall-avoiding-bot",
+      "homepage": null,
+      "language": "C++",
+      "topics": [
+        "arduino-uno",
+        "ir-sensor",
+        "motor-driver",
+        "obstacle-avoidance-robot",
+        "tinkercad",
+        "ultrasonic-sensor"
+      ],
+      "stargazers_count": 2,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-05-30T18:05:16Z",
+      "pushed_at": "2021-11-01T06:31:22Z"
+    },
+    {
+      "name": "Obstacle-Avoiding-Bot-With-Radar",
+      "description": "Arduino-based bot that uses an ultrasonic sensor combined with a servo motor to act as an ultrasonic radar.",
+      "html_url": "https://github.com/whatiskeptiname/Obstacle-Avoiding-Bot-With-Radar",
+      "homepage": null,
+      "language": "C++",
+      "topics": [
+        "arduino",
+        "hc-05",
+        "hc-sr04",
+        "radar",
+        "servo-motor",
+        "ultrasonic-sensor"
+      ],
+      "stargazers_count": 1,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-07-17T11:36:12Z",
+      "pushed_at": "2021-08-08T17:52:23Z"
+    },
+    {
+      "name": "PollutionMap",
+      "description": "Arduino based Air Quality Index (AQI) measurement device that can send AQI data to other devices via bluetooth.",
+      "html_url": "https://github.com/whatiskeptiname/PollutionMap",
+      "homepage": null,
+      "language": "C++",
+      "topics": [
+        "aqi",
+        "arduino",
+        "gp2y1010au0f",
+        "hc-05"
+      ],
+      "stargazers_count": 2,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-07-16T16:08:37Z",
+      "pushed_at": "2021-08-08T17:51:16Z"
+    },
+    {
+      "name": "portfolio",
+      "description": "Portfolio Site.",
+      "html_url": "https://github.com/whatiskeptiname/portfolio",
+      "homepage": "susang.com.np",
+      "language": "JavaScript",
+      "topics": [],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2025-06-05T18:24:17Z",
+      "pushed_at": "2025-07-04T12:49:07Z"
+    },
+    {
+      "name": "RC-Car",
+      "description": "An arduino based Remote (Radio) Controlled car with servo arm.",
+      "html_url": "https://github.com/whatiskeptiname/RC-Car",
+      "homepage": null,
+      "language": "C++",
+      "topics": [
+        "bot",
+        "flysky",
+        "fs-ia10b",
+        "ppm",
+        "pwm",
+        "servo"
+      ],
+      "stargazers_count": 1,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-07-12T16:40:06Z",
+      "pushed_at": "2021-07-24T18:02:10Z"
+    },
+    {
+      "name": "Rchat",
+      "description": "Simple Chat Room with flask and Socket.IO.",
+      "html_url": "https://github.com/whatiskeptiname/Rchat",
+      "homepage": null,
+      "language": "HTML",
+      "topics": [
+        "flask",
+        "socketio"
+      ],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-07-28T07:10:29Z",
+      "pushed_at": "2021-07-28T07:20:06Z"
+    },
+    {
+      "name": "Robo-Maze",
+      "description": "Arduino based maze solving bot.",
+      "html_url": "https://github.com/whatiskeptiname/Robo-Maze",
+      "homepage": null,
+      "language": "C++",
+      "topics": [
+        "arduino",
+        "hc-sr04",
+        "maze",
+        "ultrasonic-sensor"
+      ],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-07-21T07:16:47Z",
+      "pushed_at": "2021-07-21T11:32:55Z"
+    },
+    {
+      "name": "rstring-gen",
+      "description": "Python package to generates random string of given length.",
+      "html_url": "https://github.com/whatiskeptiname/rstring-gen",
+      "homepage": null,
+      "language": "Python",
+      "topics": [],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2022-04-20T10:25:27Z",
+      "pushed_at": "2022-04-20T11:30:29Z"
+    },
+    {
+      "name": "ShopSite-API",
+      "description": "API for ShopSite made using express.",
+      "html_url": "https://github.com/whatiskeptiname/ShopSite-API",
+      "homepage": null,
+      "language": "JavaScript",
+      "topics": [
+        "expressjs-api"
+      ],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-07-29T16:31:47Z",
+      "pushed_at": "2021-07-30T10:30:51Z"
+    },
+    {
+      "name": "ShopSite-web",
+      "description": "Basic Shopping app in React.",
+      "html_url": "https://github.com/whatiskeptiname/ShopSite-web",
+      "homepage": null,
+      "language": "JavaScript",
+      "topics": [
+        "reactjs"
+      ],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-07-28T10:41:03Z",
+      "pushed_at": "2021-07-29T16:44:43Z"
+    },
+    {
+      "name": "Smart-Dustbin",
+      "description": "An arduino and ultrasonic based dustbin that shows the  level of garbage and open lid at waving.",
+      "html_url": "https://github.com/whatiskeptiname/Smart-Dustbin",
+      "homepage": null,
+      "language": "C++",
+      "topics": [
+        "arduino",
+        "smart-dustbin",
+        "ultrasonic-sensor"
+      ],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-07-12T19:21:04Z",
+      "pushed_at": "2021-07-24T18:03:07Z"
+    },
+    {
+      "name": "Store-API",
+      "description": "Basic REST API  for general stores.",
+      "html_url": "https://github.com/whatiskeptiname/Store-API",
+      "homepage": null,
+      "language": "Python",
+      "topics": [
+        "api",
+        "flask-restful",
+        "postman",
+        "rest-api"
+      ],
+      "stargazers_count": 2,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2020-06-23T13:49:11Z",
+      "pushed_at": "2023-05-01T22:49:32Z"
+    },
+    {
+      "name": "T-rex_player",
+      "description": "Autonomous T-rex player using Arduino.",
+      "html_url": "https://github.com/whatiskeptiname/T-rex_player",
+      "homepage": null,
+      "language": "C++",
+      "topics": [
+        "arduino-uno",
+        "ldr",
+        "rex-player",
+        "tinkercad",
+        "trex-runner"
+      ],
+      "stargazers_count": 1,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-05-29T17:42:17Z",
+      "pushed_at": "2021-08-08T17:50:01Z"
+    },
+    {
+      "name": "Table_structure_recognition",
+      "description": null,
+      "html_url": "https://github.com/whatiskeptiname/Table_structure_recognition",
+      "homepage": null,
+      "language": null,
+      "topics": [],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2022-08-04T15:15:44Z",
+      "pushed_at": "2022-08-01T13:49:46Z"
+    },
+    {
+      "name": "Ultrasonic-Transceiver",
+      "description": "Arduino based Ultrasonic transmitter and receiver device.",
+      "html_url": "https://github.com/whatiskeptiname/Ultrasonic-Transceiver",
+      "homepage": null,
+      "language": "C++",
+      "topics": [
+        "arduino",
+        "lm386",
+        "lm393",
+        "ultrasonic-communication"
+      ],
+      "stargazers_count": 3,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-07-14T09:06:18Z",
+      "pushed_at": "2021-07-24T17:58:42Z"
+    },
+    {
+      "name": "whatiskeptiname",
+      "description": null,
+      "html_url": "https://github.com/whatiskeptiname/whatiskeptiname",
+      "homepage": null,
+      "language": null,
+      "topics": [],
+      "stargazers_count": 0,
+      "forks_count": 0,
+      "fork": false,
+      "archived": false,
+      "created_at": "2021-10-19T13:33:59Z",
+      "pushed_at": "2024-01-24T20:22:24Z"
+    }
+  ]
+}
