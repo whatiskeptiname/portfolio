@@ -1,0 +1,1842 @@
+/* src/city/city.css — overlays for the 3D explorer. Always on top of a bright
+   or dark 3D scene, so these use their own glassy palette rather than the page theme. */
+.city-root {
+  position: fixed;
+  inset: 0;
+  background: #03040b;
+  touch-action: none;
+  --glass: rgb(255 255 255 / 0.86);
+  --glass-text: #1d2321;
+  --glass-muted: #5c6662;
+  --glass-line: rgb(0 0 0 / 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  .city-root {
+    --glass: rgb(22 27 26 / 0.86);
+    --glass-text: #e9ece8;
+    --glass-muted: #9aa5a0;
+    --glass-line: rgb(255 255 255 / 0.1);
+  }
+}
+
+/* Only static HUD chrome gets a blur: 3D-anchored labels move every frame and
+   would force the blur to be recomputed constantly. */
+.city-btn,
+.city-panel,
+.city-prompt,
+.city-help-card {
+  backdrop-filter: blur(8px);
+}
+
+.city-toolbar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  pointer-events: none;
+}
+.city-toolbar > * {
+  pointer-events: auto;
+}
+.city-toolbar-group {
+  display: flex;
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.12);
+}
+.city-toolbar-group .city-btn {
+  border-radius: 0;
+  box-shadow: none;
+}
+.city-btn {
+  border: 0;
+  background: var(--glass);
+  color: var(--glass-text);
+  font: 500 0.9rem var(--font-body);
+  padding: 9px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.12);
+}
+.city-btn[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.city-minimap {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  border-radius: 12px;
+  border: 2px solid var(--glass);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
+  cursor: crosshair;
+}
+@media (max-width: 600px) {
+  .city-minimap {
+    transform: scale(0.7);
+    transform-origin: bottom right;
+  }
+}
+
+.city-prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  border: 0;
+  background: var(--glass);
+  color: var(--glass-text);
+  font: 0.95rem var(--font-body);
+  padding: 10px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
+  white-space: nowrap;
+  max-width: calc(100vw - 32px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 1px 6px;
+  margin: 0 2px;
+  border-radius: 5px;
+  border: 1px solid var(--glass-line, #ccc);
+  border-bottom-width: 2px;
+  font: 500 0.8rem var(--font-mono);
+  text-align: center;
+}
+
+.city-panel {
+  position: absolute;
+  top: 68px;
+  right: 12px;
+  width: min(360px, calc(100vw - 24px));
+  max-height: calc(100vh - 280px);
+  overflow-y: auto;
+  background: var(--glass);
+  color: var(--glass-text);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 8px 32px rgb(0 0 0 / 0.2);
+  animation: panel-in 180ms ease-out;
+}
+@media (max-width: 600px) {
+  .city-panel {
+    top: auto;
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: 55vh;
+  }
+}
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .city-panel {
+    animation: none;
+  }
+}
+.city-panel h2 {
+  font-size: 1.5rem;
+  margin: 8px 0 10px;
+  padding-right: 24px;
+}
+.city-panel p {
+  margin: 0 0 14px;
+  color: var(--glass-muted);
+}
+.city-panel-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--glass-text);
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+.city-panel-close:hover {
+  background: var(--glass-line);
+}
+.city-panel-meta {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font: 0.8rem var(--font-mono);
+  color: var(--glass-muted);
+  margin-bottom: 16px;
+}
+.city-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.city-topics {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.city-topics li {
+  font: 0.75rem var(--font-mono);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--glass-line);
+}
+
+.city-help {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.35);
+}
+.city-help-card {
+  background: var(--glass);
+  color: var(--glass-text);
+  border-radius: 20px;
+  padding: 28px;
+  max-width: 460px;
+  box-shadow: 0 16px 48px rgb(0 0 0 / 0.3);
+}
+.city-help-card h2 {
+  font-size: 1.6rem;
+  margin-bottom: 10px;
+}
+.city-help-card p {
+  color: var(--glass-muted);
+  margin: 0 0 16px;
+}
+.city-help-card dl {
+  margin: 0 0 20px;
+  display: grid;
+  gap: 4px;
+}
+.city-help-card dt {
+  font-weight: 600;
+  margin-top: 8px;
+}
+.city-help-card dd {
+  margin: 0;
+  color: var(--glass-muted);
+  font-size: 0.92rem;
+}
+
+.city-sign {
+  display: grid;
+  text-align: center;
+  background: hsl(var(--hue) 45% 30% / 0.88);
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 10px;
+  white-space: nowrap;
+  font: 0.7rem var(--font-body);
+  pointer-events: none;
+  user-select: none;
+}
+.city-sign strong {
+  font: 700 0.95rem var(--font-display);
+}
+
+.hover-label {
+  background: var(--glass);
+  color: var(--glass-text);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font: 600 0.85rem var(--font-body);
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+}
+
+.city-loader {
+  font: 500 0.95rem var(--font-mono);
+  color: #e8ecff;
+  white-space: nowrap;
+}
+
+.city-touchpad {
+  display: none;
+}
+@media (pointer: coarse) {
+  .city-touchpad {
+    display: flex;
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 140px;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+  .city-touchpad > div {
+    display: flex;
+    gap: 10px;
+  }
+  .city-touchpad .pedals {
+    flex-direction: column;
+  }
+  .city-touchpad button {
+    pointer-events: auto;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 0;
+    background: var(--glass);
+    color: var(--glass-text);
+    font-size: 1.4rem;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}
+
+.city-fallback {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  gap: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+/* Keep HUD above drei <Html> labels (which use z-index up to ~20). */
+.city-toolbar,
+.city-minimap,
+.city-prompt,
+.city-touchpad,
+.city-panel {
+  z-index: 30;
+}
+.city-help {
+  z-index: 40;
+}
+
+.city-sign.career {
+  box-shadow: 0 0 0 2px rgb(255 230 180 / 0.6);
+}
+
+/* Skill billboards: 7×4.2 world units ≈ 280×168 css px at distanceFactor 10. */
+.billboard {
+  width: 270px;
+  height: 160px;
+  padding: 12px 14px;
+  color: #f4efe2;
+  font: 12px/1.35 var(--font-body);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+  user-select: none;
+}
+.billboard-label {
+  font: 500 9px var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8fd8bd;
+}
+.billboard strong {
+  font: 700 18px var(--font-display);
+}
+.billboard ul {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.billboard li {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.12);
+  font-size: 11px;
+}
+
+.city-panel-kicker {
+  font: 500 0.72rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.city-panel .city-panel-meta {
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+.city-panel-metric {
+  font-weight: 600;
+  color: var(--glass-text) !important;
+}
+.city-highlights {
+  margin: 0 0 14px;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--glass-muted);
+}
+
+/* Titles floating over the poles: résumé (warm) and open source (cool). */
+.hemisphere-label {
+  display: grid;
+  text-align: center;
+  gap: 2px;
+  padding: 8px 18px;
+  border-radius: 14px;
+  white-space: nowrap;
+  user-select: none;
+  color: #fff;
+  font: 0.75rem var(--font-mono);
+  letter-spacing: 0.06em;
+  border: 1px solid rgb(255 255 255 / 0.35);
+}
+.hemisphere-label strong {
+  font: 700 1.35rem var(--font-display);
+  letter-spacing: 0;
+}
+.hemisphere-label.north {
+  background: linear-gradient(135deg, rgb(201 138 36 / 0.85), rgb(120 72 20 / 0.85));
+  box-shadow: 0 0 24px rgb(255 190 90 / 0.45);
+}
+.hemisphere-label.south {
+  background: linear-gradient(135deg, rgb(24 140 120 / 0.85), rgb(16 70 96 / 0.85));
+  box-shadow: 0 0 24px rgb(80 220 200 / 0.4);
+}
+.city-sign.career {
+  background: linear-gradient(135deg, #b7802a, #6e4a1c);
+}
+
+/* The globe minimap draws its own disc and glow. */
+.city-minimap.globe {
+  border: 0;
+  border-radius: 50%;
+  box-shadow: none;
+  background: transparent;
+}
+
+/* Planet clock, under the minimap. */
+.planet-clock {
+  position: absolute;
+  right: 12px;
+  bottom: 186px;
+  z-index: 30;
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: rgb(10 12 22 / 0.7);
+  color: #ffe3b8;
+  font: 600 1rem var(--font-mono);
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
+}
+.planet-clock span {
+  font: 400 0.65rem var(--font-mono);
+  color: rgb(233 236 255 / 0.65);
+  letter-spacing: 0.04em;
+}
+@media (max-width: 600px) {
+  .planet-clock {
+    bottom: 132px;
+  }
+}
+
+/* ---------- Bigger HUD ----------
+   Everything on top of the 3D view, scaled up for readability. Kept in one
+   block so the sizes are easy to tune together. */
+.city-toolbar {
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  gap: 10px;
+}
+.city-btn {
+  font-size: 1.08rem;
+  padding: 12px 20px;
+  min-height: 48px;
+}
+.city-toolbar-group {
+  border-radius: 999px;
+}
+.city-minimap {
+  right: 16px;
+  bottom: 16px;
+}
+.planet-clock {
+  right: 16px;
+  bottom: 262px;
+  padding: 9px 16px;
+  font-size: 1.35rem;
+  border-radius: 14px;
+}
+.planet-clock span {
+  font-size: 0.78rem;
+}
+.city-prompt {
+  bottom: 32px;
+  font-size: 1.15rem;
+  padding: 14px 24px;
+}
+.city-prompt kbd,
+.city-help-card kbd {
+  font-size: 0.95rem;
+  padding: 2px 8px;
+}
+.city-panel {
+  top: 84px;
+  right: 16px;
+  width: min(440px, calc(100vw - 32px));
+  padding: 26px;
+  font-size: 1.05rem;
+}
+.city-panel h2 {
+  font-size: 1.85rem;
+}
+.city-panel-close {
+  width: 40px;
+  height: 40px;
+  font-size: 1.7rem;
+}
+.city-panel-meta {
+  font-size: 0.9rem;
+}
+.city-highlights {
+  font-size: 1rem;
+}
+.city-topics li {
+  font-size: 0.85rem;
+  padding: 3px 10px;
+}
+.city-panel .btn {
+  font-size: 1.02rem;
+  padding: 12px 20px;
+}
+.city-help-card {
+  max-width: 560px;
+  padding: 34px;
+  font-size: 1.08rem;
+}
+.city-help-card h2 {
+  font-size: 2rem;
+}
+.city-help-card dd {
+  font-size: 1rem;
+}
+.city-sign {
+  font-size: 0.85rem;
+  padding: 6px 16px;
+}
+.city-sign strong {
+  font-size: 1.15rem;
+}
+.hover-label {
+  font-size: 1.05rem;
+  padding: 6px 14px;
+}
+.hemisphere-label {
+  font-size: 0.9rem;
+  padding: 10px 22px;
+}
+.hemisphere-label strong {
+  font-size: 1.7rem;
+}
+@media (pointer: coarse) {
+  .city-touchpad {
+    bottom: 280px;
+  }
+  .city-touchpad button {
+    width: 76px;
+    height: 76px;
+    font-size: 1.7rem;
+  }
+}
+/* Phones: still bigger than before, but it has to fit. */
+@media (max-width: 600px) {
+  .city-btn {
+    font-size: 0.98rem;
+    padding: 10px 14px;
+    min-height: 44px;
+  }
+  .city-minimap {
+    transform: scale(0.72);
+    transform-origin: bottom right;
+  }
+  .planet-clock {
+    bottom: 196px;
+    font-size: 1.1rem;
+  }
+  /* Sit beside the minimap rather than across it. */
+  .city-prompt {
+    left: 12px;
+    right: 188px;
+    bottom: 16px;
+    transform: none;
+    font-size: 0.95rem;
+    padding: 10px 14px;
+    white-space: normal;
+    text-align: left;
+  }
+  .city-panel {
+    top: auto;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    width: auto;
+    padding: 20px;
+  }
+}
+
+/* ---------- Graphics panel ---------- */
+.city-panel.gfx-panel {
+  right: auto;
+  left: 16px;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100vh - 110px);
+}
+.gfx-panel h3 {
+  font: 600 0.78rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--glass-muted);
+  margin: 18px 0 6px;
+}
+.gfx-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 6px 0 8px;
+}
+.gfx-stats div {
+  display: grid;
+  background: var(--glass-line);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.gfx-stats strong {
+  font: 700 1.3rem var(--font-mono);
+}
+.gfx-stats span {
+  font-size: 0.75rem;
+  color: var(--glass-muted);
+}
+.gfx-renderer {
+  font: 0.75rem var(--font-mono);
+  color: var(--glass-muted) !important;
+  margin: 0 0 6px !important;
+}
+.gfx-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+}
+.gfx-row > span {
+  font-size: 0.98rem;
+}
+.gfx-value {
+  min-width: 5.5em;
+  text-align: right;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+.gfx-choice {
+  display: flex;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--glass-line);
+  flex-shrink: 0;
+}
+.gfx-choice button {
+  border: 0;
+  background: transparent;
+  color: var(--glass-text);
+  font: 500 0.9rem var(--font-body);
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.gfx-choice button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.gfx-switches {
+  display: grid;
+  gap: 4px;
+}
+.gfx-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 0.98rem;
+  cursor: pointer;
+}
+.gfx-switch input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
+.gfx-note {
+  font-size: 0.85rem !important;
+  margin: 10px 0 0 !important;
+}
+@media (max-width: 600px) {
+  .city-panel.gfx-panel {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: 70vh;
+  }
+}
+
+/* ---------- Toolbar icons ---------- */
+.city-toolbar-group.icons .city-btn {
+  min-width: 52px;
+  padding-left: 14px;
+  padding-right: 14px;
+  font-size: 1.15rem;
+}
+
+/* ---------- Go to ---------- */
+.goto {
+  position: relative;
+}
+.goto-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 35;
+  min-width: 250px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 10px;
+  border-radius: 16px;
+  background: var(--glass);
+  color: var(--glass-text);
+  box-shadow: 0 10px 32px rgb(0 0 0 / 0.3);
+  backdrop-filter: blur(8px);
+  animation: panel-in 160ms ease-out;
+}
+.goto-title {
+  margin: 6px 8px 4px;
+  font: 600 0.72rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--glass-muted);
+}
+.goto-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: 500 1rem var(--font-body);
+  padding: 9px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+}
+.goto-item:hover,
+.goto-item:focus-visible {
+  background: hsl(var(--hue) 70% 50% / 0.18);
+}
+.goto-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: hsl(var(--hue) 75% 60%);
+  box-shadow: 0 0 10px hsl(var(--hue) 90% 60% / 0.8);
+}
+.goto-count {
+  margin-left: auto;
+  font: 0.8rem var(--font-mono);
+  color: var(--glass-muted);
+}
+
+/* ---------- Gauge ---------- */
+.gauge {
+  position: absolute;
+  left: 16px;
+  bottom: 64px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 10px 10px;
+  border-radius: 22px;
+  background: radial-gradient(circle at 30% 30%, rgb(30 36 60 / 0.85), rgb(8 10 20 / 0.85));
+  border: 1px solid rgb(120 220 255 / 0.25);
+  box-shadow: 0 0 24px rgb(79 243 255 / 0.12), inset 0 0 18px rgb(0 0 0 / 0.5);
+  color: #e8f6ff;
+}
+.gauge svg {
+  width: 132px;
+  height: 114px;
+}
+.gauge-track {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.1);
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+.gauge-fill {
+  fill: none;
+  stroke-width: 7;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 4px rgb(79 243 255 / 0.7));
+}
+.gauge-tick {
+  stroke: rgb(255 255 255 / 0.35);
+  stroke-width: 1.5;
+}
+.gauge-needle {
+  stroke: #ff5a7a;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 3px #ff5a7a);
+}
+.gauge-hub {
+  fill: #ff5a7a;
+}
+.gauge-value {
+  fill: #fff;
+  font: 700 22px var(--font-mono);
+  text-anchor: middle;
+}
+.gauge-unit {
+  fill: rgb(232 246 255 / 0.6);
+  font: 500 9px var(--font-mono);
+  text-anchor: middle;
+  letter-spacing: 0.1em;
+}
+.gauge-side {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.gauge-chip {
+  font: 500 0.75rem var(--font-mono);
+  letter-spacing: 0.08em;
+  color: rgb(232 246 255 / 0.7);
+}
+.gauge-chip strong {
+  font-size: 1.5rem;
+  color: #ffd36b;
+  margin-left: 4px;
+}
+.gauge-auto {
+  border: 1px solid rgb(255 255 255 / 0.25);
+  background: transparent;
+  color: rgb(232 246 255 / 0.7);
+  font: 700 0.8rem var(--font-mono);
+  letter-spacing: 0.12em;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.gauge-auto[aria-pressed="true"] {
+  border-color: #4ff3ff;
+  color: #4ff3ff;
+  box-shadow: 0 0 12px rgb(79 243 255 / 0.5);
+  animation: auto-pulse 2.4s ease-in-out infinite;
+}
+@keyframes auto-pulse {
+  50% {
+    box-shadow: 0 0 2px rgb(79 243 255 / 0.2);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gauge-auto[aria-pressed="true"] {
+    animation: none;
+  }
+}
+
+/* ---------- Key hints ---------- */
+.key-hints {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  max-width: calc(100vw - 300px);
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: rgb(8 10 20 / 0.6);
+  color: rgb(232 246 255 / 0.85);
+  font-size: 0.88rem;
+  transition: opacity 600ms ease;
+}
+.key-hints kbd {
+  --glass-line: rgb(255 255 255 / 0.3);
+}
+.key-hints.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+@media (pointer: coarse) {
+  .key-hints {
+    display: none;
+  }
+}
+
+/* ---------- Settings: volume ---------- */
+.gfx-slider {
+  width: 55%;
+  accent-color: var(--accent);
+}
+
+/* ---------- Screenshot flash ---------- */
+.shutter-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: #fff;
+  pointer-events: none;
+  animation: shutter 420ms ease-out forwards;
+}
+@keyframes shutter {
+  from {
+    opacity: 0.85;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .gauge {
+    bottom: 12px;
+    transform: scale(0.8);
+    transform-origin: bottom left;
+  }
+  .city-prompt {
+    bottom: 140px;
+    left: 12px;
+    right: 12px;
+  }
+}
+
+/* The toolbar (and its Go-to menu) always sits above labels floating in the scene. */
+.city-toolbar {
+  z-index: 60;
+}
+
+/* Speed-limit display on the gauge. */
+.gauge-limit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 0.78rem var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(232 246 255 / 0.75);
+}
+.gauge-limit.grass {
+  color: #ffb36b;
+}
+.gauge-roundel {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #fff;
+  border: 4px solid #d4202c;
+  color: #111;
+  font: 800 0.78rem var(--font-body);
+  letter-spacing: 0;
+}
+
+/* ---------- Planet Radio ---------- */
+.city-panel.radio-panel {
+  right: auto;
+  left: 16px;
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100vh - 110px);
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--c1) 22%, transparent), transparent 45%),
+    var(--glass);
+}
+.radio-panel .city-panel-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+.eq i {
+  width: 3px;
+  height: 30%;
+  border-radius: 2px;
+  background: currentColor;
+}
+.eq.playing i {
+  animation: eq 0.9s ease-in-out infinite alternate;
+}
+@keyframes eq {
+  0% {
+    height: 20%;
+  }
+  50% {
+    height: 100%;
+  }
+  100% {
+    height: 45%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .eq.playing i {
+    animation: none;
+    height: 70%;
+  }
+}
+.radio-btn .eq {
+  height: 16px;
+  color: #4ff3ff;
+}
+.radio-stations {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 12px 0 10px;
+}
+.radio-station {
+  display: grid;
+  align-content: end;
+  gap: 4px;
+  min-height: 92px;
+  padding: 10px;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  background: linear-gradient(140deg, var(--c1), var(--c2));
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 0.45);
+  transition: transform 120ms ease;
+}
+.radio-station strong {
+  font: 700 1rem var(--font-display);
+}
+.radio-station span {
+  font-size: 0.72rem;
+  line-height: 1.3;
+  opacity: 0.9;
+}
+.radio-station[aria-checked="true"] {
+  border-color: #fff;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c2) 50%, transparent);
+}
+.radio-station:hover {
+  transform: translateY(-2px);
+}
+.radio-mood span {
+  font-size: 0.85rem;
+  color: var(--glass-muted);
+}
+.radio-mood strong {
+  color: var(--glass-text);
+}
+.radio-now {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-top: 14px;
+}
+.radio-art {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  background: linear-gradient(140deg, var(--c1), var(--c2));
+  color: #fff;
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--c1) 40%, transparent);
+}
+.radio-art .eq {
+  height: 26px;
+  gap: 3px;
+}
+.radio-art .eq i {
+  width: 5px;
+}
+.radio-meta {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.radio-meta strong {
+  font: 700 1.15rem var(--font-display);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.radio-meta span {
+  color: var(--glass-muted);
+  font-size: 0.9rem;
+}
+.radio-license {
+  justify-self: start;
+  font: 600 0.7rem var(--font-mono);
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-line);
+  color: var(--glass-muted);
+  text-decoration: none;
+}
+.radio-progress {
+  margin-top: 14px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--glass-line);
+  cursor: pointer;
+  overflow: hidden;
+}
+.radio-progress div {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--c1), var(--c2));
+}
+.radio-times {
+  display: flex;
+  justify-content: space-between;
+  font: 0.75rem var(--font-mono);
+  color: var(--glass-muted);
+  margin-top: 4px;
+}
+.radio-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 6px;
+}
+.radio-controls button {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--glass-line);
+  color: var(--glass-text);
+  font-size: 1rem;
+  cursor: pointer;
+}
+.radio-controls button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.radio-controls .radio-play {
+  width: 54px;
+  height: 54px;
+  font-size: 1.2rem;
+  background: linear-gradient(140deg, var(--c1), var(--c2));
+  color: #fff;
+}
+.radio-volume {
+  flex: 1;
+  margin-left: 8px;
+}
+.radio-tracks {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.radio-tracks li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.radio-tracks button {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 10px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--glass-text);
+  text-align: left;
+  cursor: pointer;
+}
+.radio-tracks button:hover,
+.radio-tracks button[aria-current="true"] {
+  background: color-mix(in srgb, var(--c1) 18%, transparent);
+}
+.radio-track-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.radio-track-artist {
+  grid-column: 1;
+  color: var(--glass-muted);
+  font-size: 0.8rem;
+}
+.radio-track-time {
+  grid-row: 1 / 3;
+  grid-column: 2;
+  align-self: center;
+  font: 0.78rem var(--font-mono);
+  color: var(--glass-muted);
+}
+.radio-tracks a {
+  font: 600 0.65rem var(--font-mono);
+  color: var(--glass-muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.radio-tracks a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 600px) {
+  .city-panel.radio-panel {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: 70vh;
+  }
+  .radio-stations {
+    grid-template-columns: 1fr;
+  }
+  .radio-station {
+    min-height: 0;
+  }
+}
+
+/* ---------- HUD layout (music + gauge) ----------
+   Bottom-left: mini player. Bottom-centre: gauge, with the "Visit" prompt
+   above it. Top-centre: key hints. Side panels sit above everything at the
+   bottom and stop short of the mini player while it's up. */
+.city-panel {
+  z-index: 45;
+}
+.gauge {
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+}
+.city-prompt {
+  bottom: 168px;
+}
+.key-hints {
+  top: 82px;
+  bottom: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(760px, calc(100vw - 32px));
+  justify-content: center;
+}
+.music-active .city-panel.radio-panel,
+.music-active .city-panel.gfx-panel {
+  max-height: calc(100vh - 84px - 290px);
+}
+
+.mini-player {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 40;
+  width: 300px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgb(8 10 20 / 0.85);
+  border: 1px solid color-mix(in srgb, var(--c2) 45%, transparent);
+  box-shadow: 0 10px 32px rgb(0 0 0 / 0.4), 0 0 24px color-mix(in srgb, var(--c1) 25%, transparent);
+  color: #f2f6ff;
+}
+/* Before the first play there's nothing to show (the empty slot stays mounted
+   so the player has somewhere to go). */
+.mini-player.idle {
+  visibility: hidden;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+  border: 0;
+}
+.mini-video {
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+.mini-video iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.mini-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+}
+.mini-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mini-title .eq {
+  color: var(--c2);
+}
+.mini-title span {
+  display: grid;
+  min-width: 0;
+}
+.mini-title strong,
+.mini-title em {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mini-title strong {
+  font-size: 0.92rem;
+}
+.mini-title em {
+  font-style: normal;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+.radio-controls.compact {
+  margin: 0;
+}
+.radio-controls.compact button {
+  width: 34px;
+  height: 34px;
+  font-size: 0.85rem;
+  background: rgb(255 255 255 / 0.1);
+  color: #fff;
+}
+.radio-controls.compact .radio-play {
+  width: 40px;
+  height: 40px;
+}
+
+/* Panel extras */
+.radio-stations {
+  grid-template-columns: repeat(2, 1fr);
+}
+.radio-station {
+  min-height: 74px;
+}
+.radio-meta {
+  margin-top: 12px;
+}
+.radio-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.radio-row .radio-controls {
+  margin: 8px 0;
+}
+.radio-error {
+  color: #ff8a8a !important;
+  font-size: 0.88rem;
+  margin: 6px 0 0 !important;
+}
+.radio-tracks a,
+.radio-remove {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--glass-muted);
+  font-size: 0.95rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+.radio-tracks a:hover,
+.radio-remove:hover {
+  background: var(--glass-line);
+  color: var(--glass-text);
+}
+.radio-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.radio-add input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-line);
+  background: rgb(255 255 255 / 0.06);
+  color: var(--glass-text);
+  font: 0.9rem var(--font-body);
+}
+.radio-add button {
+  border: 0;
+  border-radius: 10px;
+  padding: 0 16px;
+  background: linear-gradient(140deg, var(--c1), var(--c2));
+  color: #fff;
+  font: 600 0.9rem var(--font-body);
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .mini-player {
+    width: 210px;
+    left: 12px;
+    bottom: 12px;
+  }
+  .gauge {
+    left: auto;
+    right: 12px;
+    bottom: 200px;
+    transform: scale(0.75);
+    transform-origin: bottom right;
+  }
+  .city-prompt {
+    bottom: 12px;
+    left: 234px;
+    right: 12px;
+  }
+  .music-active .city-panel.radio-panel,
+  .music-active .city-panel.gfx-panel {
+    max-height: calc(100vh - 84px - 220px);
+  }
+}
+
+/* Music-only mode: the player shrinks to an invisible pixel (still playing). */
+.mini-player.video-hidden .mini-video {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  aspect-ratio: auto;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.mini-player.video-hidden .mini-video iframe {
+  width: 1px;
+  height: 1px;
+}
+.mini-eye {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.1);
+  color: #fff;
+  font-size: 0.95rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.mini-eye[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--c2) 45%, transparent);
+}
+.music-active.music-only .city-panel.radio-panel,
+.music-active.music-only .city-panel.gfx-panel {
+  max-height: calc(100vh - 84px - 120px);
+}
+
+/* Planned-speed legend for the route visualisation. */
+.route-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0 6px;
+  font: 600 0.75rem var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.route-legend i {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #ff3b5c, #ffb020 50%, #99ff59 80%, #3cf0ff);
+  box-shadow: 0 0 10px rgb(60 240 255 / 0.35);
+}
+
+/* Drone throttle on the gauge: − [====    THR 60%] + */
+.gauge-throttle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.gauge-throttle button {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgb(255 255 255 / 0.3);
+  background: rgb(255 255 255 / 0.06);
+  color: inherit;
+  font: 700 1rem/1 var(--font-mono);
+  cursor: pointer;
+}
+.gauge-throttle button:hover {
+  border-color: #4ff3ff;
+  color: #4ff3ff;
+}
+.gauge-throttle-bar {
+  position: relative;
+  width: 104px;
+  height: 22px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgb(255 255 255 / 0.08);
+  font: 700 0.72rem/22px var(--font-mono);
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+.gauge-throttle-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: calc(var(--throttle) * 100%);
+  background: linear-gradient(90deg, #1fb5a0, #4ff3ff 60%, #ffb020);
+  opacity: 0.55;
+  transition: width 0.15s ease;
+}
+.gauge-throttle-bar span {
+  position: relative;
+}
+
+/* ---------- Driver panel: what the autopilot is doing and why ---------- */
+.driver-panel {
+  --tone: #9fb3c8;
+  position: absolute;
+  top: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 260px;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 10px 16px 10px 14px;
+  border-radius: 14px;
+  background: rgb(8 12 22 / 0.78);
+  border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--tone) 22%, transparent);
+  color: #e8f6ff;
+  font: 500 0.95rem/1.35 Inter, system-ui, sans-serif;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.driver-panel.tone-stop { --tone: #ff3b5c; }
+.driver-panel.tone-slow { --tone: #ffb020; }
+.driver-panel.tone-go { --tone: #3cf0ff; }
+.dp-dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--tone);
+  box-shadow: 0 0 10px var(--tone);
+  animation: dp-pulse 1.4s ease-in-out infinite;
+}
+@keyframes dp-pulse {
+  50% { opacity: 0.45; }
+}
+.dp-line strong {
+  font: 700 0.9rem var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tone);
+  margin-right: 10px;
+}
+.dp-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 2px;
+  font-size: 0.82rem;
+  opacity: 0.8;
+}
+.dp-sub em {
+  font-style: normal;
+  color: #ffd27a;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dp-dot { animation: none; }
+}
+@media (max-width: 640px) {
+  .driver-panel { top: 132px; font-size: 0.85rem; }
+}
+/* The driver panel takes the top-centre spot; key hints go just below it. */
+.decisions-on .key-hints {
+  top: 156px;
+}
+.dp-lane {
+  color: #7dffb0;
+}
+
+/* ---------- First person ---------- */
+/* Car: a cinematic vignette that closes in a little with speed. */
+.fpv-car {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at 50% 46%,
+    transparent calc(58% - var(--speed) * 10%),
+    rgb(0 0 0 / calc(0.35 + var(--speed) * 0.25)) 100%
+  );
+}
+/* Drone: FPV goggles — an analog video feed with the flight controller's OSD. */
+.fpv-osd {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  overflow: hidden;
+  color: #f4fbff;
+  font: 700 clamp(14px, 1.6vw, 20px) / 1 "JetBrains Mono", ui-monospace, monospace;
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 2px #000, 1px 1px 0 #000, -1px -1px 0 #000, 0 0 6px rgb(0 0 0 / 0.8);
+  background:
+    repeating-linear-gradient(0deg, rgb(0 0 0 / 0.16) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at 50% 50%, transparent 55%, rgb(0 0 0 / 0.55) 100%);
+}
+.fpv-noise {
+  position: absolute;
+  inset: -50%;
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  animation: fpv-noise 0.18s steps(3) infinite;
+}
+@keyframes fpv-noise {
+  0% { transform: translate(0, 0); }
+  33% { transform: translate(-7%, 4%); }
+  66% { transform: translate(5%, -6%); }
+}
+.fpv-horizon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46vw;
+  margin-left: -23vw;
+  height: 0;
+  transition: transform 0.06s linear;
+}
+.fpv-horizon span {
+  display: block;
+  height: 2px;
+  background: linear-gradient(90deg, #fff 0 22%, transparent 22% 78%, #fff 78%);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.6);
+}
+.fpv-cross {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(22px, 2.4vw, 30px);
+}
+.fpv-top,
+.fpv-bottom {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5vw;
+}
+.fpv-top { top: 150px; }
+.fpv-bottom { bottom: 190px; }
+.fpv-rec { color: #ff4b4b; animation: fpv-blink 1s steps(2) infinite; }
+@keyframes fpv-blink { 50% { opacity: 0; } }
+.fpv-warn { color: #ffcf3f; animation: fpv-blink 0.6s steps(2) infinite; }
+.fpv-left,
+.fpv-right {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  gap: 4px;
+  text-align: center;
+}
+.fpv-left { left: 22vw; }
+.fpv-right { right: 22vw; }
+.fpv-left strong,
+.fpv-right strong { font-size: clamp(22px, 2.6vw, 34px); }
+.fpv-left small,
+.fpv-right small { font-size: 0.7em; opacity: 0.85; }
+@media (prefers-reduced-motion: reduce) {
+  .fpv-noise, .fpv-rec, .fpv-warn { animation: none; }
+}
+/* In first person the cockpit / OSD takes over from the big gauge. */
+.fpv-on .gauge { display: none; }
+
+/* ---------- Autopilot settings & the inputs readout ---------- */
+.pilot-hint {
+  display: block;
+  font-size: 0.78rem;
+  opacity: 0.65;
+}
+.pilot-reset {
+  margin: 4px 0 8px;
+}
+.inputs-panel {
+  position: absolute;
+  left: 16px;
+  bottom: 160px;
+  z-index: 40;
+  width: 230px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgb(8 12 22 / 0.78);
+  border: 1px solid rgb(79 243 255 / 0.3);
+  color: #e8f6ff;
+  font: 600 0.8rem var(--font-mono);
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+}
+.inputs-panel.by-you { border-color: rgb(255 210 122 / 0.4); }
+.ip-title {
+  display: block;
+  margin-bottom: 6px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #4ff3ff;
+}
+.by-you .ip-title { color: #ffd27a; }
+.ip-row {
+  display: grid;
+  grid-template-columns: 62px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+.ip-bar, .ip-steer {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 0.1);
+  overflow: hidden;
+}
+.ip-bar b {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: #3cf0ff;
+  transition: width 0.08s linear;
+}
+.ip-bar.brake b { background: #ff3b5c; }
+.ip-steer::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgb(255 255 255 / 0.35);
+}
+.ip-steer b {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  border-radius: 50%;
+  background: #ffd27a;
+  transition: left 0.08s linear;
+}
+.ip-row output { min-width: 4.5em; text-align: right; opacity: 0.85; }
+.music-active .inputs-panel { bottom: 300px; }
+
+/* ---------- Drone battery ---------- */
+.battery-meter {
+  --tone: #3cf0ff;
+  position: absolute;
+  left: 16px;
+  bottom: 120px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgb(8 12 22 / 0.78);
+  color: #e8f6ff;
+  font: 600 0.8rem var(--font-mono);
+  pointer-events: none;
+}
+.battery-meter.tone-slow, .battery-note.tone-slow { --tone: #ffb020; }
+.battery-meter.tone-stop, .battery-note.tone-stop { --tone: #ff3b5c; }
+.bm-cell {
+  position: relative;
+  width: 46px;
+  height: 14px;
+  border: 2px solid var(--tone);
+  border-radius: 3px;
+}
+.bm-cell::after {
+  content: "";
+  position: absolute;
+  right: -5px;
+  top: 3px;
+  width: 3px;
+  height: 4px;
+  background: var(--tone);
+}
+.bm-cell b {
+  position: absolute;
+  inset: 1px auto 1px 1px;
+  background: var(--tone);
+  transition: width 0.2s;
+}
+.battery-note {
+  --tone: #3cf0ff;
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translateX(-50%);
+  z-index: 46;
+  padding: 10px 18px;
+  border-radius: 12px;
+  background: rgb(8 12 22 / 0.85);
+  border: 1px solid var(--tone);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--tone) 35%, transparent);
+  color: #f2fbff;
+  font: 600 1rem Inter, system-ui, sans-serif;
+  pointer-events: none;
+}
+.fpv-on .battery-meter { display: none; }
+
+.ip-bar.reverse b { background: #ffd27a; }
+.ip-on { color: #ff5a4f; font-weight: 700; }
+.ip-off { opacity: 0.5; }

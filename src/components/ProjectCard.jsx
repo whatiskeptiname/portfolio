@@ -1,26 +1,51 @@
 // src/components/ProjectCard.jsx
 import React from "react";
+import { languageColor } from "../data";
 
-export default function ProjectCard({ repo }) {
+export function Stars({ count }) {
+  if (!count) return null;
   return (
-    <div className="card">
-      <div className="card-content">
-        <h3 className="card-title">{repo.name}</h3>
-        <p className="card-desc">
-          {repo.description || "No description provided."}
-        </p>
+    <span className="stars" aria-label={`${count} stars`}>
+      <svg viewBox="0 0 20 20" aria-hidden="true">
+        <path d="M10 1.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L10 14.9l-5.2 2.7 1-5.8L1.5 7.7l5.9-.9z" />
+      </svg>
+      {count}
+    </span>
+  );
+}
+
+export function LanguageDot({ language }) {
+  return (
+    <span className="lang-dot" style={{ "--dot": languageColor(language) }}>
+      {language}
+    </span>
+  );
+}
+
+export default function ProjectCard({ project }) {
+  return (
+    <article className="card">
+      {project.image && (
+        <img className="card-image" src={`${import.meta.env.BASE_URL}${project.image}`} alt="" loading="lazy" />
+      )}
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+        <LanguageDot language={project.language} />
+        <Stars count={project.stars} />
       </div>
+      <h3 className="card-title">{project.title}</h3>
+      <p className="card-desc">{project.description || "No description yet."}</p>
       <div className="card-footer">
-        <div className="star">
-          <svg viewBox="0 0 20 20">
-            <path d="M9.049 2.927C9.32 2.046 10.68 2.046 10.951 2.927l.745 2.272c.1.305.377.52.697.588l2.485.361c.853.124 1.197 1.171.578 1.77l-1.8 1.754c-.248.242-.359.597-.297.945l.425 2.479c.146.852-.75 1.498-1.51 1.098l-2.228-1.17a.993.993 0 00-.93 0l-2.228 1.17c-.759.4-1.655-.246-1.51-1.098l.425-2.479a1.003 1.003 0 00-.297-.945L2.544 7.918c-.619-.6-.275-1.646.578-1.77l2.485-.361a1.003 1.003 0 00.697-.588l.745-2.272z" />
-          </svg>
-          <span>{repo.stargazers_count}</span>
+        <div className="card-links">
+          <a href={project.url} target="_blank" rel="noopener noreferrer">
+            Source ↗
+          </a>
+          {project.demo && (
+            <a href={project.demo} target="_blank" rel="noopener noreferrer">
+              Live demo ↗
+            </a>
+          )}
         </div>
-        <a href={repo.html_url} target="_blank" rel="noopener noreferrer">
-          View on GitHub
-        </a>
       </div>
-    </div>
+    </article>
   );
 }

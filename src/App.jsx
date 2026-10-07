@@ -1,29 +1,80 @@
 // src/App.jsx
-import React from "react";
-import { Canvas } from "@react-three/fiber";
-import Layout from "./components/Layout";
-import ProjectGallery3D from "./components/ProjectGallery3D";
-import useGitHubRepos from "./hooks/useGitHubRepos";
+import React, { Suspense, lazy, useEffect, useState } from "react";
+import {
+  About,
+  Background,
+  CaseStudies,
+  Contact,
+  Equator,
+  Experience,
+  Footer,
+  Header,
+  Hemisphere,
+  Hero,
+  OpenSource,
+  ProjectIndex,
+  Toolbox,
+} from "./components/site/Sections";
+
+// The 3D city (and three.js) only downloads when someone opens it.
+const CityExplorer = lazy(() => import("./city/CityExplorer"));
+
+const CITY_HASH = "#/city";
+
+function useHash() {
+  const [hash, setHash] = useState(() => window.location.hash);
+  useEffect(() => {
+    const onChange = () => setHash(window.location.hash);
+    window.addEventListener("hashchange", onChange);
+    return () => window.removeEventListener("hashchange", onChange);
+  }, []);
+  return hash;
+}
 
 export default function App() {
-  const username = "whatiskeptiname";
-  const { groupedRepos, loading, error } = useGitHubRepos(username);
+  const hash = useHash();
+  const inCity = hash === CITY_HASH || hash.startsWith(`${CITY_HASH}?`);
 
-  if (loading) {
-    return <Layout><div>Loading…</div></Layout>;
-  }
-  if (error || !groupedRepos) {
-    return <Layout><div>Error: {error?.message ?? "No repos"}</div></Layout>;
+  // Coming back from the city re-renders the page, so the browser's own
+  // jump-to-anchor already happened; redo it once the section exists.
+  useEffect(() => {
+    if (inCity || hash.length < 2) return;
+    document.getElementById(hash.slice(1))?.scrollIntoView();
+  }, [inCity, hash]);
+
+  if (inCity) {
+    return (
+      <Suspense fallback={<div className="city-loading">Approaching the planet…</div>}>
+        <CityExplorer
+          initialVehicle={new URLSearchParams(hash.split("?")[1]).get("vehicle")}
+          initialView={new URLSearchParams(hash.split("?")[1]).get("view")}
+          onExit={() => (window.location.hash = "#open-source")}
+        />
+      </Suspense>
+    );
   }
 
   return (
-    <Layout>
-      <Canvas
-        camera={{ position: [0, 12, 30], fov: 60 }}
-        style={{ width: "100%", height: "100vh", background: "#e0f7fa" }}
-      >
-        <ProjectGallery3D reposByLanguage={groupedRepos} />
-      </Canvas>
-    </Layout>
+    <>
+      <a className="skip-link" href="#work">Skip to work</a>
+      <Header />
+      <main>
+        <Hero />
+        <Hemisphere side="north">
+          <About />
+          <Experience />
+          <CaseStudies />
+          <Toolbox />
+          <Background />
+        </Hemisphere>
+        <Equator />
+        <Hemisphere side="south">
+          <OpenSource />
+          <ProjectIndex />
+        </Hemisphere>
+        <Contact />
+      </main>
+      <Footer />
+    </>
   );
 }
