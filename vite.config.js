@@ -3,8 +3,8 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
-  // Served from https://whatiskeptiname.github.io/portfolio/
-  base: '/portfolio/',
+  // Served from the root of the custom domain, https://susang.com.np/
+  base: '/',
   plugins: [react()],
   build: {
     // three.js is ~720 kB on its own and only loads with the 3D city.

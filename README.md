@@ -9,7 +9,7 @@ Personal site for Susan Ghimire, ML engineer. It has two parts:
    it, drive it in a car or fly it with a drone — by hand or on a self-driving
    autopilot that shows what it sees and why it does what it does.
 
-**Live:** <https://whatiskeptiname.github.io/portfolio/> · **Planet:** <https://whatiskeptiname.github.io/portfolio/#/city>
+**Live:** <https://susang.com.np/> · **Planet:** <https://susang.com.np/#/city>
 
 ---
 
@@ -44,7 +44,7 @@ Requires Node 22 or newer.
 
 ```sh
 npm install
-npm run dev           # http://localhost:5173/portfolio/
+npm run dev           # http://localhost:5173/
 npm test              # unit tests (vitest)
 npm run lint          # eslint
 npm run build         # production build in dist/
@@ -52,8 +52,8 @@ npm run preview       # serve the production build
 npm run fetch-repos   # refresh src/data/repos.json from the GitHub API
 ```
 
-The site is served under `/portfolio/` (see `base` in `vite.config.js`), to
-match GitHub Pages.
+The site is served from the root of the custom domain (`base: '/'` in
+`vite.config.js`; the domain itself is in `public/CNAME`).
 
 ---
 
