@@ -156,11 +156,12 @@ swing there. On touch devices on-screen pedals appear.
 view, 📍 Go to, ♫ radio, 📷 screenshot, ⛶ fullscreen, 🔊 sound, 🧭 autopilot
 settings, ⚙ settings, ? help.
 
-**First visit:** the planet opens quietly and light: sound muted, the Low
-graphics preset, the autopilot cruising the equator, and the route, decision
-and input overlays off. One small hint bar at the bottom offers
-<kbd>C</kbd> *to drive* and *Sound off · turn on*; each chip leaves once
-used. The full guide is behind **?** / <kbd>H</kbd>.
+**On arrival:** you're in the car, cruising the equator on autopilot, with
+the Low graphics preset and sound muted. The autopilot's visuals (route,
+decisions, inputs) start off every visit; switch them on in 🧭. One small hint
+bar above the speedometer offers <kbd>C</kbd> *look around* and *Sound off ·
+turn on*; each chip leaves once used. The full guide is behind **?** /
+<kbd>H</kbd>.
 
 ### The world
 

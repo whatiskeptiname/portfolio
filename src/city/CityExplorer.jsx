@@ -95,13 +95,12 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
   const buildingsById = useMemo(() => new Map(layout.buildings.map((b) => [b.id, b])), [layout]);
 
   const startVehicle = ["car", "drone"].includes(initialVehicle) ? initialVehicle : null;
-  const [mode, setMode] = useState(startVehicle ? "drive" : "orbit");
-  // Links win; otherwise come back to the vehicle and camera you used last.
-  const [vehicle, setVehicle] = useState(() => startVehicle ?? remembered("city-vehicle", ["car", "drone"], "car"));
+  const [mode, setMode] = useState("drive"); // the car is ready on arrival
+  // Links win; otherwise start in the car, with the camera you used last.
+  const [vehicle, setVehicle] = useState(() => startVehicle ?? "car");
   const [view, setView] = useState(() =>
     VIEWS.includes(initialView) ? initialView : remembered("city-view", VIEWS, "chase")
   );
-  useEffect(() => remember("city-vehicle", vehicle), [vehicle]);
   useEffect(() => remember("city-view", view), [view]);
   const [audioSettings, setAudioSettings] = useState(() => audio.settings);
   const updateAudio = useCallback((patch) => {
@@ -198,8 +197,8 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
     setDroneAlt(next);
   }, []);
   // Show the autopilot's route planning and speed plan (G, or in ⚙).
-  const [routeViz, setRouteViz] = useState(() => remembered("city-routeviz", ["on", "off"], "off") === "on");
-  useEffect(() => remember("city-routeviz", routeViz ? "on" : "off"), [routeViz]);
+  // The autopilot's visuals start off every visit; switch them on in 🧭.
+  const [routeViz, setRouteViz] = useState(false);
   // How far the autopilot sees (all round, in line of sight), from ⚙.
   const [viewRange, setViewRange] = useState(() => {
     try {
@@ -237,11 +236,9 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
     remember("city-pilot-rules", JSON.stringify(pilotRules));
     vehicleState.current.pilot = pilotRules;
   }, [pilotRules]);
-  const [showInputs, setShowInputs] = useState(() => remembered("city-show-inputs", ["on", "off"], "off") === "on");
-  useEffect(() => remember("city-show-inputs", showInputs ? "on" : "off"), [showInputs]);
+  const [showInputs, setShowInputs] = useState(false);
   // Show what the autopilot sees and why it does what it does (I, or in ⚙).
-  const [decisions, setDecisions] = useState(() => remembered("city-decisions", ["on", "off"], "off") === "on");
-  useEffect(() => remember("city-decisions", decisions ? "on" : "off"), [decisions]);
+  const [decisions, setDecisions] = useState(false);
   // Where the autopilot goes: round the equator, or touring every road.
   const [autoRoute, setAutoRoute] = useState(() => remembered("city-autoroute", ["equator", "roads"], "equator"));
   useEffect(() => {
@@ -681,7 +678,7 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
       <StartHint
         driving={driving}
         sound={sound}
-        onDrive={() => !driving && toggleMode()}
+        onToggle={toggleMode}
         onSound={() => updateAudio({ enabled: true })}
       />
       {flash > 0 && <div className="shutter-flash" key={flash} />}

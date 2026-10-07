@@ -1889,3 +1889,7 @@ kbd {
     align-items: center;
   }
 }
+/* While driving, sit just above the speedometer. */
+.city-root .start-hint.over-gauge {
+  bottom: 176px;
+}

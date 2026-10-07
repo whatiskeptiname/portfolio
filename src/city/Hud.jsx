@@ -250,23 +250,25 @@ export function Gauge({ vehicle, type, onToggleAuto, altitude = 12, onAltitude }
 }
 
 /**
- * First-visit nudges, one line at the bottom: how to start driving, and that
- * sound is off until you want it. Each one leaves for good once it's used.
+ * First-visit nudges, one line at the bottom: C switches between driving and
+ * looking around, and sound is off until you want it. Each one leaves for good
+ * once it's used.
  */
-export function StartHint({ driving, sound, onDrive, onSound }) {
-  const [drove, setDrove] = useState(driving);
+export function StartHint({ driving, sound, onToggle, onSound }) {
+  const [first] = useState(driving);
+  const [switched, setSwitched] = useState(false);
   const [heard, setHeard] = useState(sound);
-  useEffect(() => void (driving && setDrove(true)), [driving]);
+  useEffect(() => void (driving !== first && setSwitched(true)), [driving, first]);
   useEffect(() => void (sound && setHeard(true)), [sound]);
   const touch = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
-  const showDrive = !drove && !driving;
+  const showMode = !switched && !touch; // touch has the toolbar buttons right there
   const showSound = !heard && !sound;
-  if (!showDrive && !showSound) return null;
+  if (!showMode && !showSound) return null;
   return (
-    <div className="start-hint">
-      {showDrive && (
-        <button className="start-chip" onClick={onDrive}>
-          {touch ? "Tap to drive" : <><kbd>C</kbd> to drive</>}
+    <div className={`start-hint${driving ? " over-gauge" : ""}`}>
+      {showMode && (
+        <button className="start-chip" onClick={onToggle}>
+          <kbd>C</kbd> {driving ? "look around" : "to drive"}
         </button>
       )}
       {showSound && (
