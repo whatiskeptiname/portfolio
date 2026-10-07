@@ -156,11 +156,13 @@ swing there. On touch devices on-screen pedals appear.
 view, 📍 Go to, ♫ radio, 📷 screenshot, ⛶ fullscreen, 🔊 sound, 🧭 autopilot
 settings, ⚙ settings, ? help.
 
-**On arrival:** you're in the car, cruising the equator on autopilot, with
-the Low graphics preset and sound muted. The autopilot's visuals (route,
-decisions, inputs) start off every visit; switch them on in 🧭. One small hint
-bar above the speedometer offers <kbd>C</kbd> *look around* and *Sound off ·
-turn on*; each chip leaves once used. The full guide is behind **?** /
+**On arrival:** you land on the planet view, with the car cruising the
+equator on autopilot, the day–night cycle running, the Low graphics preset
+and sound muted. The
+autopilot's visuals (route, decisions, inputs) start off every visit; switch
+them on in 🧭. One small hint bar at the bottom offers <kbd>C</kbd> *to drive*
+(*Tap to drive* on touch) and *Sound off · turn on*; each chip leaves once
+used. The full guide is behind **?** /
 <kbd>H</kbd>.
 
 ### The world
@@ -285,10 +287,16 @@ On by default: the vehicle starts on the equator highway and drives itself.
   (`src/lib/avoid.js`), or stops and says why if there's no way round. Off-road
   while cruising, it drives back to the highway by road. If it gets pinned, it
   backs off gently and tries another line, re-planning if that keeps failing.
-- **Overtaking:** it passes a slow car only when the next lane is clear both
-  ways, the road stays straight for the whole pass, no junction or roundabout
-  is coming, and it can see far enough ahead. If something appears, it aborts
-  and drops back behind.
+- **Overtaking:** it pulls out past a slow (moving, not queueing) car only
+  once it can actually see 15 m of the other lane ahead (line of sight, so a
+  building, tree, car or hill in the way means waiting) with nothing coming
+  in it: no oncoming car, nothing in the next lane ahead or catching up
+  behind, and no junction or roundabout within 20 m of where the pass ends. The pass isn't a fixed manoeuvre: every step it
+  re-plans against the nearest oncoming car it can see. If it will finish and
+  be back in its lane in time, it speeds up and commits, tucking in tighter
+  and faster the closer that car is. If not, it eases off, drops back behind
+  and pulls in, and carries on if the road clears. The decision panel shows
+  the live margin, e.g. *Overtaking · oncoming 80 m, 2.1 s spare*.
 
 #### Autopilot settings (🧭)
 
@@ -318,7 +326,8 @@ On by default: the vehicle starts on the equator highway and drives itself.
     current colour), trees, buildings, billboards. The thing it's reacting to
     pulses in the decision's colour.
   - **Lane recognition** (`src/lib/lanes.js`): its lane's two edges ahead as
-    faint lines (green; amber when it's in the other lane).
+    thin glowing strips on the road, bright by the car and fading ahead
+    (green; amber when it's in the other lane).
 - **Driver panel:** what it's doing and why, live — e.g. *Waiting · Red light
   · 20 m*, *Following · car ahead*, *Can't overtake: oncoming traffic* — plus
   its lane and a count of everything it sees. Colours: red stopping, amber

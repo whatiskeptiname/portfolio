@@ -313,25 +313,30 @@ export function noteWaiting(self, cap, dt) {
 }
 
 const OVERTAKE_SHIFT = LANE * 2; // from the middle of our lane to the middle of the other
+/** Overtaking needs this many metres of the other lane in clear view, with nothing coming. */
+export const OVERTAKE_CLEAR = 15;
+const JUNCTION_CLEAR = 20; // and no junction within this of where the pass ends
 const SHIFT_RATE = 2.4; // units per second, sideways
+const FAST_SHIFT_RATE = 4.5; // ducking back in when something's coming
+const PASS_BOOST = 1.45; // speed factor when committing to finish a pass
 
 /**
  * Overtaking, decided from what the driver can see (`others`, `signals`,
  * `towns` should be what lib/perception says is in view). A car stuck
- * behind a slower one pulls out into the other lane only when, for the whole
- * length the pass will take:
- *   - the road stays straight (`straightFor(distance)`, from the caller),
- *   - there's no junction or roundabout coming up,
- *   - it can see far enough ahead to be sure,
- *   - no oncoming car will arrive before it's done, and
- *   - the next lane is clear — ahead, and behind in the mirror.
- * It passes, then pulls back in once there's room. If something appears
- * coming the other way (or the road starts to bend) it aborts: drops back
- * behind the slow car and pulls in. Updates self.laneShift (sideways offset
- * to the right, eased), self.boost (speed factor) and self.overtakeNote (what
- * it's doing or why it's holding back). `dt` in seconds.
+ * behind a slower one pulls out into the other lane only once it can see
+ * OVERTAKE_CLEAR (15 m) of that lane ahead — nothing blocking the view
+ * (`canSeePoint`, from perception) — with nothing coming in it: no oncoming
+ * car, no car in the next lane (ahead, or catching up in the mirror), and no
+ * junction or roundabout.
+ * Once out, nothing is fixed in advance: every step it re-plans against the
+ * nearest oncoming car it can see — if it will finish the pass and be back in
+ * its lane before they meet, it speeds up and commits (tucking in tighter and
+ * faster the closer it is); if not, it eases off, drops back behind the slow
+ * car and pulls in, and it goes again if the road clears. Updates
+ * self.laneShift (sideways offset to the right), self.boost (speed factor) and
+ * self.overtakeNote (what it's doing or why it's holding back). `dt` in seconds.
  */
-export function decideOvertake(self, { others = [], signals = [], towns = [], width, straight = true, straightFor, viewRange = 110 }, dt) {
+export function decideOvertake(self, { others = [], signals = [], towns = [], width, canSeePoint = null, range = Infinity }, dt) {
   const fx = -Math.sin(self.yaw);
   const fz = -Math.cos(self.yaw);
   const local = (x, z) => {
@@ -339,9 +344,7 @@ export function decideOvertake(self, { others = [], signals = [], towns = [], wi
     const dz = z - self.z;
     return [dx * fx + dz * fz, dx * fz - dz * fx];
   };
-  const isStraight = (d) => (straightFor ? straightFor(d) : straight);
   const cruise = self.autoSpeed ?? 8;
-  const passSpeed = cruise * 1.3;
   const ground = others.filter((o) => o !== self && (o.alt ?? 0) <= 1.5);
   const heading = (o) => -Math.sin(o.yaw) * fx + -Math.cos(o.yaw) * fz;
   // The other lane is to our right (traffic keeps left): side ≈ −2·LANE.
@@ -356,7 +359,8 @@ export function decideOvertake(self, { others = [], signals = [], towns = [], wi
       const [ahead, side] = local(o.x, o.z);
       if (heading(o) < 0.5 || !inOtherLane(side)) return false;
       // Ahead of us in that lane, or coming up behind faster than us.
-      return (ahead > -CAR_LENGTH && ahead < 25) || (ahead <= -CAR_LENGTH && ahead > -35 && o.speed > self.speed + 1);
+      // Ahead within the clear distance, or catching up from behind (the mirror looks further).
+      return (ahead > -CAR_LENGTH && ahead < OVERTAKE_CLEAR) || (ahead <= -CAR_LENGTH && ahead > -35 && o.speed > self.speed + 1);
     });
   const junctionWithin = (distance) => {
     for (const sig of signals) {
@@ -372,69 +376,107 @@ export function decideOvertake(self, { others = [], signals = [], towns = [], wi
     return null;
   };
 
+  // Can it see the other lane all the way out to OVERTAKE_CLEAR?
+  const clearView = () => {
+    if (range < OVERTAKE_CLEAR) return false;
+    if (!canSeePoint) return true;
+    const side = -OVERTAKE_SHIFT;
+    for (const ahead of [OVERTAKE_CLEAR / 2, OVERTAKE_CLEAR]) {
+      const x = self.x + ahead * fx + side * fz;
+      const z = self.z + ahead * fz - side * fx;
+      if (!canSeePoint(x, z)) return false;
+    }
+    return true;
+  };
+  // How far we travel to get past a car `gap` ahead doing `speed`.
+  const passDistance = (gap, speed) => {
+    const passV = cruise * PASS_BOOST;
+    return (passV * (Math.max(0, gap) + CAR_LENGTH + 4)) / Math.max(0.5, passV - speed);
+  };
   let o = self.overtake; // { target, since, aborting }
   let shiftTo = 0;
   self.boost = 1;
   self.overtakeNote = null;
-  if (!o) {
+  self.overtakeWait = Math.max(0, (self.overtakeWait ?? 0) - dt);
+  if (!o && self.overtakeWait > 0) self.overtakeNote = "Can't overtake: waiting for the road to clear";
+  else if (!o) {
     // The car we're stuck behind, if it's slow and close.
     const leader = ground
       .map((c) => ({ c, pos: local(c.x, c.z) }))
       .filter(({ c, pos: [ahead, side] }) => heading(c) > 0.5 && Math.abs(side) < 2.1 && ahead > 0 && ahead < CAR_LENGTH + 16)
       .sort((a, b) => a.pos[0] - b.pos[0])[0];
     if (leader && leader.c.speed < cruise - 2.5 && self.speed > 2) {
-      // How far the pass will take, and how far oncoming traffic would come in that time.
-      const gap = Math.max(0, leader.pos[0] - CAR_LENGTH);
-      const passTime = (gap + 2 * CAR_LENGTH + 10) / Math.max(2, passSpeed - leader.c.speed);
-      const passLength = passSpeed * passTime;
-      const needClear = passLength + passTime * cruise; // the pass, plus how far oncoming traffic comes meanwhile
+      // Safe when nothing is coming within OVERTAKE_CLEAR (and no junction
+      // falls within JUNCTION_CLEAR of where the pass ends). A car that's (nearly) stopped is queueing, not slow.
+      const reach = passDistance(leader.pos[0], leader.c.speed) + JUNCTION_CLEAR;
       let hold = null;
-      if (!isStraight(passLength + 10)) hold = "the road bends ahead";
-      else if (junctionWithin(passLength + 20)) hold = `${junctionWithin(passLength + 20)} ahead`;
-      else if (needClear > viewRange) hold = "can't see far enough ahead";
-      else if (oncomingWithin(needClear)) hold = "oncoming traffic";
+      if (leader.c.speed < 1.5) hold = "the car ahead is queueing";
+      else if (!clearView()) hold = `can't see ${OVERTAKE_CLEAR} m ahead`;
+      else if (oncomingWithin(OVERTAKE_CLEAR)) hold = "oncoming traffic";
       else if (nextLaneBusy()) hold = "a car in the next lane";
+      else if (junctionWithin(reach)) hold = `${junctionWithin(reach)} ahead`;
       if (hold) self.overtakeNote = `Can't overtake: ${hold}`;
       else {
-        o = self.overtake = { target: leader.c, since: 0, aborting: false, passLength };
+        o = self.overtake = { target: leader.c, since: 0, aborting: false };
       }
     }
   }
+  let rate = SHIFT_RATE;
   if (o) {
+    // Re-planned every step from what's in view: will we finish the pass
+    // (and be back in our lane) before the nearest oncoming car arrives?
     o.since += dt;
     const [ahead] = local(o.target.x, o.target.z);
-    const passed = ahead < -(CAR_LENGTH + 4);
+    const oncoming = ground
+      .filter((c) => heading(c) < -0.5)
+      .map((c) => ({ c, pos: local(c.x, c.z) }))
+      .filter(({ pos: [a, side] }) => inOtherLane(side) && a > -CAR_LENGTH)
+      .sort((a, b) => a.pos[0] - b.pos[0])[0];
+    const passV = cruise * PASS_BOOST;
+    const gain = ahead + CAR_LENGTH + 2; // until our tail clears its nose
+    const backIn = (self.laneShift ?? 0) / FAST_SHIFT_RATE;
+    const finishIn = Math.max(0, gain) / Math.max(0.5, passV - (o.target.speed ?? 0)) + backIn;
+    const meetIn = oncoming ? (oncoming.pos[0] - CAR_LENGTH - 2) / Math.max(1, Math.max(self.speed, 0) + Math.max(oncoming.c.speed, 0)) : Infinity;
+    const spare = meetIn - finishIn;
+    const metres = oncoming ? Math.round(oncoming.pos[0]) : 0;
+    // Hysteresis so it doesn't flip-flop: committing needs more spare than staying committed.
+    const commit = !oncoming || spare > (o.aborting ? 1.5 : 0.4);
+    const junction = ahead > -CAR_LENGTH && junctionWithin(passDistance(ahead, o.target.speed ?? 0) + JUNCTION_CLEAR);
+    if (o.since > 14 && !o.aborting) o.aborting = "taking too long";
+    else if (!commit) o.aborting = `oncoming car ${metres} m`;
+    else if ((o.target.speed ?? 0) < 1.5 && ahead > -CAR_LENGTH) o.aborting = "the car ahead is stopping";
+    else if (junction) o.aborting = `${junction} ahead`;
+    else if (o.aborting && o.aborting !== "taking too long") o.aborting = false; // the road cleared
+    const urgent = Boolean(oncoming) && spare < 2.5;
+    // Tuck in as soon as our tail is past its nose when it's tight; leave a comfy gap otherwise.
+    const clearOf = urgent ? CAR_LENGTH + 1.5 : CAR_LENGTH + 4;
     const roomToPullIn = !ground.some((c) => {
       const [a2, s2] = local(c.x, c.z);
-      return heading(c) > 0.5 && Math.abs(s2) < 2.1 && a2 > -(CAR_LENGTH + 3) && a2 < CAR_LENGTH + 6;
+      return heading(c) > 0.5 && Math.abs(s2) < 2.1 && a2 > -(clearOf - 1) && a2 < CAR_LENGTH + 6;
     });
-    if (!o.aborting) {
-      // Something coming the other way, close — or the road starting to bend? Abort.
-      const danger = oncomingWithin(25 + (self.speed + 12) * 2.5);
-      if (danger) o.aborting = "oncoming traffic";
-      else if (!isStraight(Math.max(20, (o.passLength ?? 40) * 0.5))) o.aborting = "the road bends";
-      else if (o.since > 14) o.aborting = "taking too long";
-    }
-    if (passed && roomToPullIn && !o.aborting) {
+    if (o.aborting) {
+      // Drop back behind the slow car, then pull in — or, if we're already past it, just pull in.
+      self.overtakeNote = `Aborting overtake: ${o.aborting}`;
+      if (ahead > CAR_LENGTH + 1 || (ahead < -clearOf && roomToPullIn)) {
+        self.overtake = null;
+        self.overtakeWait = 2; // a breather before trying again
+        rate = FAST_SHIFT_RATE;
+      } else {
+        shiftTo = OVERTAKE_SHIFT;
+        self.boost = 0.45;
+      }
+    } else if (ahead < -clearOf && roomToPullIn) {
       self.overtake = null;
       self.overtakeNote = "Pulling back in";
-    } else if (o.aborting) {
-      // Drop back behind the slow car, then pull in.
-      const behind = ahead > CAR_LENGTH + 1;
-      self.overtakeNote = `Aborting overtake: ${o.aborting}`;
-      if (behind || ahead < -(CAR_LENGTH + 4)) self.overtake = null;
-      else {
-        shiftTo = OVERTAKE_SHIFT;
-        self.boost = 0.55;
-      }
+      if (urgent) rate = FAST_SHIFT_RATE;
     } else {
       shiftTo = OVERTAKE_SHIFT;
-      self.boost = 1.3;
-      self.overtakeNote = "Overtaking a slower car";
+      self.boost = oncoming ? PASS_BOOST : 1.3;
+      self.overtakeNote = oncoming ? `Overtaking · oncoming ${metres} m, ${spare.toFixed(1)} s spare` : "Overtaking a slower car";
     }
   }
   const now = self.laneShift ?? 0;
-  const step = SHIFT_RATE * dt;
+  const step = rate * dt;
   self.laneShift = Math.abs(shiftTo - now) <= step ? shiftTo : now + Math.sign(shiftTo - now) * step;
   if (!self.overtakeNote && self.laneShift > 0.05) self.overtakeNote = "Pulling back in";
   return self.laneShift;

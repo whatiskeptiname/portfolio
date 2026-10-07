@@ -136,28 +136,42 @@ describe("overtaking", () => {
     expect(me.laneShift).toBe(0);
   });
 
-  it("stays put with oncoming traffic, a bend, or lights ahead", () => {
-    const oncoming = { x: 60, z: 1.9, yaw: -EAST, speed: 12 };
+  it("goes when nothing is coming within 15 m, and holds for oncoming traffic or lights", () => {
+    const close = { x: 12, z: 1.9, yaw: -EAST, speed: 12 };
     const a = { x: 0, z: -1.9, yaw: EAST, speed: 8, autoSpeed: 12 };
-    for (let i = 0; i < 20; i++) decideOvertake(a, { others: [slow(), oncoming], width: W }, 0.1);
+    for (let i = 0; i < 20; i++) decideOvertake(a, { others: [slow(), close], width: W }, 0.1);
     expect(a.laneShift).toBe(0);
+    expect(a.overtakeNote).toMatch(/oncoming/);
+    const far = { x: 20, z: 1.9, yaw: -EAST, speed: 0 }; // parked clear of the 15 m
     const b = { x: 0, z: -1.9, yaw: EAST, speed: 8, autoSpeed: 12 };
-    for (let i = 0; i < 20; i++) decideOvertake(b, { others: [slow()], width: W, straight: false }, 0.1);
-    expect(b.laneShift).toBe(0);
+    decideOvertake(b, { others: [slow(), far], width: W }, 0.1);
+    expect(b.overtake).toBeTruthy();
     const east = signals[0].approaches[0];
     const c = { x: east.x - 40, z: -1.9, yaw: EAST, speed: 8, autoSpeed: 12 };
     for (let i = 0; i < 20; i++) decideOvertake(c, { others: [{ ...slow(), x: east.x - 28 }], signals, width: W }, 0.1);
     expect(c.laneShift).toBe(0);
   });
 
-  it("aborts and pulls back in if something comes the other way", () => {
+  it("needs 15 m of the other lane in clear view", () => {
+    const blind = { x: 0, z: -1.9, yaw: EAST, speed: 8, autoSpeed: 12 };
+    // Something (a building, a hill) hides the lane from 10 m on.
+    const hidden = (x) => x < 10;
+    for (let i = 0; i < 10; i++) decideOvertake(blind, { others: [slow()], width: W, canSeePoint: hidden }, 0.1);
+    expect(blind.laneShift).toBe(0);
+    expect(blind.overtakeNote).toMatch(/can't see 15 m/);
+    const short = { x: 0, z: -1.9, yaw: EAST, speed: 8, autoSpeed: 12 };
+    decideOvertake(short, { others: [slow()], width: W, range: 10 }, 0.1);
+    expect(short.overtake).toBeFalsy();
+    const clear = { x: 0, z: -1.9, yaw: EAST, speed: 8, autoSpeed: 12 };
+    decideOvertake(clear, { others: [slow()], width: W, canSeePoint: () => true }, 0.1);
+    expect(clear.overtake).toBeTruthy();
+  });
+
+  it("doesn't pass a car that's queueing", () => {
     const me = { x: 0, z: -1.9, yaw: EAST, speed: 8, autoSpeed: 12 };
-    const lead = slow();
-    for (let i = 0; i < 10; i++) decideOvertake(me, { others: [lead], width: W }, 0.1);
-    expect(me.laneShift).toBeGreaterThan(0);
-    const late = { x: 40, z: 1.9, yaw: -EAST, speed: 14 };
-    for (let i = 0; i < 30; i++) decideOvertake(me, { others: [lead, late], width: W }, 0.1);
+    for (let i = 0; i < 10; i++) decideOvertake(me, { others: [{ ...slow(), speed: 0.5 }], width: W }, 0.1);
     expect(me.laneShift).toBe(0);
+    expect(me.overtakeNote).toMatch(/queueing/);
   });
 });
 
@@ -174,31 +188,30 @@ describe("overtaking, by what the driver sees", () => {
     const beside = run(me(), { others: [slow(), { x: 8, z: 1.9, yaw: EAST, speed: 8 }] });
     expect(beside.laneShift).toBe(0);
     expect(beside.overtakeNote).toMatch(/next lane/);
-    const comingUp = run(me(), { others: [slow(), { x: -20, z: 1.9, yaw: EAST, speed: 16 }] });
+    const comingUp = run(me(), { others: [slow(), { x: -15, z: 1.9, yaw: EAST, speed: 16 }] });
     expect(comingUp.laneShift).toBe(0);
   });
 
-  it("only passes where the road stays straight for the whole manoeuvre", () => {
-    const bend = run(me(), { others: [slow()], straightFor: (d) => d < 30 });
-    expect(bend.laneShift).toBe(0);
-    expect(bend.overtakeNote).toMatch(/bends/);
-    const fine = run(me(), { others: [slow()], straightFor: () => true });
-    expect(fine.laneShift).toBeGreaterThan(0);
+  it("re-plans mid-pass: commits when it will finish before an oncoming car arrives", () => {
+    const car = run(me(), { others: [slow()] }, 10);
+    car.x = 14; // just past the slow car's tail
+    car.speed = 14;
+    decideOvertake(car, { width: W, others: [slow(), { x: 90, z: 1.9, yaw: -EAST, speed: 12 }] }, 0.1);
+    expect(car.overtakeNote).toMatch(/Overtaking · oncoming \d+ m/);
+    expect(car.boost).toBeGreaterThan(1.3); // hurrying to finish
   });
 
-  it("won't pass when it can't see far enough ahead to be sure", () => {
-    const fog = run(me(), { others: [slow()], viewRange: 40 });
-    expect(fog.laneShift).toBe(0);
-    expect(fog.overtakeNote).toMatch(/see far enough/);
-  });
-
-  it("aborting, it drops back behind the slow car before pulling in", () => {
+  it("aborting, it drops back behind the slow car before pulling in — and goes again once clear", () => {
     const car = run(me(), { others: [slow()] }, 10);
     car.x = 11; // alongside the slow car
-    decideOvertake(car, { width: W, others: [slow(), { x: 45, z: 1.9, yaw: -EAST, speed: 14 }] }, 0.1);
+    decideOvertake(car, { width: W, others: [slow(), { x: 30, z: 1.9, yaw: -EAST, speed: 14 }] }, 0.1);
     expect(car.overtakeNote).toMatch(/Aborting/);
     expect(car.boost).toBeLessThan(1); // easing off to tuck in behind
     expect(car.laneShift).toBeGreaterThan(0); // still out until it's behind
+    // The oncoming car turned off: carry on with the pass.
+    decideOvertake(car, { width: W, others: [slow()] }, 0.1);
+    expect(car.overtake?.aborting).toBeFalsy();
+    expect(car.overtakeNote).toMatch(/Overtaking/);
   });
 });
 

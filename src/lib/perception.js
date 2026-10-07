@@ -106,6 +106,8 @@ export function perceive(
       .map((s) => ({ ...s, approaches: s.approaches.filter((ap) => inCone(ap) && canSee(self, ap.x, ap.z, width, range, walls, over(ap.x, ap.z, TOPS.light))) }))
       .filter((s) => s.approaches.length),
     towns: towns.filter((c) => dist(c) < range + c.radius && inCone(c)),
+    // Could it see a car-height thing at (x, z)? (For checking the road ahead is clear.)
+    canSeePoint: (x, z) => canSee(self, x, z, width, range, [...walls, ...carWalls()], over(x, z, TOPS.car)),
     // The things in the way it notices: buildings, trees and billboards in
     // view, out to OBSTACLE_RANGE (or its view distance, if shorter).
     obstacles: [

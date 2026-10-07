@@ -7,7 +7,8 @@
 //    lies in shadow.
 //  - The land beyond what it can see — past its view distance, or hidden
 //    behind something — shaded dark.
-//  - The lane it's in: its two edges ahead along its path, as faint lines
+//  - The lane it's in: its two edges ahead along its path, as thin glowing
+//    strips painted on the road, bright by the car and fading out ahead
 //    (green; amber when it's out in the other lane).
 //  - A box round everything it notices: every car, every traffic light (in
 //    the light's colour), every tree, building and billboard nearby.
@@ -32,6 +33,7 @@ const SHROUD_REACH = 260; // metres beyond the edge of vision that get darkened
 // The car's outline (half length, half width) — vision starts 1 m beyond it.
 const BODY = { halfL: 2.15, halfW: 0.95, gap: 1 };
 const LANE_MAX = 32; // lane-edge samples
+const LANE_LINE = 0.16; // metres wide, about a painted road line
 const MAX_BOXES = 160;
 const COLORS = { car: "#8ff3ff", tree: "#6dff95", building: "#c49bff", billboard: "#ffd27a", red: "#ff3b5c", amber: "#ffb020", green: "#2bff86" };
 
@@ -91,9 +93,17 @@ export function DriverView({ layout, state, type = "car" }) {
     boxes.setAttribute("position", dynamic(MAX_BOXES * 24));
     boxes.setAttribute("color", dynamic(MAX_BOXES * 24));
     boxes.setDrawRange(0, 0);
-    // The lane's two edges.
+    // The lane's two edges: a thin strip each (2 vertices per sample), the
+    // two strips' triangles interleaved per segment so one draw range covers both.
     const laneEdges = new THREE.BufferGeometry();
     laneEdges.setAttribute("position", dynamic(LANE_MAX * 4));
+    laneEdges.setAttribute("color", dynamic(LANE_MAX * 4));
+    const laneIndex = [];
+    const v = (edge, i, side) => (edge * LANE_MAX + i) * 2 + side;
+    for (let i = 0; i < LANE_MAX - 1; i++) {
+      for (const e of [0, 1]) laneIndex.push(v(e, i, 0), v(e, i, 1), v(e, i + 1, 0), v(e, i, 1), v(e, i + 1, 1), v(e, i + 1, 0));
+    }
+    laneEdges.setIndex(laneIndex);
     laneEdges.setDrawRange(0, 0);
     const ring = new THREE.RingGeometry(0.82, 1, 40).rotateX(-Math.PI / 2);
     const beam = new THREE.CylinderGeometry(0.08, 0.08, 6, 6);
@@ -196,26 +206,31 @@ export function DriverView({ layout, state, type = "car" }) {
     // 2. The lane it's in: its two edges, on the road.
     const ln = drive.lane;
     const le = geos.laneEdges.attributes.position;
+    const lc = geos.laneEdges.attributes.color;
     const count = ln && !ln.offRoad ? Math.min(LANE_MAX, ln.left.length) : 0;
-    let prev = null;
+    const laneColor = ln?.wrongWay ? palette.amber : palette.green;
     for (let i = 0; i < count; i++) {
       const [lx, lz] = ln.left[i];
       const [rx, rz] = ln.right[i];
-      const a = onGround(R, lx, lz, 0.36 + bridgeElevation(layout, lx, lz));
-      const b = onGround(R, rx, rz, 0.36 + bridgeElevation(layout, rx, rz));
-      if (prev) {
-        le.setXYZ((i - 1) * 4, ...prev[0]);
-        le.setXYZ((i - 1) * 4 + 1, ...a);
-        le.setXYZ((i - 1) * 4 + 2, ...prev[1]);
-        le.setXYZ((i - 1) * 4 + 3, ...b);
+      // Across the lane, so each strip is LANE_LINE wide whichever way the road turns.
+      const across = Math.hypot(rx - lx, rz - lz) || 1;
+      const ux = ((rx - lx) / across) * (LANE_LINE / 2);
+      const uz = ((rz - lz) / across) * (LANE_LINE / 2);
+      // Bright by the car, fading out ahead (additive: darker = fainter).
+      const fade = 0.9 * (1 - i / Math.max(1, count - 1)) ** 1.3 + 0.08;
+      for (const [e, x, z] of [[0, lx, lz], [1, rx, rz]]) {
+        const h = 0.36 + bridgeElevation(layout, x, z);
+        const k = (e * LANE_MAX + i) * 2;
+        le.setXYZ(k, ...onGround(R, x - ux, z - uz, h));
+        le.setXYZ(k + 1, ...onGround(R, x + ux, z + uz, h));
+        lc.setXYZ(k, laneColor.r * fade, laneColor.g * fade, laneColor.b * fade);
+        lc.setXYZ(k + 1, laneColor.r * fade, laneColor.g * fade, laneColor.b * fade);
       }
-      prev = [a, b];
     }
     le.needsUpdate = true;
-    geos.laneEdges.setDrawRange(0, Math.max(0, count - 1) * 4);
+    lc.needsUpdate = true;
+    geos.laneEdges.setDrawRange(0, Math.max(0, count - 1) * 12);
     geos.laneEdges.computeBoundingSphere();
-    const laneColor = ln?.wrongWay ? palette.amber : palette.green;
-    laneEdges.current.material.color.copy(laneColor);
 
     // 3. A box round everything it notices.
     const focus = drive.decision?.focus;
@@ -306,10 +321,10 @@ export function DriverView({ layout, state, type = "car" }) {
       <line ref={rim} geometry={geos.rim} frustumCulled={false}>
         <lineBasicMaterial color="#7ff0ff" {...additive} opacity={0.35} />
       </line>
-      {/* The lane: just its two edges, faint. */}
-      <lineSegments ref={laneEdges} geometry={geos.laneEdges} frustumCulled={false} renderOrder={4}>
-        <lineBasicMaterial {...additive} opacity={0.35} />
-      </lineSegments>
+      {/* The lane: its two edges, thin glowing strips fading ahead. */}
+      <mesh ref={laneEdges} geometry={geos.laneEdges} frustumCulled={false} renderOrder={4}>
+        <meshBasicMaterial vertexColors {...additive} side={THREE.DoubleSide} />
+      </mesh>
       <lineSegments ref={boxes} geometry={geos.boxes} frustumCulled={false} renderOrder={6}>
         <lineBasicMaterial vertexColors {...additive} opacity={0.95} />
       </lineSegments>

@@ -88,8 +88,7 @@ export function stepTraffic(cars, { world, graph, signals, t, player, random = M
       // Decide from what the driver can see.
       const seen = perceive(car, { others, signals, towns: world.cities, buildings: world.buildings, width: world.width, ground });
       const rules = { ...seen, t, width: world.width, path: posesAhead(car.route, car, world.width) };
-      const route = car.route;
-      decideOvertake(car, { ...rules, viewRange: seen.range, straightFor: (d) => routeStraight(route, d) }, tdt);
+      decideOvertake(car, rules, tdt);
       const why = {};
       const cap = trafficCap(car, { ...rules, why });
       // Waiting for a car that's physically stuck on us? We're what's in its

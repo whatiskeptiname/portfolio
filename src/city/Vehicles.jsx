@@ -13,7 +13,7 @@ import { freshBattery, isLow, stepBattery, swapBattery } from "../lib/battery";
 import { pidReset } from "../lib/pid";
 import { Cockpit } from "./Cockpit";
 import { audio } from "./audio";
-import { followRoute, planToHighway, posesAhead, routeSpeeds, routeStraight } from "../lib/routing";
+import { followRoute, planToHighway, posesAhead, routeSpeeds } from "../lib/routing";
 import { DRONE_VIEW, groundOf, perceive } from "../lib/perception";
 import { cruisePoses, describeDecision, planSpeeds } from "../lib/decision";
 import { chooseAvoidance, clearanceAhead, localObstacles, shiftPoses } from "../lib/avoid";
@@ -428,8 +428,7 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
             path,
             why,
           };
-          const route = s.route;
-          if (p.overtaking !== false) decideOvertake(s, { ...rules, viewRange: seen.range, straightFor: route ? (d) => routeStraight(route, d) : () => true }, delta);
+          if (p.overtaking !== false) decideOvertake(s, rules, delta);
           else Object.assign(s, { overtake: null, laneShift: 0, boost: 1, overtakeNote: null });
           cap = trafficCap(s, rules);
           // Anything in the way off the road (a tree, a building, the river)?

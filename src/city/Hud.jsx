@@ -261,14 +261,14 @@ export function StartHint({ driving, sound, onToggle, onSound }) {
   useEffect(() => void (driving !== first && setSwitched(true)), [driving, first]);
   useEffect(() => void (sound && setHeard(true)), [sound]);
   const touch = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
-  const showMode = !switched && !touch; // touch has the toolbar buttons right there
+  const showMode = !switched && !(touch && driving); // touch has the toolbar buttons right there
   const showSound = !heard && !sound;
   if (!showMode && !showSound) return null;
   return (
     <div className={`start-hint${driving ? " over-gauge" : ""}`}>
       {showMode && (
         <button className="start-chip" onClick={onToggle}>
-          <kbd>C</kbd> {driving ? "look around" : "to drive"}
+          {touch ? "Tap to drive" : <><kbd>C</kbd> {driving ? "look around" : "to drive"}</>}
         </button>
       )}
       {showSound && (

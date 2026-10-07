@@ -95,7 +95,7 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
   const buildingsById = useMemo(() => new Map(layout.buildings.map((b) => [b.id, b])), [layout]);
 
   const startVehicle = ["car", "drone"].includes(initialVehicle) ? initialVehicle : null;
-  const [mode, setMode] = useState("drive"); // the car is ready on arrival
+  const [mode, setMode] = useState(startVehicle ? "drive" : "orbit"); // land on the planet view
   // Links win; otherwise start in the car, with the camera you used last.
   const [vehicle, setVehicle] = useState(() => startVehicle ?? "car");
   const [view, setView] = useState(() =>
@@ -213,8 +213,8 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
     vehicleState.current.viewRange = viewRange;
   }, [viewRange]);
   // Time of day: the planet's fast day/night cycle, or always day / always night.
-  const [timeMode, setTimeMode] = useState(() => remembered("city-time", ["cycle", "day", "night"], "cycle"));
-  useEffect(() => remember("city-time", timeMode), [timeMode]);
+  // Every visit starts on the day–night cycle; Day / Night in ⚙ last the visit.
+  const [timeMode, setTimeMode] = useState("cycle");
   // Flying the drone by hand: arcade (easy) or realistic (throttle, yaw, pitch, roll).
   const [droneMode, setDroneMode] = useState(() => remembered("city-drone-mode", ["arcade", "realistic"], "arcade"));
   useEffect(() => {
