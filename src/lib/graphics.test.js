@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PRESETS, loadGraphics, normalize, pixelRatio, presetOf, saveGraphics } from "./graphics";
+import { DEFAULT_PRESET, PRESETS, loadGraphics, normalize, pixelRatio, presetOf, saveGraphics } from "./graphics";
 
 const memoryStorage = () => {
   const m = new Map();
@@ -16,17 +16,17 @@ describe("graphics settings", () => {
   it("fills gaps and rejects wrong types from saved data", () => {
     const s = normalize({ fps: 30, shadows: 12, unknown: true });
     expect(s.fps).toBe(30);
-    expect(s.shadows).toBe(PRESETS.medium.shadows);
+    expect(s.shadows).toBe(PRESETS[DEFAULT_PRESET].shadows);
     expect(s).not.toHaveProperty("unknown");
   });
 
   it("round-trips through storage, falling back to the default", () => {
     const store = memoryStorage();
-    expect(loadGraphics(store)).toEqual(PRESETS.medium);
-    saveGraphics({ ...PRESETS.low }, store);
     expect(loadGraphics(store)).toEqual(PRESETS.low);
+    saveGraphics({ ...PRESETS.high }, store);
+    expect(loadGraphics(store)).toEqual(PRESETS.high);
     store.setItem("city-graphics", "{not json");
-    expect(loadGraphics(store)).toEqual(PRESETS.medium);
+    expect(loadGraphics(store)).toEqual(PRESETS.low);
   });
 
   it("never renders above the screen's own pixel ratio", () => {

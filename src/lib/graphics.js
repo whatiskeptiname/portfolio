@@ -61,7 +61,7 @@ export const PRESETS = {
   },
 };
 
-export const DEFAULT_PRESET = "medium";
+export const DEFAULT_PRESET = "low";
 
 /** How many other cars each traffic setting puts on the roads. */
 export const TRAFFIC_CARS = { off: 0, light: 12, busy: 24 };

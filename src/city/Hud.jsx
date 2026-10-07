@@ -249,6 +249,35 @@ export function Gauge({ vehicle, type, onToggleAuto, altitude = 12, onAltitude }
   );
 }
 
+/**
+ * First-visit nudges, one line at the bottom: how to start driving, and that
+ * sound is off until you want it. Each one leaves for good once it's used.
+ */
+export function StartHint({ driving, sound, onDrive, onSound }) {
+  const [drove, setDrove] = useState(driving);
+  const [heard, setHeard] = useState(sound);
+  useEffect(() => void (driving && setDrove(true)), [driving]);
+  useEffect(() => void (sound && setHeard(true)), [sound]);
+  const touch = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
+  const showDrive = !drove && !driving;
+  const showSound = !heard && !sound;
+  if (!showDrive && !showSound) return null;
+  return (
+    <div className="start-hint">
+      {showDrive && (
+        <button className="start-chip" onClick={onDrive}>
+          {touch ? "Tap to drive" : <><kbd>C</kbd> to drive</>}
+        </button>
+      )}
+      {showSound && (
+        <button className="start-chip" onClick={onSound} aria-label="Turn sound on">
+          <span aria-hidden="true">🔇</span> Sound off · turn on
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** Fades out a few seconds after you start driving (or switch vehicle). */
 export function KeyHints({ type, droneMode }) {
   const [visible, setVisible] = useState(true);

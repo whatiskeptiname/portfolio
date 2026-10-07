@@ -156,6 +156,12 @@ swing there. On touch devices on-screen pedals appear.
 view, 📍 Go to, ♫ radio, 📷 screenshot, ⛶ fullscreen, 🔊 sound, 🧭 autopilot
 settings, ⚙ settings, ? help.
 
+**First visit:** the planet opens quietly and light: sound muted, the Low
+graphics preset, the autopilot cruising the equator, and the route, decision
+and input overlays off. One small hint bar at the bottom offers
+<kbd>C</kbd> *to drive* and *Sound off · turn on*; each chip leaves once
+used. The full guide is behind **?** / <kbd>H</kbd>.
+
 ### The world
 
 All built by a deterministic layout (`src/lib/layout.js`): the same input
@@ -360,7 +366,8 @@ rest on the highway.
   tyre squeal, the drone's motors and air rush, an ambient pad that changes
   chord between day and night, a rumble when you face the black hole, wind
   with altitude, the river, district chimes, interface clicks and the
-  transformation. Volume and channels are in ⚙.
+  transformation. Every visit starts muted; turn it on with 🔊 or the hint
+  chip. Volume and channels are in ⚙.
 - **♫ Planet Radio** (`src/city/radio.js`): Nepali, Hindi and English stations
   streamed from official YouTube uploads through YouTube's embedded player
   (youtube-nocookie.com). Nothing is downloaded or hosted here, and the player
@@ -378,7 +385,7 @@ rest on the highway.
   (held at noon or midnight wherever you are; the sun eases across when you
   switch).
 - **Drone controls:** Arcade or Realistic.
-- **Graphics:** Low / Medium / High presets, plus resolution, frame-rate cap,
+- **Graphics:** Low (default) / Medium / High presets, plus resolution, frame-rate cap,
   anti-aliasing, shadows, sky, stars, black-hole detail, and switches for the
   atmosphere, trees, night windows, rooftop signs, billboards, street signs,
   street lamps, labels and river/sea animation. Switching something off

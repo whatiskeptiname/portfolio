@@ -29,7 +29,7 @@ import { PRESETS, TRAFFIC_CARS, loadGraphics, pixelRatio, saveGraphics } from ".
 import { BlackHole, Sky } from "./Space";
 import { ChaseCamera, Vehicle } from "./Vehicles";
 import Minimap from "./Minimap";
-import { BatteryPrompt, AutopilotPanel, DriverPanel, FpvOverlay, Gauge, GoToMenu, GraphicsPanel, HelpOverlay, InfoPanel, InputsPanel, KeyHints, Toolbar, TouchPad } from "./Hud";
+import { BatteryPrompt, AutopilotPanel, DriverPanel, FpvOverlay, Gauge, GoToMenu, GraphicsPanel, HelpOverlay, InfoPanel, InputsPanel, KeyHints, StartHint, Toolbar, TouchPad } from "./Hud";
 import { audio } from "./audio";
 import { radio } from "./radio";
 import { MiniPlayer, RadioButton, RadioPanel } from "./RadioPanel";
@@ -76,14 +76,6 @@ function remember(key, value) {
     localStorage.setItem(key, value);
   } catch {
     // Not persisted in private mode; fine.
-  }
-}
-
-function readSeen() {
-  try {
-    return localStorage.getItem("city-help-seen") === "4";
-  } catch {
-    return false;
   }
 }
 
@@ -146,7 +138,7 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
   const [selectedId, setSelectedId] = useState(null);
   const [hoveredId, setHoveredId] = useState(null);
   const [nearbyId, setNearbyId] = useState(null);
-  const [showHelp, setShowHelp] = useState(() => !readSeen());
+  const [showHelp, setShowHelp] = useState(false);
   const [webgl] = useState(hasWebGL);
 
   // One vehicle; the car/drone switch converts it in place. It starts on the
@@ -206,7 +198,7 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
     setDroneAlt(next);
   }, []);
   // Show the autopilot's route planning and speed plan (G, or in ⚙).
-  const [routeViz, setRouteViz] = useState(() => remembered("city-routeviz", ["on", "off"], "on") === "on");
+  const [routeViz, setRouteViz] = useState(() => remembered("city-routeviz", ["on", "off"], "off") === "on");
   useEffect(() => remember("city-routeviz", routeViz ? "on" : "off"), [routeViz]);
   // How far the autopilot sees (all round, in line of sight), from ⚙.
   const [viewRange, setViewRange] = useState(() => {
@@ -245,10 +237,10 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
     remember("city-pilot-rules", JSON.stringify(pilotRules));
     vehicleState.current.pilot = pilotRules;
   }, [pilotRules]);
-  const [showInputs, setShowInputs] = useState(() => remembered("city-show-inputs", ["on", "off"], "on") === "on");
+  const [showInputs, setShowInputs] = useState(() => remembered("city-show-inputs", ["on", "off"], "off") === "on");
   useEffect(() => remember("city-show-inputs", showInputs ? "on" : "off"), [showInputs]);
   // Show what the autopilot sees and why it does what it does (I, or in ⚙).
-  const [decisions, setDecisions] = useState(() => remembered("city-decisions", ["on", "off"], "on") === "on");
+  const [decisions, setDecisions] = useState(() => remembered("city-decisions", ["on", "off"], "off") === "on");
   useEffect(() => remember("city-decisions", decisions ? "on" : "off"), [decisions]);
   // Where the autopilot goes: round the equator, or touring every road.
   const [autoRoute, setAutoRoute] = useState(() => remembered("city-autoroute", ["equator", "roads"], "equator"));
@@ -391,14 +383,7 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
     keys.current.clear();
   }, []);
 
-  const closeHelp = useCallback(() => {
-    setShowHelp(false);
-    try {
-      localStorage.setItem("city-help-seen", "4");
-    } catch {
-      // Private mode etc. — the help just shows again next time.
-    }
-  }, []);
+  const closeHelp = useCallback(() => setShowHelp(false), []);
 
   // Keyboard: driving keys + shortcuts. Only while the explorer is mounted.
   useEffect(() => {
@@ -693,6 +678,12 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
       {driving && decisions && <DriverPanel vehicle={vehicleState} />}
       {driving && <Gauge vehicle={vehicleState} type={vehicle} onToggleAuto={toggleAutopilot} altitude={droneAlt} onAltitude={nudgeAltitude} />}
       {driving && <KeyHints type={vehicle} droneMode={droneMode} />}
+      <StartHint
+        driving={driving}
+        sound={sound}
+        onDrive={() => !driving && toggleMode()}
+        onSound={() => updateAudio({ enabled: true })}
+      />
       {flash > 0 && <div className="shutter-flash" key={flash} />}
       <Minimap
         showRoute={routeViz}

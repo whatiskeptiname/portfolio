@@ -5,13 +5,15 @@
 // Nothing starts until the first click or key press (browser autoplay rules).
 
 const SETTINGS_KEY = "city-audio";
-export const AUDIO_DEFAULTS = { enabled: true, master: 0.7, engine: true, ambience: true, ui: true, music: 0.6 };
+export const AUDIO_DEFAULTS = { enabled: false, master: 0.7, engine: true, ambience: true, ui: true, music: 0.6 };
 
 export function loadAudioSettings() {
   try {
     const raw = JSON.parse(localStorage.getItem(SETTINGS_KEY));
     const out = { ...AUDIO_DEFAULTS };
     if (raw && typeof raw === "object") for (const k of Object.keys(out)) if (typeof raw[k] === typeof out[k]) out[k] = raw[k];
+    // Every visit starts muted; the visitor turns sound on when they want it.
+    out.enabled = false;
     return out;
   } catch {
     return { ...AUDIO_DEFAULTS };
