@@ -270,8 +270,13 @@ function Waterfall({ layout }) {
   const R = layout.radius;
   const { source } = layout.river;
   const map = useWaterMap(1, 1);
+  // The stream has its own copy: its texture runs the other way along the
+  // crag (v grows towards the lip), so it must scroll the other way to pour
+  // towards the falls rather than back up to the mountain.
+  const streamMap = useWaterMap(1, 1);
   useFrame((_, delta) => {
     map.offset.y = (map.offset.y + delta * 0.9) % 1; // falling fast
+    streamMap.offset.y = (streamMap.offset.y - delta * 0.45) % 1; // hurrying to the lip
   });
   const geo = useDisposable(() => {
     if (!source) return null;
@@ -340,7 +345,7 @@ function Waterfall({ layout }) {
         />
       </mesh>
       <mesh geometry={geo.stream}>
-        <meshStandardMaterial map={map} color={RIVER_COLOR} emissive="#1aa7d8" emissiveIntensity={0.22} roughness={0.15} />
+        <meshStandardMaterial map={streamMap} color={RIVER_COLOR} emissive="#1aa7d8" emissiveIntensity={0.22} roughness={0.15} />
       </mesh>
       <mesh geometry={geo.foam}>
         <meshStandardMaterial color="#f4fbff" emissive="#cdeeff" emissiveIntensity={0.25} transparent opacity={0.85} flatShading />

@@ -380,9 +380,12 @@ export function River({ layout, animate = true }) {
     const banks = ribbonGeometry(R, river.points, river.widths.map((w) => w + 1.4), 0.03, 1 / 14);
     return { water, banks };
   }, [river, R]);
-  // The water flows downstream (the ribbon runs in flow order), to the sea.
+  // The water flows downstream, from the falls in the southern mountains to
+  // the northern sea: the ribbon runs in flow order with v growing
+  // downstream, and the map samples uv + offset, so a falling offset carries
+  // the ripples towards the mouth (about 2.5 m/s, fast enough to read).
   useFrame((_, delta) => {
-    if (animate) map.offset.y = (map.offset.y - delta * 0.08) % 1;
+    if (animate) map.offset.y = (map.offset.y - delta * 0.18) % 1;
   });
 
   return (
