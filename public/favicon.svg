@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#1f6f5c"/>
-  <rect x="12" y="30" width="10" height="22" fill="#f4e9c8"/>
-  <rect x="27" y="16" width="10" height="36" fill="#f4e9c8"/>
-  <rect x="42" y="24" width="10" height="28" fill="#f4e9c8"/>
+  <!-- An S inside a detection box with its class-label tab, like a model's output. -->
+  <rect width="64" height="64" rx="15" fill="#0a0b14"/>
+  <rect x="11" y="13" width="42" height="42" rx="3" fill="none" stroke="#5eead4" stroke-width="3.5"/>
+  <rect x="11" y="7" width="20" height="9" rx="2.5" fill="#5eead4"/>
+  <path d="M41 21.5 C39 17.8 35.8 16.5 32 16.5 C26.8 16.5 23.5 19.4 23.5 23.6 C23.5 32 40.5 30 40.5 39.6 C40.5 44.3 36.8 47.5 31.6 47.5 C27.4 47.5 24.2 45.6 22.5 41.8" fill="none" stroke="#ffffff" stroke-width="6.5" stroke-linecap="round" transform="translate(32 34) scale(0.78) translate(-32 -32)"/>
 </svg>
