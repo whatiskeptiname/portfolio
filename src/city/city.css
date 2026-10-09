@@ -68,6 +68,13 @@
   cursor: pointer;
   box-shadow: 0 2px 10px rgb(0 0 0 / 0.12);
 }
+.city-icon {
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
 .city-btn[aria-pressed="true"] {
   background: var(--accent);
   color: var(--accent-ink);

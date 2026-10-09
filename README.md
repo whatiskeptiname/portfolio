@@ -82,6 +82,14 @@ header; the choice is remembered and applied before the page first paints
 (an inline script in `index.html` sets `data-theme` on `<html>`), and the
 simulation player and the planet's glass panels follow it too.
 
+The header highlights the section you're reading as you scroll (your name
+lights up while you're on the hero). The "D"
+of its *3D planet* button is the planet (`PlanetD.jsx`): a sphere lit from
+the right like a first-quarter moon, so its bright half, flat where day
+meets night, is the D, with the night side dim beside it. The
+surface (gold résumé towers north, teal language districts south, the blue
+equator between) turns across the whole globe.
+
 - **Hero:** intro (photo, name, tagline, *See my work*, résumé), a
   night-sky tile that opens the 3D planet, what I'm doing now, three
   headline numbers, about (*More about me* for the rest), GitHub languages
@@ -196,7 +204,7 @@ swing there. On touch devices on-screen pedals appear.
 
 **Toolbar:** Portfolio (back), Look around / Car / Drone, Chase / FPV / Eye
 view, 📍 Go to, ♫ radio, 📷 screenshot, ⛶ fullscreen, 🔊 sound, 🧭 autopilot
-settings, ⚙ settings, ? help.
+settings, settings (sliders icon), ? help.
 
 **On arrival:** you land on the planet view, with the car cruising the
 equator on autopilot, the day–night cycle running, the Low graphics preset
@@ -272,7 +280,7 @@ A racing FPV quadcopter.
 
 - **One vehicle, two forms.** Press <kbd>V</kbd> and the car rebuilds itself
   into the drone, which lifts off; transform back and it lands as the car.
-- **Two ways to fly by hand** (⚙ → Drone controls):
+- **Two ways to fly by hand** (Settings → Drone controls):
   - **Arcade:** speed, turn, and a height it holds for you.
   - **Realistic** (`src/lib/quad.js`): a real quadcopter model. Thrust acts
     along the frame, so you tilt to move — pitch forward to fly forward, roll
@@ -402,7 +410,7 @@ autopilot:
   in the way backs off to let the other through.
 - Each car makes decisions ten times a second, like a driver's reaction time;
   physics runs every frame.
-- **Amount** (⚙ → Traffic): Off, Light (12 cars) or Busy (24). Other cars are
+- **Amount** (Settings → Traffic): Off, Light (12 cars) or Busy (24). Other cars are
   solid to your car.
 
 **Traffic lights** stand wherever a side road meets the highway; close
@@ -419,7 +427,7 @@ rest on the highway.
   chord between day and night, a rumble when you face the black hole, wind
   with altitude, the river, district chimes, interface clicks and the
   transformation. Every visit starts muted; turn it on with 🔊 or the hint
-  chip. Volume and channels are in ⚙.
+  chip. Volume and channels are in Settings.
 - **♫ Planet Radio** (`src/city/radio.js`): Nepali, Hindi and English stations
   streamed from official YouTube uploads through YouTube's embedded player
   (youtube-nocookie.com). Nothing is downloaded or hosted here, and the player
@@ -430,7 +438,7 @@ rest on the highway.
 
 ### Settings
 
-#### ⚙ Settings
+#### Settings (sliders icon)
 
 - **Audio:** volume; engines, ambience and interface sounds.
 - **World:** time of day — *Cycle* (the 4-minute day), *Day* or *Night*

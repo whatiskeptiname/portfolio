@@ -1,13 +1,14 @@
 // src/components/site/Sections.jsx — the sections of the landing page, laid
 // out as a bento grid: every idea gets its own rounded tile, and tiles span
 // one or more columns so each row fills edge to edge.
-import React, { Suspense, lazy, useState } from "react";
+import React, { Suspense, lazy, useEffect, useState } from "react";
 import { profile } from "../../content/profile";
 import { background, caseStudies, highlights, roles, skills, summary } from "../../content/resume";
 import { featured, languageColor, languageGroups, projects } from "../../data";
 import { formatPeriod, timelineRows, yearsSince } from "../../lib/career";
 import ProjectCard, { LanguageDot, Stars } from "../ProjectCard";
 import PlanetArt from "./PlanetArt";
+import PlanetD from "./PlanetD";
 import ThemeToggle from "./ThemeToggle";
 
 const asset = (path) => `${import.meta.env.BASE_URL}${path}`;
@@ -67,20 +68,75 @@ function Bullets({ items, keep = 1 }) {
   );
 }
 
+const NAV = [
+  { id: "work", label: "Work" },
+  { id: "experience", label: "Experience", optional: true },
+  { id: "toolbox", label: "Toolbox", optional: true },
+  { id: "open-source", label: "Projects", optional: true },
+  { id: "contact", label: "Contact" },
+];
+
+/**
+ * Which section you're reading: the last one whose top has passed 40% of
+ * the way down the screen (null on the hero, where the name lights up
+ * instead), or the last one once you've scrolled to the bottom.
+ */
+function useCurrentSection(ids) {
+  const [current, setCurrent] = useState(null);
+  useEffect(() => {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const line = window.innerHeight * 0.4;
+      let found = null;
+      for (const id of ids) {
+        const el = document.getElementById(id);
+        if (el && el.getBoundingClientRect().top <= line) found = id;
+      }
+      if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 4) found = ids[ids.length - 1];
+      setCurrent(found);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [ids]);
+  return current;
+}
+
+const NAV_IDS = NAV.map((n) => n.id);
+
 export function Header() {
+  const current = useCurrentSection(NAV_IDS);
   return (
     <header className="site-header">
       <div className="container">
-        <a className="brand" href="#top">
+        <a className={`brand${current === null ? " is-current" : ""}`} href="#top" aria-current={current === null ? "location" : undefined}>
           {profile.name}
         </a>
         <nav className="nav" aria-label="Main">
-          <a href="#work">Work</a>
-          <a className="nav-optional" href="#experience">Experience</a>
-          <a className="nav-optional" href="#toolbox">Toolbox</a>
-          <a className="nav-optional" href="#open-source">Projects</a>
-          <a href="#contact">Contact</a>
-          <a className="nav-cta" href="#/city">3D planet</a>
+          {NAV.map((n) => (
+            <a
+              key={n.id}
+              href={`#${n.id}`}
+              className={[n.optional && "nav-optional", current === n.id && "is-current"].filter(Boolean).join(" ") || undefined}
+              aria-current={current === n.id ? "location" : undefined}
+            >
+              {n.label}
+            </a>
+          ))}
+          <a className="nav-cta" href="#/city" aria-label="3D planet">
+            <span aria-hidden="true">
+              3<PlanetD /> planet
+            </span>
+          </a>
           <ThemeToggle />
         </nav>
       </div>

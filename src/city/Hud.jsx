@@ -79,7 +79,13 @@ export function Toolbar({
           🧭
         </button>
         <button className="city-btn" onClick={onGraphics} aria-pressed={graphicsOpen} aria-label="Settings" title="Settings">
-          ⚙
+          <svg className="city-icon" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+            {/* settings: three sliders */}
+            <path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" />
+            <circle cx="15" cy="6" r="2" />
+            <circle cx="9" cy="12" r="2" />
+            <circle cx="17" cy="18" r="2" />
+          </svg>
         </button>
         <button className="city-btn" onClick={onHelp} aria-label="Controls help" title="Help (H)">
           ?
@@ -452,7 +458,7 @@ export function HelpOverlay({ onClose }) {
           <dd>Drag to spin the planet, scroll or pinch to zoom. Click a building to open it.</dd>
           <dt>Autopilot</dt>
           <dd>
-            Your vehicle drives itself — round the equator, or touring every district (⚙). Steer any time to
+            Your vehicle drives itself — round the equator, or touring every district (Settings). Steer any time to
             take over; let go and it carries on. <kbd>P</kbd> toggles it, 📍 <em>Go to</em> drives you to any
             district, and <kbd>G</kbd> shows how it plans the route and the speed it means to do.
           </dd>

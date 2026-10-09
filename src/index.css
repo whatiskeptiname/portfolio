@@ -158,6 +158,15 @@ h3 {
   color: var(--text);
   text-decoration: none;
   white-space: nowrap;
+  padding: 6px 12px;
+  margin-left: -12px;
+  border-radius: 999px;
+  transition: color 200ms ease, background-color 200ms ease;
+}
+/* On the hero, the name is "where you are". */
+.brand.is-current {
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 .nav {
   display: flex;
@@ -173,14 +182,49 @@ h3 {
   border-radius: 999px;
   white-space: nowrap;
 }
+.nav a {
+  transition: color 200ms ease, background-color 200ms ease;
+}
 .nav a:hover {
   color: var(--text);
   background: var(--surface-2);
+}
+/* The section you're reading. */
+.nav a.is-current {
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 500;
 }
 .nav .nav-cta {
   margin-left: 6px;
   color: var(--accent-ink);
   background: var(--text);
+}
+/* The "D" in 3D planet is the planet: a sphere lit from the right, whose
+   bright half is the D, turning underneath (see PlanetD.jsx). */
+.planet-d {
+  display: inline-block;
+  height: 1.05em;
+  width: 1.05em;
+  margin: 0 0.06em 0 0.06em;
+  vertical-align: -0.2em;
+  overflow: visible;
+}
+.planet-d-spin {
+  animation: planet-d-spin 4s linear infinite;
+}
+@keyframes planet-d-spin {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-16px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .planet-d-spin {
+    animation: none;
+  }
 }
 .nav .nav-cta:hover {
   color: var(--accent-ink);
