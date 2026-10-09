@@ -19,8 +19,9 @@
   color-scheme: light;
 }
 
+/* Dark: the system says so (unless light was picked), or dark was picked. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #0a0a0b;
     --surface: #141416;
     --surface-2: #1d1d21;
@@ -33,6 +34,19 @@
     --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 10px 30px rgb(0 0 0 / 0.3);
     color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+  --bg: #0a0a0b;
+  --surface: #141416;
+  --surface-2: #1d1d21;
+  --text: #ececec;
+  --muted: #9b9ba3;
+  --line: #26262b;
+  --accent: #5eead4;
+  --accent-ink: #04201c;
+  --accent-soft: #11332e;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 10px 30px rgb(0 0 0 / 0.3);
+  color-scheme: dark;
 }
 
 *,
@@ -172,14 +186,85 @@ h3 {
   color: var(--accent-ink);
   background: var(--accent);
 }
+/* Dark: the system says so (unless light was picked), or dark was picked. */
 @media (prefers-color-scheme: dark) {
-  .nav .nav-cta {
+  :root:not([data-theme="light"]) .nav .nav-cta {
     color: var(--bg);
   }
+}
+:root[data-theme="dark"] .nav .nav-cta {
+  color: var(--bg);
 }
 @media (max-width: 640px) {
   .nav .nav-optional {
     display: none;
+  }
+}
+
+/* The light/dark switch: a knob that glides between a sun and a moon. */
+.theme-toggle {
+  position: relative;
+  flex: none;
+  width: 54px;
+  height: 28px;
+  margin-left: 6px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: background-color 300ms ease, border-color 300ms ease;
+}
+.theme-toggle-icon {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.8rem;
+  line-height: 1;
+  color: var(--muted);
+  transition: opacity 300ms ease;
+}
+.theme-toggle-icon.sun {
+  left: 8px;
+}
+.theme-toggle-icon.moon {
+  right: 8px;
+}
+.theme-toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #f0b65a;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  transition: transform 320ms cubic-bezier(0.34, 1.4, 0.64, 1), background-color 320ms ease;
+}
+.theme-toggle.is-dark .theme-toggle-knob {
+  transform: translateX(26px);
+  background: #5eead4;
+}
+/* The icon under the knob hides; the other one shows where it's going. */
+.theme-toggle:not(.is-dark) .sun,
+.theme-toggle.is-dark .moon {
+  opacity: 0;
+}
+.theme-toggle:hover {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
+}
+/* While switching, everything eases between the two palettes. */
+.theme-fade,
+.theme-fade *:not(.theme-toggle-knob),
+.theme-fade *::before,
+.theme-fade *::after {
+  transition: background-color 350ms ease, color 350ms ease, border-color 350ms ease, fill 350ms ease, stroke 350ms ease !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle-knob,
+  .theme-fade,
+  .theme-fade * {
+    transition: none !important;
   }
 }
 
@@ -587,6 +672,25 @@ a.tile:hover .tile-arrow {
   letter-spacing: -0.03em;
   color: var(--accent);
 }
+/* The Simulate button on each case-study tile. */
+.sim-open {
+  margin-top: 2px;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+  background: var(--accent-soft);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font: 500 0.85rem var(--font-body);
+  cursor: pointer;
+}
+.sim-open:hover {
+  border-color: var(--accent);
+}
+
 .case .tags {
   margin-top: auto;
   padding-top: 6px;

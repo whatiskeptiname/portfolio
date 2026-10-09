@@ -1,0 +1,656 @@
+/* The case-study simulation player. Uses the page's theme tokens, so it
+   follows light and dark like everything else. */
+.sim-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(5 6 12 / 0.6);
+  backdrop-filter: blur(6px);
+  animation: sim-fade 180ms ease;
+}
+@keyframes sim-fade {
+  from {
+    opacity: 0;
+  }
+}
+.sim-dialog {
+  display: grid;
+  gap: 14px;
+  width: min(1080px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 30px 80px rgb(0 0 0 / 0.35);
+  padding: 22px;
+  outline: none;
+}
+.sim-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+.sim-head h2 {
+  font-size: 1.5rem;
+  margin-top: 4px;
+}
+.sim-close {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  flex: none;
+}
+
+.sim-layout {
+  display: grid;
+  gap: 14px;
+}
+@media (min-width: 820px) {
+  .sim-layout {
+    grid-template-columns: 1fr 260px;
+    align-items: start;
+  }
+}
+.sim-svg {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  background: var(--surface-2);
+  border-radius: 16px;
+  border: 1px solid var(--line);
+}
+.sim-side {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+.sim-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+.sim-stat strong {
+  color: var(--text);
+  font-size: 1.05rem;
+  text-align: right;
+}
+.sim-stat.tone-ok strong {
+  color: #16a34a;
+}
+.sim-stat.tone-bad strong {
+  color: #dc2626;
+}
+/* Dark: the system says so (unless light was picked), or dark was picked. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .sim-stat.tone-ok strong {
+    color: #4ade80;
+  }
+  :root:not([data-theme="light"]) .sim-stat.tone-bad strong {
+    color: #f87171;
+  }
+}
+:root[data-theme="dark"] .sim-stat.tone-ok strong {
+  color: #4ade80;
+}
+:root[data-theme="dark"] .sim-stat.tone-bad strong {
+  color: #f87171;
+}
+.sim-control {
+  display: grid;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.sim-control input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.sim-control select {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+.sim-toggles {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 0.88rem;
+}
+.sim-toggles legend {
+  font: 500 0.72rem var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  padding: 0 4px;
+}
+.sim-toggles label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+}
+.sim-toggles input {
+  accent-color: var(--accent);
+}
+.sim-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.sim-bars {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 6px 10px;
+  align-items: center;
+  font-size: 0.85rem;
+}
+.sim-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.sim-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+.sim-bar .ok {
+  background: #22c55e;
+}
+.sim-bar .bad {
+  background: #ef4444;
+}
+.sim-yaml {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #0b1020;
+  color: #c9f2e8;
+  font: 0.78rem/1.5 var(--font-mono);
+  overflow-x: auto;
+}
+.sim-chat {
+  display: grid;
+  gap: 6px;
+}
+.sim-chat .chip {
+  text-align: left;
+}
+.sim-chat .chip.is-on {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
+.sim-answer {
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px 12px 12px 4px;
+  background: var(--accent-soft);
+  font-size: 0.88rem;
+  min-height: 4.5em;
+}
+
+.sim-caption {
+  display: grid;
+  gap: 8px;
+}
+.sim-caption p {
+  margin: 0;
+  max-width: 90ch;
+  font-size: 0.95rem;
+}
+.sim-caption blockquote {
+  margin: 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--accent);
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.sim-note {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* ---------- Timeline ---------- */
+.sim-controls-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.sim-play {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.sim-timeline {
+  position: relative;
+  flex: 1;
+  display: flex;
+  gap: 4px;
+  padding-top: 6px;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  min-width: 0;
+}
+.sim-seg {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  flex-basis: 0;
+}
+.sim-seg-bar {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.sim-seg-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.sim-seg-label {
+  font-size: 0.74rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sim-seg-label b {
+  font: 600 0.7rem var(--font-mono);
+  color: var(--muted);
+  margin-right: 2px;
+}
+.sim-seg.is-active .sim-seg-label,
+.sim-seg.is-active .sim-seg-label b {
+  color: var(--text);
+  font-weight: 600;
+}
+.sim-playhead {
+  position: absolute;
+  top: 1px;
+  width: 4px;
+  height: 18px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: var(--text);
+  pointer-events: none;
+}
+@media (max-width: 640px) {
+  .sim-seg-label {
+    display: none;
+  }
+  .sim-seg.is-active .sim-seg-label {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 22px;
+  }
+  .sim-timeline {
+    padding-bottom: 18px;
+  }
+}
+
+/* 3D scenes fill the same frame as the drawings. */
+.sim-3d {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: radial-gradient(ellipse at 50% 30%, #1b2333, #07090f);
+  cursor: grab;
+}
+.sim-3d:active {
+  cursor: grabbing;
+}
+.sim-3d-label {
+  position: absolute;
+  left: 14px;
+  top: 12px;
+  font: 500 0.75rem var(--font-mono);
+  color: #cfe9ff;
+  pointer-events: none;
+}
+.sim-3d .tag3d {
+  font: 600 10px var(--font-mono);
+  color: #04201c;
+  background: #5eead4;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ---------- Drawing ---------- */
+.sim-svg text {
+  font-family: var(--font-body);
+}
+.s-mono,
+.s-mono-small {
+  font-family: var(--font-mono) !important;
+  font-size: 12px;
+  fill: var(--text);
+}
+.s-mono-small {
+  font-size: 10px;
+  fill: var(--muted);
+}
+.s-label {
+  font-size: 13px;
+  font-weight: 600;
+  fill: var(--text);
+}
+.s-big {
+  font-size: 18px;
+  font-weight: 650;
+  fill: var(--text);
+}
+.s-ink-fill {
+  fill: var(--text);
+}
+.s-frame {
+  fill: var(--surface);
+  stroke: var(--line);
+}
+.s-panel {
+  fill: var(--surface);
+  stroke: var(--line);
+}
+.s-panel-strong {
+  fill: var(--accent-soft);
+  stroke: color-mix(in srgb, var(--accent) 40%, var(--line));
+}
+.s-panel-lit {
+  fill: var(--accent);
+  fill-opacity: 0.18;
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.s-grid {
+  stroke: var(--line);
+}
+.s-track {
+  fill: var(--line);
+}
+.s-fill {
+  fill: var(--accent);
+}
+.s-fill-dim {
+  fill: var(--muted);
+  opacity: 0.5;
+}
+.s-warn {
+  fill: #dc2626 !important;
+}
+.s-ok {
+  fill: #16a34a !important;
+}
+.s-cone {
+  fill: var(--accent);
+  fill-opacity: 0.08;
+}
+.s-ok-stroke {
+  stroke: #22c55e;
+}
+.s-bad-stroke {
+  stroke: #ef4444;
+}
+.s-tissue {
+  fill: #e9a3a0;
+}
+.s-tissue-dark {
+  fill: #c77673;
+}
+.s-bone {
+  fill: #f6efe0;
+  stroke: #d8cdb6;
+}
+.s-tool {
+  fill: #9aa3ad;
+  stroke: #5f6872;
+}
+.s-tool-tip {
+  fill: #5f6872;
+}
+.s-mask {
+  fill: #5eead4;
+  fill-opacity: 0.6;
+  stroke: #0f766e;
+  stroke-width: 1.5;
+}
+.s-trail {
+  fill: var(--accent);
+}
+.s-chip {
+  fill: var(--surface);
+  stroke: var(--line);
+}
+.s-splat {
+  mix-blend-mode: normal;
+}
+.s-splat-tissue {
+  fill: #e9a3a0;
+}
+.s-splat-dark {
+  fill: #b86562;
+}
+.s-splat-bone {
+  fill: #f6efe0;
+}
+.det-frame {
+  fill: none;
+  stroke: #5eead4;
+  stroke-width: 2.5;
+}
+.det-tab {
+  fill: #5eead4;
+}
+.det-text {
+  font: 600 9.5px var(--font-mono);
+  fill: #04201c;
+}
+.s-edge {
+  stroke: var(--muted);
+  stroke-opacity: 0.35;
+}
+.s-edge-sparse {
+  stroke: var(--muted);
+  stroke-opacity: 0.1;
+  stroke-dasharray: 2 4;
+}
+.s-edge-dead {
+  stroke: none;
+}
+.s-node {
+  fill: var(--accent);
+}
+.s-node-int8 {
+  fill: #f0b65a;
+  stroke: #b07a2c;
+}
+.s-node-dead {
+  fill: var(--line);
+}
+.s-ghost {
+  opacity: 0.45;
+}
+.s-arrow {
+  stroke: var(--text);
+  stroke-width: 2;
+}
+.s-packet {
+  fill: #f0b65a;
+}
+.s-bar {
+  fill: var(--accent);
+  fill-opacity: 0.25;
+}
+.s-bar-sel {
+  fill: var(--accent);
+  fill-opacity: 0.6;
+}
+.s-click {
+  cursor: pointer;
+}
+.s-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+.s-line-base {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 2;
+  stroke-dasharray: 5 5;
+}
+.s-map-ok {
+  fill: none;
+  stroke: #22c55e;
+  stroke-width: 2;
+}
+.s-map-bad {
+  fill: none;
+  stroke: #ef4444;
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+.s-leaf {
+  fill: #4caf6a;
+}
+.s-leaf-dark {
+  fill: #2f7d4a;
+}
+.s-flower {
+  fill: #fde047;
+  stroke: #ca8a04;
+}
+.s-flower-done {
+  fill: #f0b65a;
+  stroke: #b07a2c;
+  stroke-width: 3;
+}
+.s-robot {
+  fill: var(--text);
+}
+.s-robot-eye {
+  fill: #5eead4;
+}
+.s-arm {
+  stroke: var(--text);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.s-wire {
+  stroke: var(--muted);
+  stroke-width: 3;
+}
+.s-string {
+  stroke: var(--muted);
+}
+.s-vine {
+  fill: none;
+  stroke: #2f7d4a;
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+.s-tomato {
+  fill: #ef4444;
+}
+.s-paper {
+  fill: #fffdf7;
+  stroke: #d9d4c7;
+}
+.s-receipt,
+.s-receipt-bold,
+.s-receipt-title {
+  font-family: var(--font-mono) !important;
+  font-size: 10.5px;
+  fill: #2b2b2b;
+}
+.s-receipt-bold {
+  font-weight: 700;
+}
+.s-receipt-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+.s-noise {
+  fill: #6b6b6b;
+  opacity: 0.6;
+}
+.s-draw {
+  fill: rgb(94 234 212 / 0.12);
+  stroke: #0f766e;
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
+.s-cell {
+  fill: rgb(94 234 212 / 0.18);
+  stroke: #0f766e;
+  stroke-width: 1;
+}
+.s-grid-cell {
+  fill: var(--surface);
+  stroke: var(--line);
+}
+.s-grid-head {
+  fill: var(--accent-soft);
+  stroke: var(--line);
+}
+.s-photo {
+  fill: #d9d4c7;
+}
+.s-key {
+  fill: #f0b65a;
+  stroke: #7a5418;
+}
+.s-match {
+  stroke: #f0b65a;
+  stroke-width: 1;
+}
+.s-template {
+  fill: none;
+  stroke: var(--muted);
+  stroke-dasharray: 4 4;
+}
+.s-code {
+  fill: #0b1020;
+}
+.s-code + text,
+.sim-svg .s-code ~ text {
+  fill: #c9f2e8;
+}

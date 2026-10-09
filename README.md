@@ -77,7 +77,10 @@ The site is served from the root of the custom domain (`base: '/'` in
 
 The page is a **bento grid**: every idea gets its own rounded tile, and tiles
 span one or more columns so each row fills edge to edge. Light or dark
-follows the visitor's system setting.
+follows the visitor's system setting until they slide the ☀/☾ switch in the
+header; the choice is remembered and applied before the page first paints
+(an inline script in `index.html` sets `data-theme` on `<html>`), and the
+simulation player and the planet's glass panels follow it too.
 
 - **Hero:** intro (photo, name, tagline, *See my work*, résumé), a
   night-sky tile that opens the 3D planet, what I'm doing now, three
@@ -85,7 +88,7 @@ follows the visitor's system setting.
   and contact.
 - **Case studies:** one tile per project, the first and last double-width so
   every row is full; each shows its headline number and first point, with
-  *Show N more* for the rest.
+  *Show N more* for the rest, and a **▶ Simulate** button (below).
 - **Experience:** the timeline, a tile per role, then education and
   community.
 - **Toolbox:** a tile per skill category.
@@ -95,6 +98,36 @@ follows the visitor's system setting.
 
 The 3D explorer is lazy-loaded from `#/city`, so three.js is never downloaded
 unless you open the planet.
+
+### Case-study simulations
+
+Every professional project has an interactive simulation of how it works,
+built from the CV. Each one is a short animation (about 12–15 s) that loops
+continuously, with its main processes laid out on a timeline you can click or
+drag to scrub (Space pauses, ← → jump between processes, Esc closes). The
+caption follows the playhead and quotes the CV line it illustrates, and each
+has one thing to change yourself. Surgery, inference and the greenhouse robot
+are **3D scenes** you can drag to look round (the camera moves in for detail,
+like the drill being tracked, until you take it: then it stays where you put
+it, and the simulation plays on regardless); the data-heavy ones (forecast, schema, tables,
+CatDox) stay 2D, where charts and documents read best. The data is synthetic;
+the headline numbers are the CV's.
+
+| Project | Stages | Try |
+| --- | --- | --- |
+| AI-Assisted Surgery | a total knee replacement in 3D: capture rig → GroundingDINO finds the bone saw → SAM mask → tracking → Gaussian splats | camera count: coverage holds down to 6, so 30 → 6–9 |
+| AI Inference Acceleration | prune → sparsify → quantize (7×, 80.26%) → distil (82.88%, half the params) → ZipVoice to Triton (2.84×) | switch each technique on or off |
+| Demand Forecasting | baseline → price change → MoM / YTD / baseline delta → plain-language Q&A | price change ±20% |
+| Database Schema Mapping | name → type → meaning → mapped (70%) → YAML config | the config weights (tuning reaches 90%) |
+| Autonomous Greenhouse Robot | map the aisles → detect flowers in 3D → pollinate → lower the vines | robot speed |
+| Table Detection | generate and augment data → label → Cascade TabNet → TabStructNet → cells | augmentations |
+| CatDox | skewed scan → SIFT alignment → ResNet → DiT layout → OCR → ByT5 fixes → key-value JSON | document type |
+
+The player and scenes live in `src/components/sims/` (stage text and timings
+in `stages.js`, the shared 3D stage in `Scene3D.jsx`) and load only when one
+is opened; their models (coverage,
+optimisation trade-offs, the price ripple, schema matching) are in
+`src/lib/sims.js`, unit-tested to land on the CV's numbers.
 
 ---
 
@@ -426,7 +459,8 @@ src/
 ├── App.jsx                 landing page; #/city lazy-loads the explorer
 ├── components/
 │   ├── ProjectCard.jsx
-│   └── site/               landing-page sections and the planet illustration
+│   ├── site/               landing-page sections and the planet illustration
+│   └── sims/               case-study simulations (lazy-loaded)
 ├── content/                profile, résumé, radio playlists (edit these)
 ├── data/                   repos.json snapshot + derived groups for the planet
 ├── lib/                    pure, unit-tested logic (no three.js)
@@ -439,6 +473,7 @@ src/
 | --- | --- |
 | `projects.js` | Filters, overrides, sorts and groups repos |
 | `career.js` | Résumé dates, timeline maths, the résumé districts |
+| `sims.js` | Models behind the case-study simulations |
 | `layout.js` | The planet: districts, roads, river, sea, mountains, bridges, buildings, billboards, trees, collisions |
 | `globe.js` | Maps the flat layout onto the sphere |
 | `terrain.js` | Swells and hills |
@@ -491,7 +526,7 @@ src/
 npm test
 ```
 
-**179 unit tests** cover everything in `src/lib`, including:
+**189 unit tests** cover everything in `src/lib`, including:
 
 - **Layout:** layout determinism, roads, junctions, bridges, the river,
   sea and mountains, terrain.

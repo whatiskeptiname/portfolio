@@ -10,13 +10,20 @@
   --glass-muted: #5c6662;
   --glass-line: rgb(0 0 0 / 0.08);
 }
+/* Dark: the system says so (unless light was picked), or dark was picked. */
 @media (prefers-color-scheme: dark) {
-  .city-root {
+  :root:not([data-theme="light"]) .city-root {
     --glass: rgb(22 27 26 / 0.86);
     --glass-text: #e9ece8;
     --glass-muted: #9aa5a0;
     --glass-line: rgb(255 255 255 / 0.1);
   }
+}
+:root[data-theme="dark"] .city-root {
+  --glass: rgb(22 27 26 / 0.86);
+  --glass-text: #e9ece8;
+  --glass-muted: #9aa5a0;
+  --glass-line: rgb(255 255 255 / 0.1);
 }
 
 /* Only static HUD chrome gets a blur: 3D-anchored labels move every frame and

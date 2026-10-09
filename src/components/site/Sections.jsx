@@ -1,15 +1,19 @@
 // src/components/site/Sections.jsx — the sections of the landing page, laid
 // out as a bento grid: every idea gets its own rounded tile, and tiles span
 // one or more columns so each row fills edge to edge.
-import React, { useState } from "react";
+import React, { Suspense, lazy, useState } from "react";
 import { profile } from "../../content/profile";
 import { background, caseStudies, highlights, roles, skills, summary } from "../../content/resume";
 import { featured, languageColor, languageGroups, projects } from "../../data";
 import { formatPeriod, timelineRows, yearsSince } from "../../lib/career";
 import ProjectCard, { LanguageDot, Stars } from "../ProjectCard";
 import PlanetArt from "./PlanetArt";
+import ThemeToggle from "./ThemeToggle";
 
 const asset = (path) => `${import.meta.env.BASE_URL}${path}`;
+
+// The case-study simulations only download when someone opens one.
+const SimPlayer = lazy(() => import("../sims/SimPlayer"));
 
 // Picks out numbers like 7x, 80.26%, 40k+ so results stand out in prose.
 function Emphasize({ children }) {
@@ -77,6 +81,7 @@ export function Header() {
           <a className="nav-optional" href="#open-source">Projects</a>
           <a href="#contact">Contact</a>
           <a className="nav-cta" href="#/city">3D planet</a>
+          <ThemeToggle />
         </nav>
       </div>
     </header>
@@ -219,21 +224,27 @@ function LanguageBars() {
 
 export function CaseStudies() {
   const wide = (i) => i === 0 || (i === caseStudies.length - 1 && (caseStudies.length - 2) % 3 === 2);
+  const [simulating, setSimulating] = useState(null);
   return (
     <section id="work">
       <div className="container">
         <SectionHead label="Selected work" title="Case studies" />
         <div className="bento bento-3">
           {caseStudies.map((c, i) => (
-            <CaseStudy key={c.id} study={c} wide={wide(i)} />
+            <CaseStudy key={c.id} study={c} wide={wide(i)} onSimulate={() => setSimulating(c)} />
           ))}
         </div>
       </div>
+      {simulating && (
+        <Suspense fallback={<div className="sim-backdrop" />}>
+          <SimPlayer study={simulating} onClose={() => setSimulating(null)} />
+        </Suspense>
+      )}
     </section>
   );
 }
 
-function CaseStudy({ study, wide }) {
+function CaseStudy({ study, wide, onSimulate }) {
   return (
     <article className={`tile case${wide ? " span-2" : ""}`} id={`case-${study.id}`}>
       <p className="tile-label">{study.org}</p>
@@ -245,6 +256,9 @@ function CaseStudy({ study, wide }) {
         </p>
       )}
       <Bullets items={study.highlights} />
+      <button className="sim-open" onClick={onSimulate}>
+        <span aria-hidden="true">▶</span> Simulate
+      </button>
       <ul className="tags">
         {study.tags.map((t) => (
           <li key={t}>{t}</li>
