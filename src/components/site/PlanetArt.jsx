@@ -1,4 +1,4 @@
-// Illustration for the "equator" band: the two-tone planet (résumé north,
+// Illustration for the 3D-planet tile: the two-tone planet (résumé north,
 // open source south) beside the black hole, drawn from the same data as the
 // 3D world.
 import React from "react";

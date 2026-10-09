@@ -24,7 +24,7 @@ export function LanguageDot({ language }) {
 
 export default function ProjectCard({ project }) {
   return (
-    <article className="card">
+    <article className="tile card">
       {project.image && (
         <img className="card-image" src={`${import.meta.env.BASE_URL}${project.image}`} alt="" loading="lazy" />
       )}

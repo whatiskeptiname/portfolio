@@ -1,20 +1,6 @@
 // src/App.jsx
 import React, { Suspense, lazy, useEffect, useState } from "react";
-import {
-  About,
-  Background,
-  CaseStudies,
-  Contact,
-  Equator,
-  Experience,
-  Footer,
-  Header,
-  Hemisphere,
-  Hero,
-  OpenSource,
-  ProjectIndex,
-  Toolbox,
-} from "./components/site/Sections";
+import { CaseStudies, Contact, Experience, Footer, Header, Hero, OpenSource, Toolbox } from "./components/site/Sections";
 
 // The 3D city (and three.js) only downloads when someone opens it.
 const CityExplorer = lazy(() => import("./city/CityExplorer"));
@@ -60,18 +46,10 @@ export default function App() {
       <Header />
       <main>
         <Hero />
-        <Hemisphere side="north">
-          <About />
-          <Experience />
-          <CaseStudies />
-          <Toolbox />
-          <Background />
-        </Hemisphere>
-        <Equator />
-        <Hemisphere side="south">
-          <OpenSource />
-          <ProjectIndex />
-        </Hemisphere>
+        <CaseStudies />
+        <Experience />
+        <Toolbox />
+        <OpenSource />
         <Contact />
       </main>
       <Footer />

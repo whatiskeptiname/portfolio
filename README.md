@@ -75,13 +75,22 @@ The site is served from the root of the custom domain (`base: '/'` in
 `src/App.jsx` renders the page; the sections live in
 `src/components/site/Sections.jsx`.
 
-- **Header and hero** — name, role and the main links, with a planet
-  illustration (`PlanetArt.jsx`).
-- **Northern hemisphere (résumé):** About; Experience (a timeline of roles);
-  Case studies; Toolbox (skills); Background (education and more).
-- **The equator** — the divider between the two halves.
-- **Southern hemisphere (open source):** projects grouped by language with
-  language bars, featured projects, and a full project index you can filter.
+The page is a **bento grid**: every idea gets its own rounded tile, and tiles
+span one or more columns so each row fills edge to edge. Light or dark
+follows the visitor's system setting.
+
+- **Hero:** intro (photo, name, tagline, *See my work*, résumé), a
+  night-sky tile that opens the 3D planet, what I'm doing now, three
+  headline numbers, about (*More about me* for the rest), GitHub languages
+  and contact.
+- **Case studies:** one tile per project, the first and last double-width so
+  every row is full; each shows its headline number and first point, with
+  *Show N more* for the rest.
+- **Experience:** the timeline, a tile per role, then education and
+  community.
+- **Toolbox:** a tile per skill category.
+- **Side projects:** the featured repositories, then the rest in one list
+  tile (six shown, filter by language, *Show all*).
 - **Contact and footer.**
 
 The 3D explorer is lazy-loaded from `#/city`, so three.js is never downloaded
