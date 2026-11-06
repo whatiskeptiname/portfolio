@@ -87,7 +87,7 @@ function remember(key, value) {
 const VIEWS = ["chase", "fpv", "eye"];
 
 // `initialVehicle` ("car" | "drone") and `initialView` ("chase" | "fpv" | "eye") come
-// from links like #/city?vehicle=drone&view=eye.
+// from links like #/planet?vehicle=drone&view=eye.
 export default function CityExplorer({ onExit, initialVehicle, initialView }) {
   const layout = useMemo(() => {
     const world = createLayout(cityGroups, "whatiskeptiname", { billboards: cityBillboards });

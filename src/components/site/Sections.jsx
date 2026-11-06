@@ -1,13 +1,14 @@
 // src/components/site/Sections.jsx — the sections of the landing page, laid
 // out as a bento grid: every idea gets its own rounded tile, and tiles span
 // one or more columns so each row fills edge to edge.
-import React, { Suspense, lazy, useEffect, useState } from "react";
+import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { profile } from "../../content/profile";
 import { background, caseStudies, highlights, roles, skills, summary } from "../../content/resume";
 import { featured, languageColor, languageGroups, projects } from "../../data";
 import { formatPeriod, timelineRows, yearsSince } from "../../lib/career";
 import ProjectCard, { LanguageDot, Stars } from "../ProjectCard";
 import PlanetArt from "./PlanetArt";
+import { PLANET, SECTIONS, pageTitle } from "../../lib/sections";
 import PlanetD from "./PlanetD";
 import ThemeToggle from "./ThemeToggle";
 
@@ -42,11 +43,11 @@ function Expandable({ items, keep = 1, children, noun = "more" }) {
   );
 }
 
-function SectionHead({ label, title, children }) {
+// A section's heading is its name, the same one the header and URL use.
+function SectionHead({ id, children }) {
   return (
     <header className="section-head">
-      <p className="section-label">{label}</p>
-      <h2>{title}</h2>
+      <h2>{SECTIONS.find((n) => n.id === id).label}</h2>
       {children && <p className="section-intro">{children}</p>}
     </header>
   );
@@ -67,14 +68,6 @@ function Bullets({ items, keep = 1 }) {
     </Expandable>
   );
 }
-
-const NAV = [
-  { id: "work", label: "Work" },
-  { id: "experience", label: "Experience", optional: true },
-  { id: "toolbox", label: "Toolbox", optional: true },
-  { id: "open-source", label: "Projects", optional: true },
-  { id: "contact", label: "Contact" },
-];
 
 /**
  * Which section you're reading: the last one whose top has passed 40% of
@@ -111,34 +104,80 @@ function useCurrentSection(ids) {
   return current;
 }
 
-const NAV_IDS = NAV.map((n) => n.id);
+const NAV_IDS = SECTIONS.map((n) => n.id);
+
+const ARRIVAL = 1500; // ms a link gets to scroll to its target before the address follows the page again
+
+// Keeps the tab's title and the address on the page you're reading. A deep link
+// within that page (#case-surgery, say) stays until you scroll out of it, and an
+// address you've just followed is left alone while the page scrolls to it.
+function useSectionAddress(current) {
+  const followed = useRef(performance.now());
+  useEffect(() => {
+    const note = () => (followed.current = performance.now());
+    window.addEventListener("hashchange", note);
+    return () => window.removeEventListener("hashchange", note);
+  }, []);
+  useEffect(() => {
+    document.title = pageTitle(profile.name, SECTIONS.find((n) => n.id === current)?.label);
+    const { hash, pathname, search } = window.location;
+    if (hash.startsWith("#/")) return; // on the way to the planet
+    const target = hash.length > 1 ? document.getElementById(hash.slice(1)) : null;
+    const inTarget = target?.closest("section")?.id === (current ?? "top");
+    if (target && !inTarget && performance.now() - followed.current < ARRIVAL) return;
+    if (inTarget && hash !== "#top") return;
+    const next = current ? `#${current}` : pathname + search;
+    if (next !== (current ? hash : pathname + search + hash)) window.history.replaceState(null, "", next);
+  }, [current]);
+}
 
 export function Header() {
   const current = useCurrentSection(NAV_IDS);
+  useSectionAddress(current);
+  // Small screens: the links fold into a menu.
+  const [open, setOpen] = useState(false);
+  const bar = useRef();
+  useEffect(() => {
+    if (!open) return;
+    const away = (e) => !bar.current?.contains(e.target) && setOpen(false);
+    const escape = (e) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("pointerdown", away);
+    window.addEventListener("keydown", escape);
+    return () => {
+      window.removeEventListener("pointerdown", away);
+      window.removeEventListener("keydown", escape);
+    };
+  }, [open]);
+  const here = SECTIONS.find((n) => n.id === current);
   return (
     <header className="site-header">
-      <div className="container">
-        <a className={`brand${current === null ? " is-current" : ""}`} href="#top" aria-current={current === null ? "location" : undefined}>
-          {profile.name}
+      <div className={`container${open ? " menu-open" : ""}`} ref={bar}>
+        <a className={`brand${current === null ? " is-current" : ""}`} href="#top" aria-label={profile.name} aria-current={current === null ? "location" : undefined}>
+          {/* With no room for the links, the bar says which page you're on instead. */}
+          <span className={here ? "brand-name" : undefined}>{profile.name}</span>
+          {here && <span className="brand-here">{here.label}</span>}
         </a>
-        <nav className="nav" aria-label="Main">
-          {NAV.map((n) => (
-            <a
-              key={n.id}
-              href={`#${n.id}`}
-              className={[n.optional && "nav-optional", current === n.id && "is-current"].filter(Boolean).join(" ") || undefined}
-              aria-current={current === n.id ? "location" : undefined}
-            >
+        <nav className="nav" id="site-nav" aria-label="Main" onClick={(e) => e.target.closest("a") && setOpen(false)}>
+          {SECTIONS.map((n) => (
+            <a key={n.id} href={`#${n.id}`} className={current === n.id ? "is-current" : undefined} aria-current={current === n.id ? "location" : undefined}>
               {n.label}
             </a>
           ))}
-          <a className="nav-cta" href="#/city" aria-label="3D planet">
+        </nav>
+        <div className="header-actions">
+          <a className="nav-cta" href={PLANET.hash} aria-label={PLANET.label}>
             <span aria-hidden="true">
-              3<PlanetD /> planet
+              3<PlanetD />
+              <span className="nav-cta-word"> planet</span>
             </span>
           </a>
           <ThemeToggle />
-        </nav>
+          <button className="menu-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="site-nav" aria-label="Menu">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path d={open ? "M6 6l12 12M18 6L6 18" : "M4 7h16M4 12h16M4 17h16"} />
+            </svg>
+          </button>
+        </div>
       </div>
     </header>
   );
@@ -178,7 +217,7 @@ export function Hero() {
           </div>
         </div>
 
-        <a className="tile tile-planet" href="#/city">
+        <a className="tile tile-planet" href={PLANET.hash}>
           <PlanetArt />
           <div className="tile-planet-text">
             <p className="tile-label">Interactive</p>
@@ -212,7 +251,7 @@ export function Hero() {
           </div>
         </div>
 
-        <a className="tile tile-github" href="#open-source">
+        <a className="tile tile-github" href="#projects">
           <LanguageBars />
         </a>
 
@@ -284,7 +323,7 @@ export function CaseStudies() {
   return (
     <section id="work">
       <div className="container">
-        <SectionHead label="Selected work" title="Case studies" />
+        <SectionHead id="work">Selected case studies</SectionHead>
         <div className="bento bento-3">
           {caseStudies.map((c, i) => (
             <CaseStudy key={c.id} study={c} wide={wide(i)} onSimulate={() => setSimulating(c)} />
@@ -348,7 +387,7 @@ export function Experience() {
   return (
     <section id="experience">
       <div className="container">
-        <SectionHead label="Experience" title="From robotics club to production ML" />
+        <SectionHead id="experience">From robotics club to production ML</SectionHead>
         <div className="bento bento-3">
           <div className="tile span-3 timeline-tile">
             <div className="timeline-chart" role="img" aria-label="Timeline of education, roles and leadership">
@@ -446,7 +485,7 @@ export function Toolbox() {
   return (
     <section id="toolbox">
       <div className="container">
-        <SectionHead label="Toolbox" title="What I build with" />
+        <SectionHead id="toolbox">What I build with</SectionHead>
         <div className="bento bento-3">
           {skills.map((s) => (
             <div className="tile tool" key={s.category}>
@@ -480,10 +519,10 @@ export function OpenSource() {
   const matching = filter ? rest.filter((p) => p.language === filter) : rest;
   const shown = all || filter ? matching : matching.slice(0, ROWS_SHOWN);
   return (
-    <section id="open-source">
+    <section id="projects">
       <div className="container">
-        <SectionHead label="Open source" title="Side projects">
-          Mostly from my robotics-club and fellowship years: Arduino bots, air-quality sensors and early
+        <SectionHead id="projects">
+          Side projects, mostly from my robotics-club and fellowship years: Arduino bots, air-quality sensors and early
           ML experiments.
         </SectionHead>
         <div className="bento bento-3">
@@ -542,10 +581,9 @@ export function Contact() {
     <section id="contact">
       <div className="container">
         <div className="tile tile-cta">
-          <p className="section-label">Contact</p>
-          <h2>Let&rsquo;s build something</h2>
+          <h2>Contact</h2>
           <p className="muted">
-            Open to ML engineering roles and collaborations, especially in computer vision, model
+            Let&rsquo;s talk. Open to ML engineering roles and collaborations, especially in computer vision, model
             optimization and MLOps.
           </p>
           <div className="contact-links">

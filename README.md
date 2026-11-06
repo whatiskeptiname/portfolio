@@ -9,7 +9,7 @@ Personal site for Susan Ghimire, ML engineer. It has two parts:
    it, drive it in a car or fly it with a drone — by hand or on a self-driving
    autopilot that shows what it sees and why it does what it does.
 
-**Live:** <https://susang.com.np/> · **Planet:** <https://susang.com.np/#/city>
+**Live:** <https://susang.com.np/> · **Planet:** <https://susang.com.np/#/planet>
 
 ---
 
@@ -100,6 +100,12 @@ left and nothing new has appeared for 12 generations. A diagonal wave then fades
 out and fades the next one in. It rests while the tab is hidden or a simulation is
 open, and holds one still generation with reduced motion.
 
+Each page has one name, used by its header link, heading, URL and browser tab: Work
+(`#work`), Experience, Toolbox, Projects, Contact and 3D planet (`#/planet`), all
+defined in `src/lib/sections.js`. The older `#/city` and `#open-source` links still
+work. The URL and tab title follow you as you scroll. On screens under 880px the
+links fold into a menu, and the bar's left side shows the page you're on.
+
 The header highlights the section you're reading as you scroll (your name
 lights up while you're on the hero). The "D"
 of its *3D planet* button is the planet (`PlanetD.jsx`): a sphere lit from
@@ -122,7 +128,7 @@ equator between) turns across the whole globe.
   tile (six shown, filter by language, *Show all*).
 - **Contact and footer.**
 
-The 3D explorer is lazy-loaded from `#/city`, so three.js is never downloaded
+The 3D explorer is lazy-loaded from `#/planet`, so three.js is never downloaded
 unless you open the planet.
 
 ### Case-study simulations
@@ -161,8 +167,8 @@ optimisation trade-offs, the price ripple, schema matching) are in
 
 ### Opening it
 
-- `#/city` — orbit the planet.
-- `#/city?vehicle=car` or `#/city?vehicle=drone` — start straight in a vehicle.
+- `#/planet` — orbit the planet.
+- `#/planet?vehicle=car` or `#/planet?vehicle=drone` — start straight in a vehicle.
 - Add `&view=chase`, `&view=fpv` or `&view=eye` to pick the camera.
 
 The last vehicle, camera and all settings are remembered in your browser.
@@ -488,7 +494,7 @@ Everything is saved per browser in `localStorage` (keys starting with
 
 ```
 src/
-├── App.jsx                 landing page; #/city lazy-loads the explorer
+├── App.jsx                 landing page; #/planet lazy-loads the explorer
 ├── components/
 │   ├── ProjectCard.jsx
 │   ├── site/               landing-page sections and the planet illustration
@@ -559,7 +565,7 @@ src/
 npm test
 ```
 
-**212 unit tests** cover everything in `src/lib`, including:
+**217 unit tests** cover everything in `src/lib`, including:
 
 - **Layout:** layout determinism, roads, junctions, bridges, the river,
   sea and mountains, terrain.
@@ -578,7 +584,7 @@ CI runs lint and tests before every deploy.
 
 ## Performance notes
 
-- three.js and the planet load only when you open `#/city`.
+- three.js and the planet load only when you open `#/planet`.
 - Buildings, roads, lamps and signs are merged into a handful of draw calls;
   windows, trees and cars are instanced.
 - Lights never change in number during play (adding or removing a light

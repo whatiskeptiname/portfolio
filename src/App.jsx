@@ -1,17 +1,25 @@
 // src/App.jsx
-import React, { Suspense, lazy, useEffect, useState } from "react";
+import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { CaseStudies, Contact, Experience, Footer, Header, Hero, OpenSource, Toolbox } from "./components/site/Sections";
 import LifeBackground from "./components/site/LifeBackground";
+import { PLANET, canonicalHash, isPlanet, pageTitle } from "./lib/sections";
+import { profile } from "./content/profile";
 
 // The 3D city (and three.js) only downloads when someone opens it.
 const CityExplorer = lazy(() => import("./city/CityExplorer"));
 
-const CITY_HASH = "#/city";
+// The address, with old links moved to where that page is now.
+function currentHash() {
+  const hash = window.location.hash;
+  const moved = canonicalHash(hash);
+  if (moved !== hash) window.history.replaceState(null, "", moved);
+  return moved;
+}
 
 function useHash() {
-  const [hash, setHash] = useState(() => window.location.hash);
+  const [hash, setHash] = useState(currentHash);
   useEffect(() => {
-    const onChange = () => setHash(window.location.hash);
+    const onChange = () => setHash(currentHash());
     window.addEventListener("hashchange", onChange);
     return () => window.removeEventListener("hashchange", onChange);
   }, []);
@@ -20,14 +28,34 @@ function useHash() {
 
 export default function App() {
   const hash = useHash();
-  const inCity = hash === CITY_HASH || hash.startsWith(`${CITY_HASH}?`);
+  const inCity = isPlanet(hash);
 
-  // Coming back from the city re-renders the page, so the browser's own
-  // jump-to-anchor already happened; redo it once the section exists.
+  // Arriving on the page (a direct link, or back from the planet) the browser's
+  // own jump-to-anchor has already happened, before the sections existed: do it
+  // now, at once, and again when the web fonts land and reflow the text above it.
+  const arriving = useRef(true);
   useEffect(() => {
-    if (inCity || hash.length < 2) return;
-    document.getElementById(hash.slice(1))?.scrollIntoView();
+    if (inCity) {
+      arriving.current = true;
+      return;
+    }
+    const target = hash.length > 1 ? document.getElementById(hash.slice(1)) : null;
+    if (arriving.current) {
+      arriving.current = false;
+      if (!target) return;
+      target.scrollIntoView({ behavior: "instant" });
+      document.fonts?.ready.then(() => {
+        if (window.location.hash === hash) target.scrollIntoView({ behavior: "instant" });
+      });
+    } else {
+      target?.scrollIntoView();
+    }
   }, [inCity, hash]);
+
+  // The landing page's Header titles its own sections.
+  useEffect(() => {
+    if (inCity) document.title = pageTitle(profile.name, PLANET.label);
+  }, [inCity]);
 
   if (inCity) {
     return (
@@ -35,7 +63,7 @@ export default function App() {
         <CityExplorer
           initialVehicle={new URLSearchParams(hash.split("?")[1]).get("vehicle")}
           initialView={new URLSearchParams(hash.split("?")[1]).get("view")}
-          onExit={() => (window.location.hash = "#open-source")}
+          onExit={() => (window.location.hash = "#projects")}
         />
       </Suspense>
     );

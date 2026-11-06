@@ -173,6 +173,7 @@ h3 {
   background: var(--bg);
 }
 .site-header .container {
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -222,10 +223,22 @@ h3 {
   background: var(--accent-soft);
   font-weight: 500;
 }
-.nav .nav-cta {
-  margin-left: 6px;
+.nav-cta {
+  flex: none;
+  padding: 6px 12px;
+  border-radius: 999px;
   color: var(--accent-ink);
   background: var(--text);
+  font-size: 0.9rem;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 200ms ease, background-color 200ms ease;
+}
+.header-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 /* The "D" in 3D planet is the planet: a sphere lit from the right, whose
    bright half is the D, turning underneath (see PlanetD.jsx). */
@@ -253,22 +266,103 @@ h3 {
     animation: none;
   }
 }
-.nav .nav-cta:hover {
+.nav-cta:hover {
   color: var(--accent-ink);
   background: var(--accent);
 }
 /* Dark: the system says so (unless light was picked), or dark was picked. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .nav .nav-cta {
+  :root:not([data-theme="light"]) .nav-cta {
     color: var(--bg);
   }
 }
-:root[data-theme="dark"] .nav .nav-cta {
+:root[data-theme="dark"] .nav-cta {
   color: var(--bg);
 }
-@media (max-width: 640px) {
-  .nav .nav-optional {
+.brand-here,
+.menu-btn {
+  display: none;
+}
+/* No room for the links: they fold into a menu, and the bar names the page. */
+@media (max-width: 880px) {
+  .brand-name {
     display: none;
+  }
+  .brand-here {
+    display: inline;
+    color: var(--accent);
+  }
+  .site-header .container {
+    gap: 8px;
+  }
+  .menu-btn {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .menu-btn:hover {
+    background: var(--surface-2);
+  }
+  .menu-btn svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+  .nav {
+    display: none;
+    position: absolute;
+    top: calc(100% - 4px);
+    left: 8px;
+    right: 8px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    padding: 8px;
+    overflow: visible;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+  }
+  .menu-open .nav {
+    display: flex;
+  }
+  .nav a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 8px 14px;
+    font-size: 1rem;
+    border-radius: 12px;
+  }
+}
+/* The narrowest phones: the planet button keeps its "3D", and the switch slims. */
+@media (max-width: 380px) {
+  .nav-cta-word {
+    display: none;
+  }
+  .nav-cta {
+    padding: 6px 10px;
+  }
+  .site-header .theme-toggle {
+    width: 46px;
+    margin-left: 0;
+  }
+  .site-header .theme-toggle.is-dark .theme-toggle-knob {
+    transform: translateX(18px);
+  }
+  .site-header .theme-toggle-icon.sun {
+    left: 6px;
+  }
+  .site-header .theme-toggle-icon.moon {
+    right: 6px;
   }
 }
 
@@ -1042,9 +1136,6 @@ a.tile:hover .tile-arrow {
   background:
     radial-gradient(ellipse at 50% 0%, var(--accent-soft), transparent 70%),
     var(--surface);
-}
-.tile-cta .section-label {
-  margin: 0;
 }
 .tile-cta .muted {
   max-width: 52ch;
