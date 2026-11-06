@@ -2,6 +2,7 @@
 // project's pipeline, with its main processes laid out on a timeline you
 // can scrub. Loaded only when someone opens a simulation.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Icon from "../Icon";
 import { SIMS } from "./registry";
 import "./sims.css";
 
@@ -144,7 +145,7 @@ export default function SimPlayer({ study, onClose }) {
             <h2 id="sim-title">{study.title}</h2>
           </div>
           <button className="sim-close" onClick={onClose} aria-label="Close simulation">
-            ✕
+            <Icon name="close" />
           </button>
         </header>
 
@@ -154,7 +155,7 @@ export default function SimPlayer({ study, onClose }) {
 
         <div className="sim-controls-row">
           <button className="sim-play" onClick={() => setPlaying((p) => !p)} aria-label={playing ? "Pause" : "Play"}>
-            {playing ? "❚❚" : "▶"}
+            <Icon name={playing ? "pause" : "play"} />
           </button>
           <Timeline stages={sim.stages} starts={starts} total={total} T={T} onSeek={setT} onScrub={setScrubbing} />
         </div>

@@ -3,7 +3,7 @@ import { PLANET, SECTIONS, canonicalHash, isPlanet, pageTitle } from "./sections
 
 describe("page names and addresses", () => {
   it("names each section's address after its label", () => {
-    for (const s of SECTIONS) expect(s.id).toBe(s.label.toLowerCase());
+    for (const s of SECTIONS) expect(s.id).toBe(s.label.toLowerCase().replaceAll(" ", "-"));
   });
 
   it("forwards old addresses, keeping their options", () => {

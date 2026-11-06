@@ -1,15 +1,17 @@
-// src/components/site/Sections.jsx — the sections of the landing page, laid
-// out as a bento grid: every idea gets its own rounded tile, and tiles span
-// one or more columns so each row fills edge to edge.
+// src/components/site/Sections.jsx — the sections of the landing page.
 import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { profile } from "../../content/profile";
-import { background, caseStudies, highlights, roles, skills, summary } from "../../content/resume";
+import { alongside, background, buildPath, caseStudies, caseStudyOrder, highlights, roles, skills, strengths, summary } from "../../content/resume";
 import { featured, languageColor, languageGroups, projects } from "../../data";
 import { formatPeriod, timelineRows, yearsSince } from "../../lib/career";
+import Icon from "../Icon";
 import ProjectCard, { LanguageDot, Stars } from "../ProjectCard";
-import PlanetArt from "./PlanetArt";
 import { PLANET, SECTIONS, pageTitle } from "../../lib/sections";
+import { FIGURES } from "./figureMap";
+import { InferenceRace } from "./Figures";
+import "./figures.css";
 import PlanetD from "./PlanetD";
+import { enterPlanet, preloadPlanet } from "./portal";
 import ThemeToggle from "./ThemeToggle";
 
 const asset = (path) => `${import.meta.env.BASE_URL}${path}`;
@@ -165,11 +167,17 @@ export function Header() {
           ))}
         </nav>
         <div className="header-actions">
-          <a className="nav-cta" href={PLANET.hash} aria-label={PLANET.label}>
-            <span aria-hidden="true">
-              3<PlanetD />
-              <span className="nav-cta-word"> planet</span>
-            </span>
+          {/* A small easter egg: this is the only way in to the 3D planet. */}
+          <a
+            className="egg"
+            href={PLANET.hash}
+            aria-label="Something small is orbiting here"
+            title="Something small is orbiting here"
+            onPointerEnter={preloadPlanet}
+            onFocus={preloadPlanet}
+            onClick={(e) => enterPlanet(e, PLANET.hash)}
+          >
+            <PlanetD />
           </a>
           <ThemeToggle />
           <button className="menu-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="site-nav" aria-label="Menu">
@@ -184,92 +192,115 @@ export function Header() {
 }
 
 // ---------------------------------------------------------------------------
-// Hero: the whole profile at a glance, as tiles.
+// Hero: what you'd be hiring, the results that back it, and how to get in touch.
+
+// The headline, with the word that matters found the way a vision model would find it.
+function Claim() {
+  const [before, after] = profile.tagline.split(profile.taglineWord);
+  return (
+    <h1>
+      {before}
+      <span className="detected">
+        {profile.taglineWord}
+        <span className="detected-tag" aria-hidden="true">
+          {profile.taglineTag}
+        </span>
+      </span>
+      {after}
+    </h1>
+  );
+}
 
 export function Hero() {
   const firstRole = roles.reduce((a, b) => (a.start < b.start ? a : b));
   const current = roles.find((r) => r.end === null) ?? roles[0];
   return (
     <section className="hero" id="top">
-      <div className="container bento hero-bento">
-        <div className="tile tile-intro">
-          <img
-            className="avatar"
-            src={`https://github.com/${profile.github}.png?size=192`}
-            alt={`Portrait of ${profile.name}`}
-            width="72"
-            height="72"
-          />
-          <p className="section-label">{profile.role}</p>
-          <h1>{profile.name}</h1>
-          <p className="tagline">{profile.tagline}</p>
-          <div className="hero-meta">
-            {profile.location && <span>📍 {profile.location}</span>}
-            <span>{yearsSince(firstRole.start)}+ years in ML</span>
+      <div className="container">
+        <div className="hero-grid">
+          <div>
+            <div className="hero-who">
+              <img
+                className="avatar"
+                src={`https://github.com/${profile.github}.png?size=96`}
+                alt={`Portrait of ${profile.name}`}
+                width="48"
+                height="48"
+              />
+              <p>
+                <strong>{profile.name}</strong>
+                <br />
+                {profile.role}
+                {profile.location && `, ${profile.location}`}
+              </p>
+            </div>
+            <Claim />
+            <div className="prose" id="about">
+              <p>{summary}</p>
+              <MoreAbout />
+            </div>
+            <div className="hero-actions">
+              {profile.email && (
+                <a className="btn btn-primary" href={`mailto:${profile.email}`}>
+                  Email me <Icon name="arrowRight" />
+                </a>
+              )}
+              {profile.resumeUrl && (
+                <a className="btn" href={asset(profile.resumeUrl)} target="_blank" rel="noopener noreferrer">
+                  Résumé (PDF)
+                </a>
+              )}
+              <a className="btn" href="#work">See my work</a>
+            </div>
+            <p className="hero-open">Open to ML engineering roles and collaborations.</p>
           </div>
-          <div className="hero-actions">
-            <a className="btn btn-primary" href="#work">See my work</a>
-            {profile.resumeUrl && (
-              <a className="btn" href={asset(profile.resumeUrl)} target="_blank" rel="noopener noreferrer">
-                Résumé (PDF)
-              </a>
-            )}
-          </div>
+          <InferenceRace />
         </div>
-
-        <a className="tile tile-planet" href={PLANET.hash}>
-          <PlanetArt />
-          <div className="tile-planet-text">
-            <p className="tile-label">Interactive</p>
-            <h3>Drive my 3D planet</h3>
-            <p>Résumé in the north, open source in the south. Drive it, or fly it as a drone.</p>
-            <span className="tile-arrow" aria-hidden="true">→</span>
+        <dl className="results">
+          {highlights.map((h) => (
+            <div key={h.label}>
+              <dt>{h.value}</dt>
+              <dd>{h.label}</dd>
+            </div>
+          ))}
+          <div>
+            <dt>{yearsSince(firstRole.start)}+ years</dt>
+            <dd>
+              in ML, now {current.title} at {current.org}
+            </dd>
           </div>
-        </a>
+        </dl>
+      </div>
+    </section>
+  );
+}
 
-        <div className="tile tile-now">
-          <p className="tile-label">
-            <span className="live-dot" aria-hidden="true" />
-            Currently
-          </p>
-          <h3>{current.title}</h3>
-          <p className="muted">{current.org}</p>
-        </div>
-
-        {highlights.map((h, i) => (
-          <div className={`tile tile-stat tile-stat-${i}`} key={h.label}>
-            <div className="stat-value">{h.value}</div>
-            <div className="stat-label">{h.label}</div>
-          </div>
-        ))}
-
-        <div className="tile tile-about" id="about">
-          <p className="tile-label">About</p>
-          <div className="prose">
-            <p className="lead">{summary}</p>
-            <MoreAbout />
-          </div>
-        </div>
-
-        <a className="tile tile-github" href="#projects">
-          <LanguageBars />
-        </a>
-
-        <div className="tile tile-contact">
-          <p className="tile-label">Say hello</p>
-          {profile.email && (
-            <a className="contact-email" href={`mailto:${profile.email}`}>
-              {profile.email}
-            </a>
-          )}
-          <div className="contact-links">
-            {profile.links.map((l) => (
-              <a key={l.href} className="btn btn-small" href={l.href} target="_blank" rel="noopener noreferrer">
-                {l.label} ↗
-              </a>
-            ))}
-          </div>
-        </div>
+// Why hire me: what you'd get, at a glance. The proof is in the case studies below.
+export function WhyHireMe() {
+  const titleOf = (id) => caseStudies.find((c) => c.id === id)?.title;
+  return (
+    <section id="why-hire-me">
+      <div className="container">
+        <SectionHead id="why-hire-me">What I bring to a team</SectionHead>
+        <ul className="strengths">
+          {strengths.map((s) => {
+            const Picture = FIGURES[s.figure];
+            return (
+              <li key={s.title}>
+                <Picture />
+                <div className="strength-text">
+                  <h3>{s.title}</h3>
+                  <p>{s.line}</p>
+                  {s.work && (
+                    <a className="strength-link" href={`#case-${s.work}`}>
+                      {titleOf(s.work)} <Icon name="arrowDown" />
+                    </a>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </section>
   );
@@ -290,8 +321,7 @@ function MoreAbout() {
 function LanguageBars() {
   const max = Math.max(...languageGroups.map((g) => g.projects.length));
   return (
-    <div aria-label="Open-source projects per language">
-      <p className="tile-label">On GitHub</p>
+    <div className="languages" aria-label="Open-source projects per language">
       <p className="github-count">
         <strong>{projects.length}</strong> public projects · <strong>{projects.reduce((s, p) => s + p.stars, 0)}</strong> stars
       </p>
@@ -325,7 +355,7 @@ export function CaseStudies() {
       <div className="container">
         <SectionHead id="work">Selected case studies</SectionHead>
         <div className="bento bento-3">
-          {caseStudies.map((c, i) => (
+          {caseStudyOrder.map((id) => caseStudies.find((c) => c.id === id)).map((c, i) => (
             <CaseStudy key={c.id} study={c} wide={wide(i)} onSimulate={() => setSimulating(c)} />
           ))}
         </div>
@@ -342,23 +372,32 @@ export function CaseStudies() {
 function CaseStudy({ study, wide, onSimulate }) {
   return (
     <article className={`tile case${wide ? " span-2" : ""}`} id={`case-${study.id}`}>
-      <p className="tile-label">{study.org}</p>
-      <h3>{study.title}</h3>
-      {study.metric && (
-        <p className="case-metric">
-          <span className="case-metric-value">{study.metric.value}</span>
-          <span>{study.metric.label}</span>
-        </p>
-      )}
-      <Bullets items={study.highlights} />
-      <button className="sim-open" onClick={onSimulate}>
-        <span aria-hidden="true">▶</span> Simulate
+      {/* A real frame from the simulation, in the current theme. Opens it. */}
+      <button className="case-poster" onClick={onSimulate} aria-label={`See how it works: ${study.title}`}>
+        <img className="poster-light" src={asset(`sims/${study.id}-light.webp`)} alt="" loading="lazy" width="960" height="540" />
+        <img className="poster-dark" src={asset(`sims/${study.id}-dark.webp`)} alt="" loading="lazy" width="960" height="540" />
+        <span className="case-play">
+          <Icon name="play" /> See how it works
+        </span>
       </button>
-      <ul className="tags">
-        {study.tags.map((t) => (
-          <li key={t}>{t}</li>
-        ))}
-      </ul>
+      <div className="case-head">
+        <p className="tile-label">{study.org}</p>
+        <h3>{study.title}</h3>
+        {study.metric && (
+          <p className="case-metric">
+            <span className="case-metric-value">{study.metric.value}</span>
+            <span>{study.metric.label}</span>
+          </p>
+        )}
+      </div>
+      <div className="case-body">
+        <Bullets items={study.highlights} keep={wide ? 2 : 1} />
+        <ul className="tags">
+          {study.tags.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </ul>
+      </div>
     </article>
   );
 }
@@ -388,114 +427,132 @@ export function Experience() {
     <section id="experience">
       <div className="container">
         <SectionHead id="experience">From robotics club to production ML</SectionHead>
-        <div className="bento bento-3">
-          <div className="tile span-3 timeline-tile">
-            <div className="timeline-chart" role="img" aria-label="Timeline of education, roles and leadership">
-              <div className="timeline-axis" style={{ "--years": years.length }}>
-                {years.map((y) => (
-                  <span key={y}>{y}</span>
-                ))}
-              </div>
-              {rows.map((r) => (
-                <div className="timeline-row" key={r.id}>
-                  <div className="timeline-label">
-                    <strong>{r.label}</strong>
-                    <span>{r.sub}</span>
-                  </div>
-                  <div className="timeline-track" style={{ "--years": years.length }}>
-                    <div
-                      className={`timeline-bar kind-${r.kind.toLowerCase()}${r.ongoing ? " ongoing" : ""}`}
-                      style={{ left: `${r.left}%`, width: `${r.width}%` }}
-                      title={KIND_LABEL[r.kind] ?? r.kind}
-                    />
-                  </div>
-                </div>
+        <div className="tile timeline-tile">
+          <div className="timeline-chart" role="img" aria-label="Timeline of education, roles and leadership">
+            <div className="timeline-axis" style={{ "--years": years.length }}>
+              {years.map((y) => (
+                <span key={y}>{y}</span>
               ))}
             </div>
-          </div>
-
-          {roles.map((role) => (
-            <article className="tile role" key={role.id}>
-              <p className="tile-label">
-                {formatPeriod(role.start, role.end)} · {role.location}
-              </p>
-              <h3>{role.title}</h3>
-              <p className="muted">{role.org}</p>
-              {role.projects && (
-                <div className="role-projects">
-                  {role.projects.map((id) => (
-                    <a key={id} className="role-project" href={`#case-${id}`}>
-                      {byId.get(id)?.title}
-                    </a>
-                  ))}
+            {rows.map((r) => (
+              <div className="timeline-row" key={r.id}>
+                <div className="timeline-label">
+                  <strong>{r.label}</strong>
+                  <span>{r.sub}</span>
                 </div>
-              )}
-              {role.highlights && <Bullets items={role.highlights} />}
-            </article>
-          ))}
+                <div className="timeline-track" style={{ "--years": years.length }}>
+                  <div
+                    className={`timeline-bar kind-${r.kind.toLowerCase()}${r.ongoing ? " ongoing" : ""}`}
+                    style={{ left: `${r.left}%`, width: `${r.width}%` }}
+                    title={KIND_LABEL[r.kind] ?? r.kind}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+
+        <ol className="ledger">
+          {roles.map((role) => (
+            <li key={role.id}>
+              <div className="ledger-side">
+                <span className="period">{formatPeriod(role.start, role.end)}</span>
+                <span>{role.location}</span>
+              </div>
+              <div className="ledger-main">
+                <h3>{role.title}</h3>
+                <p className="muted">{role.org}</p>
+                {role.projects && (
+                  <div className="role-projects">
+                    {role.projects.map((id) => (
+                      <a key={id} className="role-project" href={`#case-${id}`}>
+                        {byId.get(id)?.title} <Icon name="arrowDown" />
+                      </a>
+                    ))}
+                  </div>
+                )}
+                {role.highlights && <Bullets items={role.highlights} />}
+              </div>
+            </li>
+          ))}
+        </ol>
 
         <h3 className="subheading" id="background">Education &amp; community</h3>
-        <div className="bento bento-6">
-          {extras.map((b, i) => (
-            <article className={`tile bg${bgSpan(i, extras.length)}`} key={b.id}>
-              <p className={`tile-label kind-${b.kind.toLowerCase()}`}>
-                <span className="kind-dot" aria-hidden="true" />
-                {b.kind} · {b.date ?? formatPeriod(b.start, b.end)}
-              </p>
-              <h3>{b.title}</h3>
-              <p className="muted">{b.org}</p>
-              {b.highlights && (
-                <Expandable items={b.highlights}>
-                  {(shown) =>
-                    shown.map((h) => (
-                      <p key={h} className="bg-text">
-                        {h}
-                      </p>
-                    ))
-                  }
-                </Expandable>
-              )}
-              {b.award && (
-                <p className="bg-text">
-                  Recognised in the &ldquo;extremely useful&rdquo; category for a Nepali/English document
-                  extraction pipeline. <a href="#case-catdox">See the case study</a>.
-                </p>
-              )}
-            </article>
+        <ol className="ledger">
+          {extras.map((b) => (
+            <li key={b.id}>
+              <div className="ledger-side">
+                <span className={`kind kind-${b.kind.toLowerCase()}`}>
+                  <span className="kind-dot" aria-hidden="true" />
+                  {b.kind}
+                </span>
+                <span className="period">{b.date ?? formatPeriod(b.start, b.end)}</span>
+              </div>
+              <div className="ledger-main">
+                <h3>{b.title}</h3>
+                <p className="muted">{b.org}</p>
+                {b.highlights && (
+                  <Expandable items={b.highlights}>
+                    {(shown) =>
+                      shown.map((h) => (
+                        <p key={h} className="bg-text">
+                          {h}
+                        </p>
+                      ))
+                    }
+                  </Expandable>
+                )}
+                {b.award && (
+                  <p className="bg-text">
+                    Recognised in the &ldquo;extremely useful&rdquo; category for a Nepali/English document
+                    extraction pipeline. <a href="#case-catdox">See the case study</a>.
+                  </p>
+                )}
+              </div>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
     </section>
   );
 }
 
-// Six-column grid: rows of three tiles (span 2), and a short last row
-// stretches its tiles so it fills too.
-function bgSpan(i, n) {
-  const lastRow = n % 3;
-  if (lastRow && i >= n - lastRow) return ` span6-${6 / lastRow}`;
-  return " span6-2";
-}
-
 // ---------------------------------------------------------------------------
-// Toolbox: one tile per category.
+// Toolbox: the tools in the order the work happens, from labelled data to a
+// model in production.
+
+function ToolGroup({ category }) {
+  const { items } = skills.find((s) => s.category === category);
+  return (
+    <div className="path-group">
+      <h4>{category}</h4>
+      <ul className="tools">
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export function Toolbox() {
   return (
     <section id="toolbox">
       <div className="container">
-        <SectionHead id="toolbox">What I build with</SectionHead>
-        <div className="bento bento-3">
-          {skills.map((s) => (
-            <div className="tile tool" key={s.category}>
-              <p className="tile-label">{s.category}</p>
-              <ul className="tags">
-                {s.items.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
+        <SectionHead id="toolbox">The whole path, from labelled data to a model in production</SectionHead>
+        <ol className="path">
+          {buildPath.map((step) => (
+            <li key={step.stage}>
+              <h3>{step.stage}</h3>
+              {step.categories.map((c) => (
+                <ToolGroup key={c} category={c} />
+              ))}
+            </li>
+          ))}
+        </ol>
+        <div className="path-alongside">
+          {alongside.map((c) => (
+            <ToolGroup key={c} category={c} />
           ))}
         </div>
       </div>
@@ -525,49 +582,50 @@ export function OpenSource() {
           Side projects, mostly from my robotics-club and fellowship years: Arduino bots, air-quality sensors and early
           ML experiments.
         </SectionHead>
-        <div className="bento bento-3">
+        <LanguageBars />
+        <div className="featured">
           {featured.map((p) => (
             <ProjectCard key={p.name} project={p} />
           ))}
-          <div className="tile span-3 repos" id="all-projects">
-            <p className="tile-label">More repositories</p>
-            <div className="filters" role="group" aria-label="Filter by language">
-              <button className="chip" aria-pressed={filter === null} onClick={() => setFilter(null)}>
-                All<span className="count">{rest.length}</span>
+        </div>
+        <div className="repos" id="all-projects">
+          <h3 className="subheading">More repositories</h3>
+          <div className="filters" role="group" aria-label="Filter by language">
+            <button className="chip" aria-pressed={filter === null} onClick={() => setFilter(null)}>
+              All<span className="count">{rest.length}</span>
+            </button>
+            {languages.map((language) => (
+              <button
+                key={language}
+                className="chip"
+                aria-pressed={filter === language}
+                onClick={() => setFilter(language)}
+              >
+                {language}
+                <span className="count">{count(language)}</span>
               </button>
-              {languages.map((language) => (
-                <button
-                  key={language}
-                  className="chip"
-                  aria-pressed={filter === language}
-                  onClick={() => setFilter(language)}
-                >
-                  {language}
-                  <span className="count">{count(language)}</span>
-                </button>
-              ))}
-            </div>
-            <ul className="project-list">
-              {shown.map((p) => (
-                <li className="project-row" key={p.name}>
-                  <a href={p.url} target="_blank" rel="noopener noreferrer">
-                    {p.title}
-                  </a>
-                  <span className="meta">
-                    <Stars count={p.stars} />
-                    <LanguageDot language={p.language} />
-                    <span className="year">{p.pushedAt?.slice(0, 4)}</span>
-                  </span>
-                  {p.description && <p>{p.description}</p>}
-                </li>
-              ))}
-            </ul>
-            {!filter && matching.length > ROWS_SHOWN && (
-              <button className="link-btn list-more" onClick={() => setAll((a) => !a)} aria-expanded={all}>
-                {all ? "Show fewer" : `Show all ${matching.length}`}
-              </button>
-            )}
+            ))}
           </div>
+          <ul className="project-list">
+            {shown.map((p) => (
+              <li className="project-row" key={p.name}>
+                <a href={p.url} target="_blank" rel="noopener noreferrer">
+                  {p.title}
+                </a>
+                <span className="meta">
+                  <Stars count={p.stars} />
+                  <LanguageDot language={p.language} />
+                  <span className="year">{p.pushedAt?.slice(0, 4)}</span>
+                </span>
+                {p.description && <p>{p.description}</p>}
+              </li>
+            ))}
+          </ul>
+          {!filter && matching.length > ROWS_SHOWN && (
+            <button className="link-btn list-more" onClick={() => setAll((a) => !a)} aria-expanded={all}>
+              {all ? "Show fewer" : `Show all ${matching.length}`}
+            </button>
+          )}
         </div>
       </div>
     </section>
@@ -580,29 +638,26 @@ export function Contact() {
   return (
     <section id="contact">
       <div className="container">
-        <div className="tile tile-cta">
-          <h2>Contact</h2>
-          <p className="muted">
-            Let&rsquo;s talk. Open to ML engineering roles and collaborations, especially in computer vision, model
-            optimization and MLOps.
-          </p>
-          <div className="contact-links">
-            {profile.email && (
-              <a className="btn btn-primary" href={`mailto:${profile.email}`}>
-                {profile.email}
-              </a>
-            )}
-            {profile.links.map((l) => (
-              <a key={l.href} className="btn" href={l.href} target="_blank" rel="noopener noreferrer">
-                {l.label} ↗
-              </a>
-            ))}
-            {profile.resumeUrl && (
-              <a className="btn" href={asset(profile.resumeUrl)} target="_blank" rel="noopener noreferrer">
-                Résumé (PDF)
-              </a>
-            )}
-          </div>
+        <SectionHead id="contact">
+          Let&rsquo;s talk. Open to ML engineering roles and collaborations, especially in computer vision, model
+          optimization and MLOps.
+        </SectionHead>
+        {profile.email && (
+          <a className="contact-email" href={`mailto:${profile.email}`}>
+            {profile.email}
+          </a>
+        )}
+        <div className="contact-links">
+          {profile.links.map((l) => (
+            <a key={l.href} className="btn" href={l.href} target="_blank" rel="noopener noreferrer">
+              {l.label} <Icon name="external" />
+            </a>
+          ))}
+          {profile.resumeUrl && (
+            <a className="btn" href={asset(profile.resumeUrl)} target="_blank" rel="noopener noreferrer">
+              Résumé (PDF)
+            </a>
+          )}
         </div>
       </div>
     </section>

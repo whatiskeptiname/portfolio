@@ -2,9 +2,9 @@
 
 Personal site for Susan Ghimire, ML engineer. It has two parts:
 
-1. **A fast landing page**, split into two "hemispheres": the résumé above the
-   equator, open-source work below it.
-2. **A 3D planet** near a black hole, loaded only when you ask for it. The
+1. **A fast landing page** that says what you'd be hiring and proves it from the CV.
+2. **A 3D planet** near a black hole, an easter egg behind the tiny sphere in the
+   header, loaded only when someone opens it. The
    résumé is the northern hemisphere and GitHub the southern one. You can orbit
    it, drive it in a car or fly it with a drone — by hand or on a self-driving
    autopilot that shows what it sees and why it does what it does.
@@ -75,12 +75,33 @@ The site is served from the root of the custom domain (`base: '/'` in
 `src/App.jsx` renders the page; the sections live in
 `src/components/site/Sections.jsx`.
 
-The page is a **bento grid**: every idea gets its own rounded tile, and tiles
-span one or more columns so each row fills edge to edge. Light or dark
-follows the visitor's system setting until they slide the ☀/☾ switch in the
-header; the choice is remembered and applied before the page first paints
-(an inline script in `index.html` sets `data-theme` on `<html>`), and the
-simulation player and the planet's glass panels follow it too.
+The page is there to get hired: it says what you'd be hiring and proves it from the
+CV. Light or dark follows the visitor's system setting until they slide the sun/moon
+switch in the header; the choice is remembered and
+applied before the page first paints (an inline script in `index.html` sets
+`data-theme` on `<html>`).
+
+- **Hero:** the claim, with its key word in a detection box; the summary and how to
+  get in touch; a race of the same frames before and after optimization, at the real
+  7× ratio (`InferenceRace` in `src/components/site/Figures.jsx`); the headline results.
+- **Why hire me:** one short row: each strength as a small picture and a line (`strengths`
+  in `src/content/resume.js`, pictures in `Figures.jsx`). The results stay in Work. The
+  pictures only move while on screen, and settle at once for anyone who prefers less motion.
+- **Work:** one tile per project, the first and last double-width. Each opens with a real
+  frame from its simulation, in the current theme (`public/sims/`), which opens the
+  simulation (below), then its headline number and first point, with *Show N more*.
+- **Experience:** the timeline, then roles, education and community as ruled rows.
+- **Toolbox:** the tools in the order the work happens, from labelling to operating a
+  model in production (`buildPath` in `src/content/resume.js`).
+- **Projects:** GitHub languages, the featured repositories on one sheet, then the
+  rest in a list (six shown, filter by language, *Show all*).
+- **Contact and footer.** The 3D planet is an easter egg: the tiny turning sphere beside
+  the theme switch is the only way in from the page, and `#/planet` links straight to it.
+  Clicking it opens the planet's sky out of the sphere (`portal.js`). The planet is always
+  dark, whichever theme the site is in.
+
+Headings use Fraunces, the same face as the planet's signs, and the text uses
+Schibsted Grotesk. Icons are one drawn set (`src/components/Icon.jsx`).
 
 Behind it all, quietly, runs **Conway's Game of Life** (`LifeBackground.jsx`, rules
 in `src/lib/life.js`): small squares in the accent colour, one generation every 1.4
@@ -100,19 +121,14 @@ left and nothing new has appeared for 12 generations. A diagonal wave then fades
 out and fades the next one in. It rests while the tab is hidden or a simulation is
 open, and holds one still generation with reduced motion.
 
-Each page has one name, used by its header link, heading, URL and browser tab: Work
-(`#work`), Experience, Toolbox, Projects, Contact and 3D planet (`#/planet`), all
+Each page has one name, used by its header link, heading, URL and browser tab: Why
+hire me (`#why-hire-me`), Work (`#work`), Experience, Toolbox, Projects, Contact and 3D planet (`#/planet`), all
 defined in `src/lib/sections.js`. The older `#/city` and `#open-source` links still
 work. The URL and tab title follow you as you scroll. On screens under 880px the
 links fold into a menu, and the bar's left side shows the page you're on.
 
-The header highlights the section you're reading as you scroll (your name
-lights up while you're on the hero). The "D"
-of its *3D planet* button is the planet (`PlanetD.jsx`): a sphere lit from
-the right like a first-quarter moon, so its bright half, flat where day
-meets night, is the D, with the night side dim beside it. The
-surface (gold résumé towers north, teal language districts south, the blue
-equator between) turns across the whole globe.
+The header highlights the section you're reading as you scroll (your name lights up
+at the top of the page).
 
 - **Hero:** intro (photo, name, tagline, *See my work*, résumé), a
   night-sky tile that opens the 3D planet, what I'm doing now, three
@@ -120,7 +136,7 @@ equator between) turns across the whole globe.
   and contact.
 - **Case studies:** one tile per project, the first and last double-width so
   every row is full; each shows its headline number and first point, with
-  *Show N more* for the rest, and a **▶ Simulate** button (below).
+  *Show N more* for the rest, and a **See how it works** button (below).
 - **Experience:** the timeline, a tile per role, then education and
   community.
 - **Toolbox:** a tile per skill category.
@@ -233,14 +249,14 @@ picture renders at about the same pixel count as a laptop at the same setting, s
 it isn't blocky on a small screen.
 
 **Toolbar:** Portfolio (back), Look around / Car / Drone, Chase / FPV / Eye
-view, 📍 Go to, ♫ radio, 📷 screenshot, ⛶ fullscreen, 🔊 sound, 🧭 autopilot
+view, Go to, music, screenshot, fullscreen, sound, autopilot
 settings, settings (sliders icon), ? help.
 
 **On arrival:** you land on the planet view, with the car cruising the
 equator on autopilot, the day–night cycle running, the Low graphics preset
 and sound muted. The
 autopilot's visuals (route, decisions, inputs) start off every visit; switch
-them on in 🧭. One small hint bar at the bottom offers <kbd>C</kbd> *to drive*
+them on in the autopilot settings. One small hint bar at the bottom offers <kbd>C</kbd> *to drive*
 (*Tap to drive* on touch) and *Sound off · turn on*; each chip leaves once
 used. The full guide is behind **?** /
 <kbd>H</kbd>.
@@ -279,9 +295,11 @@ always gives the same planet. Distances are real: **1 unit = 1 m** (a car is
   time-lapse of your system clock: one planet day every 4 real minutes
   (`src/lib/clock.js`). City windows, plazas, beacons, lamps and headlights
   follow the day/night line, and the HUD shows local planet time. You can also
-  hold it at Day or Night (see [Settings](#settings)).
-- **Space.** A baked Milky Way sky with stars, an atmosphere glow, and the
-  black hole with its accretion disc.
+  hold it at Day, with the black hole low on the eastern horizon, or at Night
+  under the Milky Way (see [Settings](#settings)).
+- **Space.** A baked Milky Way sky with stars, an atmosphere glow, thin wispy
+  cloud at 40 to 50 m (`Clouds.jsx`, with its own switch in the settings), and
+  the black hole with its accretion disc.
 - **Minimap.** A small globe showing the hemispheres, roads, river, sea,
   mountains, islands, districts, other cars and your planned route (coloured
   by speed).
@@ -343,11 +361,11 @@ During a transformation the camera swings to a three-quarter view.
 
 On by default: the vehicle starts on the equator highway and drives itself.
 
-- **Routes** (🧭 → Route):
+- **Routes** (autopilot settings → Route):
   - **Equator** — cruises east round the highway.
   - **All roads** — tours every district in a random order through the side
     roads, lanes and roundabouts.
-- **Go to** (📍): drives you to any district by road, then hands the wheel
+- **Go to:** drives you to any district by road, then hands the wheel
   back. <kbd>P</kbd> cancels the trip.
 - **Taking over:** steering or accelerating overrides it only while you hold
   the keys. Let go and it re-plans from where you are. After 45 s with no
@@ -378,7 +396,7 @@ On by default: the vehicle starts on the equator highway and drives itself.
   and pulls in, and carries on if the road clears. The decision panel shows
   the live margin, e.g. *Overtaking · oncoming 80 m, 2.1 s spare*.
 
-#### Autopilot settings (🧭)
+#### Autopilot settings
 
 - Route (Equator / All roads), cruise speed (20–150 km/h), and how far it
   sees (10–500 m).
@@ -472,7 +490,7 @@ rest on the highway.
 
 - **Audio:** volume; engines, ambience and interface sounds.
 - **World:** time of day — *Cycle* (the 4-minute day), *Day* or *Night*
-  (held at noon or midnight wherever you are; the sun eases across when you
+  (held with the black hole on the horizon, or at midnight, wherever you are; the sun eases across when you
   switch).
 - **Drone controls:** Arcade or Realistic.
 - **Graphics:** Low (default) / Medium / High presets, plus resolution, frame-rate cap,
@@ -483,7 +501,7 @@ rest on the highway.
   calls, triangles and texture counts are shown.
 - **Traffic:** Off / Light / Busy.
 
-The 🧭 autopilot settings are described under [Autopilot](#autopilot).
+The autopilot settings are described under [Autopilot](#autopilot).
 
 Everything is saved per browser in `localStorage` (keys starting with
 `city-`).

@@ -15,6 +15,7 @@ import { terrainAt } from "../lib/terrain";
 import { highwayJunctions, openArcs, openRuns, roundaboutJunctions } from "../lib/junctions";
 import { useDisposable } from "./gpu";
 import {
+  BLACK_HOLE_DISTANCE,
   RIVER_COLOR,
   SEA_COLOR,
   SUN_DIRECTION,
@@ -35,8 +36,8 @@ const texture = (name) => `${import.meta.env.BASE_URL}textures/${name}`;
 useLoader.preload(THREE.TextureLoader, [texture("grass.jpg"), texture("road.jpg"), texture("water.jpg")]);
 
 const HEMISPHERES = {
-  north: { title: "Résumé", subtitle: "work · learning · community", ground: "#f2c76a", cap: "#f6e6b8", crystal: "#ffc65c", edge: "#ffb547" },
-  south: { title: "Open source", subtitle: "a district per language", ground: "#c9eab4", cap: "#d6eef7", crystal: "#5fe0c4", edge: "#3ff0d0" },
+  north: { ground: "#f2c76a", cap: "#f6e6b8", crystal: "#ffc65c", edge: "#ffb547" },
+  south: { ground: "#c9eab4", cap: "#d6eef7", crystal: "#5fe0c4", edge: "#3ff0d0" },
 };
 
 // --- light -------------------------------------------------------------------
@@ -67,8 +68,8 @@ export function Lighting({ R, shadows = "low" }) {
         shadow-camera-right={R * 1.15}
         shadow-camera-top={R * 1.15}
         shadow-camera-bottom={-R * 1.15}
-        shadow-camera-near={R * 0.5}
-        shadow-camera-far={R * 5}
+        shadow-camera-near={R * (BLACK_HOLE_DISTANCE - 1.3)}
+        shadow-camera-far={R * (BLACK_HOLE_DISTANCE + 1.3)}
       />
       {/* Starlight from the far side. */}
       <directionalLight ref={fill} intensity={0.22} color="#7f9cff" />
@@ -156,7 +157,10 @@ export function Planet({ layout, atmosphere = true }) {
   );
 }
 
-// A thin glowing shell: warm where the black hole lights it, faint blue rim elsewhere.
+// A soft glow around the planet: strongest at its edge and fading to nothing
+// with height, warm where the sun lights it and faint blue elsewhere.
+const AIR = 1.13; // how far out it reaches, in planet radii
+
 function Atmosphere({ R }) {
   const material = useDisposable(
     () =>
@@ -165,25 +169,29 @@ function Atmosphere({ R }) {
         depthWrite: false,
         side: THREE.BackSide,
         blending: THREE.AdditiveBlending,
-        uniforms: { sun: { value: SUN_DIRECTION }, shell: { value: R * 1.06 } },
+        uniforms: { sun: { value: SUN_DIRECTION }, ground: { value: R }, shell: { value: R * AIR } },
         vertexShader: /* glsl */ `
-          varying vec3 vNormal; varying vec3 vView;
+          varying vec3 vWorld;
           void main() {
-            vNormal = normalize(mat3(modelMatrix) * normal);
             vec4 world = modelMatrix * vec4(position, 1.0);
-            vView = normalize(cameraPosition - world.xyz);
+            vWorld = world.xyz;
             gl_Position = projectionMatrix * viewMatrix * world;
           }`,
         fragmentShader: /* glsl */ `
-          uniform vec3 sun; uniform float shell; varying vec3 vNormal; varying vec3 vView;
+          uniform vec3 sun; uniform float ground; uniform float shell; varying vec3 vWorld;
           void main() {
             // Only seen from space: fade out as the camera comes down through it.
             float outside = smoothstep(shell * 1.02, shell * 1.25, length(cameraPosition));
-            // BackSide: the normal points inward, so flip it for the rim term.
-            float rim = pow(1.0 - abs(dot(-vNormal, vView)), 3.0);
-            float lit = clamp(dot(-vNormal, sun) * 0.5 + 0.5, 0.0, 1.0);
+            // How close this line of sight passes to the planet's centre.
+            vec3 view = normalize(vWorld - cameraPosition);
+            float pass = length(cross(view, cameraPosition));
+            float height = clamp((pass - ground) / (shell - ground), 0.0, 1.0);
+            float glow = pow(1.0 - height, 2.4);
+            // Which side of the planet that closest point is on.
+            vec3 nearest = normalize(cameraPosition + view * dot(-cameraPosition, view));
+            float lit = clamp(dot(nearest, sun) * 0.5 + 0.5, 0.0, 1.0);
             vec3 col = mix(vec3(0.25, 0.4, 1.0), vec3(1.0, 0.7, 0.4), lit);
-            float a = rim * (0.25 + 0.9 * lit) * outside;
+            float a = glow * (0.3 + 0.8 * lit) * outside;
             gl_FragColor = vec4(col * a, a);
           }`,
       }),
@@ -191,38 +199,8 @@ function Atmosphere({ R }) {
   );
   return (
     <mesh material={material} renderOrder={1}>
-      <sphereGeometry args={[R * 1.06, 64, 32]} />
+      <sphereGeometry args={[R * AIR, 64, 32]} />
     </mesh>
-  );
-}
-
-/** Floating titles over each pole. Hidden when that pole is behind the planet. */
-export function HemisphereLabels({ layout }) {
-  const R = layout.radius;
-  return ["north", "south"].map((side) => (
-    <SurfaceLabel key={side} R={R} position={new THREE.Vector3(0, (side === "north" ? 1 : -1) * (R + 25), 0)}>
-      <div className={`hemisphere-label ${side}`}>
-        <strong>{HEMISPHERES[side].title}</strong>
-        <span>{HEMISPHERES[side].subtitle}</span>
-      </div>
-    </SurfaceLabel>
-  ));
-}
-
-function SurfaceLabel({ R, position, children, fadeWhen }) {
-  const el = useRef();
-  useFrame(({ camera }) => {
-    if (!el.current) return;
-    let opacity = visibleFrom(position, camera, R) ? 1 : 0;
-    if (opacity && fadeWhen) opacity = fadeWhen(camera.position.distanceTo(position));
-    const display = opacity > 0 ? "" : "none";
-    if (el.current.style.display !== display) el.current.style.display = display;
-    el.current.style.opacity = String(opacity);
-  });
-  return (
-    <Html position={position} center zIndexRange={[10, 0]} style={{ pointerEvents: "none" }}>
-      <div ref={el}>{children}</div>
-    </Html>
   );
 }
 
@@ -472,7 +450,7 @@ function Bridges({ layout }) {
 
 // --- districts -----------------------------------------------------------------
 
-export function Districts({ layout, driving, labels = true }) {
+export function Districts({ layout }) {
   const R = layout.radius;
   // Shared parts of every town, merged: district paving (one mesh per
   // hemisphere colour), the roundabout's asphalt ring, its white lane
@@ -567,7 +545,6 @@ export function Districts({ layout, driving, labels = true }) {
               emissiveIntensity={0.15}
             />
           </mesh>
-          {labels && <DistrictSign city={city} R={R} driving={driving} />}
         </group>
       ))}
     </>
@@ -576,25 +553,6 @@ export function Districts({ layout, driving, labels = true }) {
 
 // Labels are DOM overlays, so they'd show through buildings and the planet.
 // Hide them on the far side, and while driving keep only nearby ones.
-function DistrictSign({ city, R, driving }) {
-  const position = useMemo(() => surfacePoint(R, city.x, city.z, 6), [R, city.x, city.z]);
-  const fade = useMemo(
-    () => (driving ? (d) => THREE.MathUtils.clamp((city.radius + 45 - d) / 15, 0, 1) : null),
-    [driving, city.radius]
-  );
-  return (
-    <SurfaceLabel R={R} position={position} fadeWhen={fade}>
-      <div className={`city-sign ${city.kind}`} style={{ "--hue": Math.round(city.hue * 360) }}>
-        <strong>{city.language}</strong>
-        <span>
-          {city.projects.length} {city.unit}
-          {city.projects.length === 1 ? "" : "s"}
-        </span>
-      </div>
-    </SurfaceLabel>
-  );
-}
-
 // --- trees -------------------------------------------------------------------
 
 export function Trees({ layout }) {

@@ -1,5 +1,6 @@
 // src/city/Hud.jsx — DOM overlays on top of the 3D canvas.
 import React, { useEffect, useRef, useState } from "react";
+import Icon from "../components/Icon";
 import { LanguageDot, Stars } from "../components/ProjectCard";
 import { presetOf } from "../lib/graphics";
 import { isLow } from "../lib/battery";
@@ -40,7 +41,7 @@ export function Toolbar({
   return (
     <div className={`city-toolbar${more ? " more-open" : ""}`} ref={bar}>
       <button className="city-btn" onClick={onExit} aria-label="Back to the portfolio">
-        ← <span className="wide-only">Portfolio</span>
+        <Icon name="arrowLeft" /> <span className="wide-only">Portfolio</span>
       </button>
       <div className="city-toolbar-group" role="group" aria-label="How to explore">
         <button className="city-btn" aria-pressed={!driving} onClick={onLookAround} aria-label="Look around">
@@ -72,10 +73,10 @@ export function Toolbar({
         <div className="city-toolbar-group icons" role="group" aria-label="Tools">
           {radioButton}
           <button className="city-btn" onClick={onScreenshot} aria-label="Take a screenshot (K)" title="Screenshot (K)">
-            📷
+            <Icon name="camera" />
           </button>
           <button className="city-btn" onClick={onFullscreen} aria-label="Toggle fullscreen" title="Fullscreen">
-            ⛶
+            <Icon name="expand" />
           </button>
           <button
             className="city-btn"
@@ -84,19 +85,13 @@ export function Toolbar({
             aria-label={sound ? "Mute sound" : "Turn sound on"}
             title={sound ? "Mute" : "Sound on"}
           >
-            {sound ? "🔊" : "🔇"}
+            <Icon name={sound ? "sound" : "mute"} />
           </button>
           <button className="city-btn" onClick={onAutopilot} aria-pressed={autopilotOpen} aria-label="Autopilot settings" title="Autopilot">
-            🧭
+            <Icon name="compass" />
           </button>
           <button className="city-btn" onClick={onGraphics} aria-pressed={graphicsOpen} aria-label="Settings" title="Settings">
-            <svg className="city-icon" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
-              {/* settings: three sliders */}
-              <path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" />
-              <circle cx="15" cy="6" r="2" />
-              <circle cx="9" cy="12" r="2" />
-              <circle cx="17" cy="18" r="2" />
-            </svg>
+            <Icon name="sliders" />
           </button>
           <button className="city-btn" onClick={onHelp} aria-label="Controls help" title="Help (H)">
             ?
@@ -127,7 +122,7 @@ export function GoToMenu({ cities, onGo }) {
   return (
     <div className="goto" ref={ref}>
       <button className="city-btn" aria-expanded={open} aria-label="Go to a district" onClick={() => setOpen((o) => !o)}>
-        📍 <span className="wide-only">Go to</span>
+        <Icon name="pin" /> <span className="wide-only">Go to</span>
       </button>
       {open && (
         <div className="goto-menu" role="menu">
@@ -294,7 +289,7 @@ export function StartHint({ driving, sound, onToggle, onSound }) {
       )}
       {showSound && (
         <button className="start-chip" onClick={onSound} aria-label="Turn sound on">
-          <span aria-hidden="true">🔇</span> Sound off · turn on
+          <Icon name="mute" /> Sound off · turn on
         </button>
       )}
     </div>
@@ -407,11 +402,11 @@ export function InfoPanel({ building, onClose }) {
       </div>
       <div className="city-panel-actions">
         <a className="btn btn-primary" href={project.url} target="_blank" rel="noopener noreferrer">
-          View source ↗
+          View source <Icon name="external" />
         </a>
         {project.demo && (
           <a className="btn" href={project.demo} target="_blank" rel="noopener noreferrer">
-            Live demo ↗
+            Live demo <Icon name="external" />
           </a>
         )}
       </div>
@@ -482,7 +477,7 @@ export function HelpOverlay({ onClose }) {
           <dt>Autopilot</dt>
           <dd>
             Your vehicle drives itself — round the equator, or touring every district (Settings). Steer any time to
-            take over; let go and it carries on. <kbd>P</kbd> toggles it, 📍 <em>Go to</em> drives you to any
+            take over; let go and it carries on. <kbd>P</kbd> toggles it, <em>Go to</em> drives you to any
             district, and <kbd>G</kbd> shows how it plans the route and the speed it means to do.
           </dd>
           <dt>Car ↔ drone</dt>
@@ -537,18 +532,18 @@ export function TouchPad({ keys, flying }) {
   return (
     <div className="city-touchpad" aria-hidden="true">
       <div className="steer">
-        <button {...bind("left")}>◀</button>
-        <button {...bind("right")}>▶</button>
+        <button {...bind("left")}><Icon name="left" /></button>
+        <button {...bind("right")}><Icon name="right" /></button>
       </div>
       {flying && (
         <div className="pedals">
-          <button {...bind("ascend")}>⤒</button>
-          <button {...bind("descend")}>⤓</button>
+          <button {...bind("ascend")}><Icon name="ascend" /></button>
+          <button {...bind("descend")}><Icon name="descend" /></button>
         </div>
       )}
       <div className="pedals">
-        <button {...bind("up")}>▲</button>
-        <button {...bind("down")}>▼</button>
+        <button {...bind("up")}><Icon name="up" /></button>
+        <button {...bind("down")}><Icon name="down" /></button>
       </div>
     </div>
   );
@@ -558,13 +553,13 @@ export function TouchPad({ keys, flying }) {
 
 const SWITCHES = [
   ["atmosphere", "Atmosphere glow"],
+  ["clouds", "Clouds"],
   ["trees", "Trees"],
   ["windows", "Night-time windows"],
   ["signs", "Rooftop name signs"],
   ["billboards", "Skill billboards"],
   ["streetSigns", "Street signs"],
   ["lamps", "Street lamps"],
-  ["labels", "District & pole labels"],
   ["water", "Flowing river & sea"],
 ];
 
@@ -654,7 +649,7 @@ export function GraphicsPanel({
         ]}
         onChange={onTimeMode}
       />
-      <p className="gfx-note">Cycle runs the planet's day — 4 minutes long, synced to your clock. Day and Night hold it at noon or midnight wherever you are.</p>
+      <p className="gfx-note">Cycle runs the planet's day — 4 minutes long, synced to your clock. Day and Night hold it wherever you are: the black hole low on the horizon, or midnight under the Milky Way.</p>
 
       <h3>Drone controls</h3>
       <Choice
@@ -1132,7 +1127,7 @@ export function InputsPanel({ vehicle, type }) {
       {type === "drone" && (
         <div className="ip-row">
           <span>Climb</span>
-          <output>{climb > 0 ? "▲ up" : climb < 0 ? "▼ down" : "— hold"}</output>
+          <output>{climb > 0 ? "up" : climb < 0 ? "down" : "hold"}</output>
         </div>
       )}
     </div>

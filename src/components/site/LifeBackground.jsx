@@ -26,7 +26,12 @@ const GAP = 2;
 
 const DRAW_AFTERGLOW = 300; // ms the layer stays bright after drawing
 // Where a press belongs to the page, not the background.
-const NOT_BACKGROUND = ".tile, .site-header, .site-footer, .section-head, .subheading, .sim-backdrop, a, button, input, select, textarea, label";
+const NOT_BACKGROUND = [
+  ".tile, .site-header, .site-footer, .section-head, .subheading, .sim-backdrop",
+  // Plain sections: dragging over their words selects text.
+  ".hero-grid > *, .results, .section-intro, .strengths, .ledger, .path, .path-alongside, .featured, .repos, .languages, .contact-email, .contact-links",
+  "a, button, input, select, textarea, label",
+].join(", ");
 
 const clamp = (t) => Math.min(1, Math.max(0, t));
 const smooth = (t) => t * t * (3 - 2 * t);

@@ -12,10 +12,10 @@ import { buildRoadGraph, planRoute } from "../lib/routing";
 import { AUTOPILOT, DRONE_ALT, KMH_PER_UNIT, parseAutoSpeed, parsePilotRules } from "../lib/autopilot";
 import { freshBattery, swapBattery } from "../lib/battery";
 import { nextTourStop } from "../lib/routing";
-import { SKY_ROTATION, SUN_DIRECTION, setGround, surfacePoint } from "./globe3d";
+import { BLACK_HOLE_DISTANCE, SKY_ROTATION, SUN_DIRECTION, setGround, surfacePoint } from "./globe3d";
 import { terrainAt } from "../lib/terrain";
 import { approachHours, formatHours, hoursForMode, localHours, planetHours, sunDirection, sunLongitude } from "../lib/clock";
-import { Billboards, Districts, HemisphereLabels, Lighting, Planet, River, Roads, Trees } from "./World";
+import { Billboards, Districts, Lighting, Planet, River, Roads, Trees } from "./World";
 import { Mountains, Sea } from "./Poles";
 import { Lamps } from "./Lamps";
 import { RouteViz } from "./RouteViz";
@@ -27,9 +27,12 @@ import { Buildings } from "./Buildings";
 import { StreetSigns } from "./StreetSigns";
 import { PRESETS, TRAFFIC_CARS, loadGraphics, pixelRatio, saveGraphics } from "../lib/graphics";
 import { BlackHole, Sky } from "./Space";
+import { Clouds } from "./Clouds";
+import { openingCamera, shiftFor } from "../lib/opening";
 import { ChaseCamera, Vehicle } from "./Vehicles";
 import Minimap from "./Minimap";
 import { BatteryPrompt, AutopilotPanel, DriverPanel, FpvOverlay, Gauge, GoToMenu, GraphicsPanel, HelpOverlay, InfoPanel, InputsPanel, KeyHints, StartHint, Toolbar, TouchPad } from "./Hud";
+import Icon from "../components/Icon";
 import { audio } from "./audio";
 import { radio } from "./radio";
 import { MiniPlayer, RadioButton, RadioPanel } from "./RadioPanel";
@@ -113,7 +116,7 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
   }, []);
   const sound = audioSettings.enabled;
   const [showRadio, setShowRadio] = useState(false);
-  // The radio can un-mute sound itself; keep the 🔊 button in step. Also note
+  // The radio can un-mute sound itself; keep the sound button in step. Also note
   // when the mini player is up so the rest of the HUD makes room for it.
   const [musicActive, setMusicActive] = useState(false);
   const [musicOnly, setMusicOnly] = useState(radio.hideVideo);
@@ -201,7 +204,7 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
     setDroneAlt(next);
   }, []);
   // Show the autopilot's route planning and speed plan (G, or in ⚙).
-  // The autopilot's visuals start off every visit; switch them on in 🧭.
+  // The autopilot's visuals start off every visit; switch them on in the autopilot settings.
   const [routeViz, setRouteViz] = useState(false);
   // How far the autopilot sees (all round, in line of sight), from ⚙.
   const [viewRange, setViewRange] = useState(() => {
@@ -494,16 +497,10 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
     [layout]
   );
 
-  // Open with the black hole beside the planet, wherever the clock has put it:
-  // the framing was designed for the sun at longitude OPENING_SUN_LON, so turn
-  // the camera by however far the sun has moved from there.
+  // Open with the planet and the black hole on screen together.
   const [opening] = useState(() => {
-    const fit0 = portraitFit();
-    const turn = sunLongitude(planetHours(new Date()), noonLongitude(layout)) - OPENING_SUN_LON;
-    const c = Math.cos(turn);
-    const sn = Math.sin(turn);
-    const [x, y, z] = [R * 0.75 * fit0, R * 1.1 * fit0, R * 3.05 * fit0];
-    return [x * c + z * sn, y, -x * sn + z * c];
+    const sun = sunDirection(planetHours(new Date()), noonLongitude(layout));
+    return openingCamera(sun, BLACK_HOLE_DISTANCE, window.innerWidth / window.innerHeight).map((c) => c * R);
   });
 
   if (!webgl) {
@@ -550,12 +547,13 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
         <CameraTracker target={cameraState} />
         <Suspense fallback={<Loader />}>
           <Planet layout={layout} atmosphere={gfx.atmosphere} />
+          {gfx.clouds && <Clouds R={R} />}
           <River layout={layout} animate={gfx.water} />
           <Sea layout={layout} animate={gfx.water} />
           <Mountains layout={layout} />
           <Roads layout={layout} />
           {gfx.lamps && <Lamps layout={layout} />}
-          <Districts layout={layout} driving={driving} labels={gfx.labels} />
+          <Districts layout={layout} />
           <Buildings
             layout={layout}
             selectedId={selectedId}
@@ -584,13 +582,12 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
           )}
           {routeViz && <RouteViz layout={layout} state={vehicleState} />}
           {decisions && driving && <DriverView layout={layout} state={vehicleState} type={vehicle} />}
-          {!driving && gfx.labels && <HemisphereLabels layout={layout} />}
           {hoveredId && hoveredId !== selectedId && <HoverLabel R={R} building={buildingsById.get(hoveredId)} />}
         </Suspense>
         {driving ? (
           <ChaseCamera layout={layout} state={vehicleState} vehicle={vehicle} view={view} snap={Boolean(startVehicle)} />
         ) : (
-          <OrbitRig focus={focus} R={R} maxDistance={R * 7 * fit} />
+          <OrbitRig focus={focus} R={R} maxDistance={Math.max(R * 7 * fit, Math.hypot(...opening) * 1.05)} />
         )}
         <ViewShift enabled={!driving} />
       </Canvas>
@@ -765,7 +762,7 @@ function noonLongitude(layout) {
   return first ? first.x / layout.radius : 0;
 }
 
-// Renders a fresh frame and returns it as a PNG data URL (for 📷).
+// Renders a fresh frame and returns it as a PNG data URL (for the screenshot button).
 function Capture({ target }) {
   const { gl, scene, camera } = useThree();
   useEffect(() => {
@@ -911,14 +908,14 @@ function SunClock({ layout, mode, vehicle, camera, driving }) {
 
 // Local planet time where you are (the vehicle, or the middle of the view).
 function PlanetClock({ layout, vehicle, camera, driving, mode }) {
-  const [text, setText] = useState("");
+  const [text, setText] = useState(null);
   useEffect(() => {
     const noon = noonLongitude(layout);
     const tick = () => {
       const lon = viewerLongitude(layout, vehicle, camera, driving);
       const h = localHours(NOW.hours ?? planetHours(new Date()), noon, lon);
       const day = h >= 6 && h < 18;
-      setText(`${day ? "☀" : "☾"} ${formatHours(h)}`);
+      setText({ day, time: formatHours(h) });
     };
     tick();
     const id = setInterval(tick, 500);
@@ -926,19 +923,22 @@ function PlanetClock({ layout, vehicle, camera, driving, mode }) {
   }, [layout, vehicle, camera, driving, mode]);
   return (
     <div className="planet-clock" title="Planet time here. One planet day = 4 real minutes, synced to your clock.">
-      {text}
+      <b>
+        {text && <Icon name={text.day ? "sun" : "moon"} />} {text?.time}
+      </b>
       <span>{mode === "cycle" ? "local time · 1 day = 4 min" : mode === "day" ? "always day here" : "always night here"}</span>
     </div>
   );
 }
 
-// Shifts the picture right (a lens shift, not a camera move) so the black
-// hole fits on screen beside the planet while orbiting. Off when driving.
+// Shifts the picture (a lens shift, not a camera move) so the black hole fits on
+// screen with the planet while orbiting. Off when driving.
 function ViewShift({ enabled }) {
-  const camera = useThree((s) => s.camera);
-  const size = useThree((s) => s.size);
+  const camera = useThree((st) => st.camera);
+  const size = useThree((st) => st.size);
   useEffect(() => {
-    if (enabled && size.width > size.height) camera.setViewOffset(size.width, size.height, -size.width * 0.17, 0, size.width, size.height);
+    const { x, y } = shiftFor(size.width / size.height);
+    if (enabled) camera.setViewOffset(size.width, size.height, -size.width * x, -size.height * Math.abs(y), size.width, size.height);
     else camera.clearViewOffset();
     camera.updateProjectionMatrix();
   }, [enabled, camera, size.width, size.height]);

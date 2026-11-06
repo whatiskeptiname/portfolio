@@ -2,6 +2,7 @@
 // section's heading, its URL and the browser tab's title.
 
 export const SECTIONS = [
+  { id: "why-hire-me", label: "Why hire me" },
   { id: "work", label: "Work" },
   { id: "experience", label: "Experience" },
   { id: "toolbox", label: "Toolbox" },

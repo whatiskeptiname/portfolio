@@ -43,14 +43,18 @@ export function formatHours(hours) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+// The local hour "day" holds: the black hole low on the eastern horizon. It's close
+// enough that it clears the horizon later than a far-off sun would, at about 07:36.
+export const DAY_HOUR = 7.6;
+
 /**
- * Planet time for a time-of-day mode: "cycle" runs the clock as usual;
- * "day" and "night" hold it at local noon or midnight wherever the viewer is
- * (at `viewerLongitude`), so the black hole stays overhead — or far below.
+ * Planet time for a time-of-day mode: "cycle" runs the clock as usual; "day" and
+ * "night" hold it wherever the viewer is (at `viewerLongitude`): "day" with the
+ * black hole on the horizon, "night" at midnight with it far below.
  */
 export function hoursForMode(mode, date, noonLongitude, viewerLongitude) {
   if (mode !== "day" && mode !== "night") return planetHours(date);
-  const local = mode === "day" ? 12 : 0;
+  const local = mode === "day" ? DAY_HOUR : 0;
   const h = local - ((viewerLongitude - noonLongitude) / (Math.PI * 2)) * 24;
   return ((h % 24) + 24) % 24;
 }

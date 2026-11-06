@@ -1,6 +1,7 @@
 // src/components/ProjectCard.jsx
 import React from "react";
 import { languageColor } from "../data";
+import Icon from "./Icon";
 
 export function Stars({ count }) {
   if (!count) return null;
@@ -24,7 +25,7 @@ export function LanguageDot({ language }) {
 
 export default function ProjectCard({ project }) {
   return (
-    <article className="tile card">
+    <article className="card">
       {project.image && (
         <img className="card-image" src={`${import.meta.env.BASE_URL}${project.image}`} alt="" loading="lazy" />
       )}
@@ -37,11 +38,11 @@ export default function ProjectCard({ project }) {
       <div className="card-footer">
         <div className="card-links">
           <a href={project.url} target="_blank" rel="noopener noreferrer">
-            Source ↗
+            Source <Icon name="external" />
           </a>
           {project.demo && (
             <a href={project.demo} target="_blank" rel="noopener noreferrer">
-              Live demo ↗
+              Live demo <Icon name="external" />
             </a>
           )}
         </div>

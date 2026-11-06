@@ -5,11 +5,14 @@ export const profile = {
   github: "whatiskeptiname",
   location: "Kathmandu, Nepal",
   role: "Machine Learning Engineer",
-  tagline: "I ship MLOps pipelines and LLM features, and make vision models fast — from surgical AI to 3D reconstruction.",
+  tagline: "I make vision models fast and ship them to production.",
+  // The word in the tagline that gets a detection box, and the box's label.
+  taglineWord: "fast",
+  taglineTag: "7×",
   // A paragraph or two about you. Each string is one paragraph.
   about: [
     "I'm a Machine Learning Engineer at Fusemachines in Kathmandu. Most of my work lives where computer vision meets production: reconstructing surgical scenes with NeRF and Gaussian Splatting, segmenting instruments with GroundingDINO and SAM, and squeezing models through TensorRT and Triton until they run several times faster.",
-    "It started with robots. As president of my college robotics club I built ROS rovers and a Pixhawk delivery drone, and my GitHub is still full of the Arduino bots from that era — they make up the C++ district in the 3D city.",
+    "It started with robots. As president of my college robotics club I built ROS rovers and a Pixhawk delivery drone, and my GitHub is still full of the Arduino bots from that era.",
   ],
   // { label, href } — shown in the hero and contact sections.
   links: [

@@ -45,13 +45,13 @@ it("formats hours", () => {
   expect(formatHours(23.99)).toBe("23:59");
 });
 
-import { approachHours, hoursForMode } from "./clock";
+import { DAY_HOUR, approachHours, hoursForMode } from "./clock";
 
 describe("time-of-day modes", () => {
   const date = new Date(2026, 9, 7, 10, 0, 0);
-  it("day holds local noon wherever you are; night, midnight; cycle runs the clock", () => {
+  it("day holds the black hole on the horizon wherever you are; night, midnight; cycle runs the clock", () => {
     for (const lon of [-2, 0, 1.3]) {
-      expect(localHours(hoursForMode("day", date, 0.4, lon), 0.4, lon)).toBeCloseTo(12);
+      expect(localHours(hoursForMode("day", date, 0.4, lon), 0.4, lon)).toBeCloseTo(DAY_HOUR);
       expect(localHours(hoursForMode("night", date, 0.4, lon), 0.4, lon) % 24).toBeCloseTo(0);
     }
     expect(hoursForMode("cycle", date, 0.4, 1)).toBe(planetHours(date));

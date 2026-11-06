@@ -1,6 +1,6 @@
 // src/App.jsx
 import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
-import { CaseStudies, Contact, Experience, Footer, Header, Hero, OpenSource, Toolbox } from "./components/site/Sections";
+import { CaseStudies, Contact, Experience, Footer, Header, Hero, OpenSource, Toolbox, WhyHireMe } from "./components/site/Sections";
 import LifeBackground from "./components/site/LifeBackground";
 import { PLANET, canonicalHash, isPlanet, pageTitle } from "./lib/sections";
 import { profile } from "./content/profile";
@@ -63,7 +63,7 @@ export default function App() {
         <CityExplorer
           initialVehicle={new URLSearchParams(hash.split("?")[1]).get("vehicle")}
           initialView={new URLSearchParams(hash.split("?")[1]).get("view")}
-          onExit={() => (window.location.hash = "#projects")}
+          onExit={() => (window.location.hash = "#contact")}
         />
       </Suspense>
     );
@@ -76,6 +76,7 @@ export default function App() {
       <Header />
       <main>
         <Hero />
+        <WhyHireMe />
         <CaseStudies />
         <Experience />
         <Toolbox />

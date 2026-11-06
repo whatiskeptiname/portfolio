@@ -2,6 +2,7 @@
 // songs; the mini player (bottom-left) holds the actual YouTube player, which
 // must stay visible while it plays, plus quick controls.
 import React, { useEffect, useRef, useState } from "react";
+import Icon from "../components/Icon";
 import { watchUrl } from "../content/music";
 import { formatTime, parseYouTubeId } from "../lib/music";
 import { MY_MIX, PLAYER_ELEMENT_ID, radio } from "./radio";
@@ -40,7 +41,7 @@ function Controls({ r, compact = false }) {
         ⏮
       </button>
       <button className="radio-play" onClick={() => r.toggle()} aria-label={r.playing ? "Pause" : "Play"} title="Play / pause (M)">
-        {r.loading ? "…" : r.playing ? "❚❚" : "▶"}
+        {r.loading ? "…" : <Icon name={r.playing ? "pause" : "play"} />}
       </button>
       <button onClick={() => r.next()} aria-label="Next song" title="Next (N)">
         ⏭
@@ -161,7 +162,7 @@ export function RadioPanel({ onClose, volume, onVolume }) {
               </button>
             ) : (
               <a href={watchUrl(t)} target="_blank" rel="noopener noreferrer" title="Watch on YouTube" aria-label={`Watch ${t.title} on YouTube`}>
-                ↗
+                <Icon name="external" />
               </a>
             )}
           </li>
@@ -246,7 +247,7 @@ export function RadioButton({ open, onClick }) {
   const r = useRadio();
   return (
     <button className="city-btn radio-btn" onClick={onClick} aria-pressed={open} aria-label="Music" title="Music (M to play/pause)">
-      {r.playing ? <Equaliser playing /> : "♫"}
+      {r.playing ? <Equaliser playing /> : <Icon name="music" />}
     </button>
   );
 }

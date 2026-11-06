@@ -14,6 +14,41 @@ export const highlights = [
   { value: "30 → 6–9", label: "cameras needed in a surgical capture rig" },
 ];
 
+// What an employer gets, in a line each; the results behind them are in the case
+// studies. `work` links to one; `figure` names its picture in
+// components/site/figureMap.js.
+export const strengths = [
+  {
+    title: "Faster models, same accuracy",
+    figure: "prune",
+    work: "inference",
+    line: "I prune, quantize and distill models until they run fast on the hardware they're meant for.",
+  },
+  {
+    title: "ML that reaches production",
+    figure: "pipeline",
+    work: "schema-mapping",
+    line: "API-driven pipelines and YAML config, so a model's behaviour changes without touching code.",
+  },
+  {
+    title: "Vision and 3D on real problems",
+    figure: "rig",
+    work: "surgery",
+    line: "Detection, segmentation and 3D reconstruction, delivered for a surgical client.",
+  },
+  {
+    title: "AI features business teams can use",
+    figure: "ask",
+    work: "forecasting",
+    line: "LLMs on top of demand forecasts, so people get answers in plain language.",
+  },
+  {
+    title: "Someone who lifts the team",
+    figure: "team",
+    line: "Supervised 11 capstone ML projects for 30+ fellows, with every milestone on track.",
+  },
+];
+
 export const skills = [
   { category: "Languages", items: ["Python", "C/C++", "SQL"] },
   {
@@ -34,6 +69,20 @@ export const skills = [
   { category: "Annotation", items: ["Label Studio", "CVAT"] },
   { category: "Hardware & embedded", items: ["Arduino", "Raspberry Pi", "ROS2"] },
 ];
+
+// The order the Work section shows the case studies in. The first and last tiles are
+// wide, so they go to the wide 3D scenes; the upright document projects get normal tiles.
+export const caseStudyOrder = ["surgery", "inference", "forecasting", "schema-mapping", "tables", "catdox", "greenhouse"];
+
+// The skills above in the order the work happens, for the Toolbox section.
+export const buildPath = [
+  { stage: "Label", categories: ["Annotation"] },
+  { stage: "Build", categories: ["ML frameworks", "Computer vision & 3D", "Agentic AI & GenAI"] },
+  { stage: "Optimize", categories: ["Model optimization"] },
+  { stage: "Serve", categories: ["Inference & serving"] },
+  { stage: "Operate", categories: ["MLOps"] },
+];
+export const alongside = ["Languages", "Hardware & embedded"];
 
 // Roles, newest first. `projects` reference ids in `caseStudies`.
 export const roles = [

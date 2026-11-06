@@ -13,7 +13,7 @@ import { Billboard } from "@react-three/drei";
 import * as THREE from "three";
 import { createRng } from "../lib/layout";
 import { SKY_ROTATION, SPACE_COLOR, blackHolePosition } from "./globe3d";
-import { useDisposable } from "./gpu";
+import { NOISE_GLSL, useDisposable } from "./gpu";
 
 // Galactic plane (normal) and the direction of the galactic core.
 const GALACTIC_NORMAL = new THREE.Vector3(0.42, 0.78, -0.46).normalize();
@@ -51,18 +51,6 @@ export function Sky({ R, mode = "milkyway", stars = 6000 }) {
   );
 }
 
-const NOISE = /* glsl */ `
-  float hash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
-  float noise(vec3 x) {
-    vec3 i = floor(x); vec3 f = fract(x); f = f * f * (3.0 - 2.0 * f);
-    return mix(mix(mix(hash(i + vec3(0,0,0)), hash(i + vec3(1,0,0)), f.x),
-                   mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
-               mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
-                   mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z);
-  }
-  float fbm(vec3 p) { float v = 0.0; float a = 0.5; for (int i = 0; i < 4; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }
-`;
-
 // The Milky Way noise is far too costly to evaluate for every sky pixel every
 // frame on an integrated GPU, so it's rendered once, at load, into an
 // equirectangular texture (laid out exactly like SphereGeometry's UVs) and
@@ -72,9 +60,8 @@ const BAKE_H = 1024;
 
 function MilkyWay({ radius }) {
   const gl = useThree((s) => s.gl);
-  const target = useDisposable(() => {
-    const rt = new THREE.WebGLRenderTarget(BAKE_W, BAKE_H, { depthBuffer: false, generateMipmaps: false });
-    rt.texture.colorSpace = THREE.SRGBColorSpace;
+  const texture = useDisposable(() => {
+    const rt = new THREE.WebGLRenderTarget(BAKE_W, BAKE_H, { depthBuffer: false });
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     const geometry = new THREE.PlaneGeometry(2, 2);
@@ -86,7 +73,7 @@ function MilkyWay({ radius }) {
       fragmentShader: /* glsl */ `
         uniform vec3 normal; uniform vec3 core;
         varying vec2 vUv;
-        ${NOISE}
+        ${NOISE_GLSL}
         void main() {
           // Same mapping as SphereGeometry: u → phi, v → theta.
           float phi = vUv.x * 6.28318530718;
@@ -101,26 +88,36 @@ function MilkyWay({ radius }) {
           float dust = smoothstep(0.42, 0.7, fbm(d * 6.0 + 4.1)) * exp(-pow(b / 0.05, 2.0));
           float glow = band * (0.35 + clouds) * (1.0 - 0.75 * dust);
           glow *= 0.55 + 1.3 * pow(towardCore, 3.0);
-          vec3 col = mix(vec3(0.55, 0.62, 0.85), vec3(1.0, 0.85, 0.65), pow(towardCore, 2.0));
+          vec3 col = mix(vec3(0.62, 0.68, 0.88), vec3(0.95, 0.9, 0.82), pow(towardCore, 2.0));
           // A faint, uneven background so the sky isn't flat black.
           float haze = fbm(d * 2.0 + 9.0) * 0.025;
-          gl_FragColor = vec4(col * glow * 0.16 + vec3(0.05, 0.06, 0.12) * haze, 1.0);
+          gl_FragColor = vec4(col * glow * 0.2 + vec3(0.05, 0.06, 0.12) * haze, 1.0);
         }`,
     });
     scene.add(new THREE.Mesh(geometry, material));
     const previous = gl.getRenderTarget();
     gl.setRenderTarget(rt);
     gl.render(scene, camera);
+    // Kept as ordinary pixels: a texture still on the GPU would lose its picture
+    // if it were ever disposed and used again.
+    const pixels = new Uint8Array(BAKE_W * BAKE_H * 4);
+    gl.readRenderTargetPixels(rt, 0, 0, BAKE_W, BAKE_H, pixels);
     gl.setRenderTarget(previous);
+    rt.dispose();
     geometry.dispose();
     material.dispose();
-    return rt;
+    const baked = new THREE.DataTexture(pixels, BAKE_W, BAKE_H);
+    baked.colorSpace = THREE.SRGBColorSpace;
+    baked.minFilter = THREE.LinearFilter;
+    baked.magFilter = THREE.LinearFilter;
+    baked.needsUpdate = true;
+    return baked;
   }, [gl]);
 
   return (
     <mesh renderOrder={-20} frustumCulled={false}>
       <sphereGeometry args={[radius, 48, 24]} />
-      <meshBasicMaterial map={target.texture} side={THREE.BackSide} depthWrite={false} toneMapped={false} />
+      <meshBasicMaterial map={texture} side={THREE.BackSide} depthWrite={false} toneMapped={false} />
     </mesh>
   );
 }
@@ -236,7 +233,7 @@ function diskMaterial(inner, outer, strength) {
     fragmentShader: /* glsl */ `
       uniform float time; uniform float inner; uniform float outer; uniform float strength;
       varying vec2 vPos;
-      ${NOISE}
+      ${NOISE_GLSL}
       void main() {
         float r = length(vPos);
         float t = clamp((r - inner) / (outer - inner), 0.0, 1.0);
@@ -258,17 +255,17 @@ function diskMaterial(inner, outer, strength) {
   });
 }
 
-function glowMaterial(rh) {
+function glowMaterial(rh, reach) {
   return new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
-    uniforms: { rh: { value: rh } },
+    uniforms: { rh: { value: rh }, reach: { value: reach } },
     vertexShader: /* glsl */ `
       varying vec2 vPos;
       void main() { vPos = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: /* glsl */ `
-      uniform float rh; varying vec2 vPos;
+      uniform float rh; uniform float reach; varying vec2 vPos;
       void main() {
         float r = length(vPos) / rh;
         // Thin photon ring hugging the shadow…
@@ -277,8 +274,10 @@ function glowMaterial(rh) {
         float halo = r > 1.0 ? 1.1 * pow(1.0 / r, 2.2) : 0.0;
         float bloom = 0.35 * exp(-r * 0.22);
         vec3 col = vec3(1.0, 0.82, 0.55) * ring + vec3(1.0, 0.62, 0.3) * halo + vec3(1.0, 0.55, 0.25) * bloom;
-        float a = clamp(ring + halo + bloom, 0.0, 1.0);
-        gl_FragColor = vec4(col, a);
+        // Gone before the edge of its square, so the square never shows.
+        float fade = smoothstep(reach, reach * 0.45, r);
+        float a = clamp(ring + halo + bloom, 0.0, 1.0) * fade;
+        gl_FragColor = vec4(col * fade, a);
       }`,
   });
 }
@@ -291,7 +290,8 @@ export function BlackHole({ R, quality = "full" }) {
   const group = useRef();
   const disk = useDisposable(() => diskMaterial(rh * 1.5, rh * 5.5, 1.4), [rh]);
   const lensed = useDisposable(() => diskMaterial(rh * 1.05, rh * 2.2, 1.0), [rh]);
-  const glow = useDisposable(() => glowMaterial(rh), [rh]);
+  const glowSize = full ? 18 : 11; // across, in event-horizon radii
+  const glow = useDisposable(() => glowMaterial(rh, glowSize / 2), [rh, glowSize]);
 
   useFrame((_, delta) => {
     disk.uniforms.time.value += delta;
@@ -305,7 +305,7 @@ export function BlackHole({ R, quality = "full" }) {
       {/* Wide glow first, so the disk and shadow draw over it. */}
       <Billboard>
         <mesh material={glow} renderOrder={2}>
-          <planeGeometry args={full ? [rh * 18, rh * 18] : [rh * 11, rh * 11]} />
+          <planeGeometry args={[rh * glowSize, rh * glowSize]} />
         </mesh>
       </Billboard>
       {/* Accretion disk, tilted a little toward the planet. */}
