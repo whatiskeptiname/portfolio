@@ -218,7 +218,13 @@ The last vehicle, camera and all settings are remembered in your browser.
 
 **Mouse and touch:** drag to orbit the planet or look around while driving,
 scroll or pinch to zoom, click a building to open it, click the minimap to
-swing there. On touch devices on-screen pedals appear.
+swing there.
+
+**Phones and tablets** get their own layout: a one-row toolbar with the camera
+views and tools behind **⋯**, the speedometer and minimap in the top corners so the
+road stays clear, and see-through steering and pedal buttons under the thumbs. The
+picture renders at about the same pixel count as a laptop at the same setting, so
+it isn't blocky on a small screen.
 
 **Toolbar:** Portfolio (back), Look around / Car / Drone, Chase / FPV / Eye
 view, 📍 Go to, ♫ radio, 📷 screenshot, ⛶ fullscreen, 🔊 sound, 🧭 autopilot

@@ -103,7 +103,15 @@ export function saveGraphics(settings, storage = globalThis.localStorage) {
   }
 }
 
-/** Device pixel ratio to render at, never above the screen's own. */
-export function pixelRatio(settings, devicePixelRatio = 1) {
-  return Math.min(settings.resolution, Math.max(devicePixelRatio, 1));
+// `resolution` is per CSS pixel, which is sized for a laptop: a phone has about a
+// third of the CSS pixels, so the same number looks blocky there.
+const REFERENCE_AREA = 1280 * 800;
+
+/**
+ * Device pixel ratio to render at, never above the screen's own. Smaller screens
+ * get the rendered pixels a laptop would at this setting, so they stay as sharp.
+ */
+export function pixelRatio(settings, devicePixelRatio = 1, cssArea = Infinity) {
+  const boost = Math.sqrt(Math.max(1, REFERENCE_AREA / cssArea));
+  return Math.min(settings.resolution * boost, 2, Math.max(devicePixelRatio, 1));
 }

@@ -62,6 +62,10 @@ function hasWebGL() {
   }
 }
 
+// Back the camera off on portrait screens so the whole planet fits at first,
+// filling the width rather than leaving room for the black hole beside it.
+const portraitFit = () => Math.max(1, 0.8 / (window.innerWidth / window.innerHeight));
+
 function remembered(key, allowed, fallback) {
   try {
     const v = localStorage.getItem(key);
@@ -494,7 +498,7 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
   // the framing was designed for the sun at longitude OPENING_SUN_LON, so turn
   // the camera by however far the sun has moved from there.
   const [opening] = useState(() => {
-    const fit0 = Math.max(1, 1.2 / (window.innerWidth / window.innerHeight));
+    const fit0 = portraitFit();
     const turn = sunLongitude(planetHours(new Date()), noonLongitude(layout)) - OPENING_SUN_LON;
     const c = Math.cos(turn);
     const sn = Math.sin(turn);
@@ -514,8 +518,7 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
     );
   }
 
-  // Back the camera off on portrait screens so the whole planet fits at first.
-  const fit = Math.max(1, 1.2 / (window.innerWidth / window.innerHeight));
+  const fit = portraitFit();
 
   const nearby = driving && nearbyId ? buildingsById.get(nearbyId) : null;
 
@@ -530,7 +533,7 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
         key={gfx.antialias ? "aa" : "no-aa"}
         gl={{ antialias: gfx.antialias, powerPreference: "high-performance" }}
         shadows={gfx.shadows !== "off"}
-        dpr={pixelRatio(gfx, window.devicePixelRatio)}
+        dpr={pixelRatio(gfx, window.devicePixelRatio, window.innerWidth * window.innerHeight)}
         frameloop={gfx.fps >= 60 ? "always" : "demand"}
         camera={{ position: opening, fov: 50, near: 0.5, far: R * 60 }}
         onPointerMissed={() => setSelectedId(null)}

@@ -28,14 +28,24 @@ export function Toolbar({
   radioButton,
 }) {
   const driving = mode === "drive";
+  // On phones the camera views and tools fold away behind a "more" button.
+  const [more, setMore] = useState(false);
+  const bar = useRef();
+  useEffect(() => {
+    if (!more) return;
+    const close = (e) => !bar.current?.contains(e.target) && setMore(false);
+    window.addEventListener("pointerdown", close);
+    return () => window.removeEventListener("pointerdown", close);
+  }, [more]);
   return (
-    <div className="city-toolbar">
+    <div className={`city-toolbar${more ? " more-open" : ""}`} ref={bar}>
       <button className="city-btn" onClick={onExit} aria-label="Back to the portfolio">
-        ← Portfolio
+        ← <span className="wide-only">Portfolio</span>
       </button>
       <div className="city-toolbar-group" role="group" aria-label="How to explore">
-        <button className="city-btn" aria-pressed={!driving} onClick={onLookAround}>
-          Look around
+        <button className="city-btn" aria-pressed={!driving} onClick={onLookAround} aria-label="Look around">
+          <span className="wide-only">Look around</span>
+          <span className="compact-only">Look</span>
         </button>
         <button className="city-btn" aria-pressed={driving && vehicle === "car"} onClick={() => onVehicle("car")}>
           Car
@@ -44,53 +54,58 @@ export function Toolbar({
           Drone
         </button>
       </div>
-      {driving && (
-        <div className="city-toolbar-group" role="group" aria-label="Vehicle camera">
-          <button className="city-btn" aria-pressed={view === "chase"} onClick={() => onView("chase")}>
-            Chase
+      {goTo}
+      <div className="city-more" onClick={(e) => e.target.closest("button") && setMore(false)}>
+        {driving && (
+          <div className="city-toolbar-group" role="group" aria-label="Vehicle camera">
+            <button className="city-btn" aria-pressed={view === "chase"} onClick={() => onView("chase")}>
+              Chase
+            </button>
+            <button className="city-btn" aria-pressed={view === "fpv"} onClick={() => onView("fpv")} title="First person (T cycles views)">
+              FPV
+            </button>
+            <button className="city-btn" aria-pressed={view === "eye"} onClick={() => onView("eye")}>
+              Eye view
+            </button>
+          </div>
+        )}
+        <div className="city-toolbar-group icons" role="group" aria-label="Tools">
+          {radioButton}
+          <button className="city-btn" onClick={onScreenshot} aria-label="Take a screenshot (K)" title="Screenshot (K)">
+            📷
           </button>
-          <button className="city-btn" aria-pressed={view === "fpv"} onClick={() => onView("fpv")} title="First person (T cycles views)">
-            FPV
+          <button className="city-btn" onClick={onFullscreen} aria-label="Toggle fullscreen" title="Fullscreen">
+            ⛶
           </button>
-          <button className="city-btn" aria-pressed={view === "eye"} onClick={() => onView("eye")}>
-            Eye view
+          <button
+            className="city-btn"
+            onClick={onToggleSound}
+            aria-pressed={sound}
+            aria-label={sound ? "Mute sound" : "Turn sound on"}
+            title={sound ? "Mute" : "Sound on"}
+          >
+            {sound ? "🔊" : "🔇"}
+          </button>
+          <button className="city-btn" onClick={onAutopilot} aria-pressed={autopilotOpen} aria-label="Autopilot settings" title="Autopilot">
+            🧭
+          </button>
+          <button className="city-btn" onClick={onGraphics} aria-pressed={graphicsOpen} aria-label="Settings" title="Settings">
+            <svg className="city-icon" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+              {/* settings: three sliders */}
+              <path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" />
+              <circle cx="15" cy="6" r="2" />
+              <circle cx="9" cy="12" r="2" />
+              <circle cx="17" cy="18" r="2" />
+            </svg>
+          </button>
+          <button className="city-btn" onClick={onHelp} aria-label="Controls help" title="Help (H)">
+            ?
           </button>
         </div>
-      )}
-      {goTo}
-      <div className="city-toolbar-group icons" role="group" aria-label="Tools">
-        {radioButton}
-        <button className="city-btn" onClick={onScreenshot} aria-label="Take a screenshot (K)" title="Screenshot (K)">
-          📷
-        </button>
-        <button className="city-btn" onClick={onFullscreen} aria-label="Toggle fullscreen" title="Fullscreen">
-          ⛶
-        </button>
-        <button
-          className="city-btn"
-          onClick={onToggleSound}
-          aria-pressed={sound}
-          aria-label={sound ? "Mute sound" : "Turn sound on"}
-          title={sound ? "Mute" : "Sound on"}
-        >
-          {sound ? "🔊" : "🔇"}
-        </button>
-        <button className="city-btn" onClick={onAutopilot} aria-pressed={autopilotOpen} aria-label="Autopilot settings" title="Autopilot">
-          🧭
-        </button>
-        <button className="city-btn" onClick={onGraphics} aria-pressed={graphicsOpen} aria-label="Settings" title="Settings">
-          <svg className="city-icon" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
-            {/* settings: three sliders */}
-            <path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" />
-            <circle cx="15" cy="6" r="2" />
-            <circle cx="9" cy="12" r="2" />
-            <circle cx="17" cy="18" r="2" />
-          </svg>
-        </button>
-        <button className="city-btn" onClick={onHelp} aria-label="Controls help" title="Help (H)">
-          ?
-        </button>
       </div>
+      <button className="city-btn city-more-btn" onClick={() => setMore((m) => !m)} aria-expanded={more} aria-label="More controls">
+        ⋯
+      </button>
     </div>
   );
 }
@@ -111,8 +126,8 @@ export function GoToMenu({ cities, onGo }) {
   ];
   return (
     <div className="goto" ref={ref}>
-      <button className="city-btn" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        📍 Go to
+      <button className="city-btn" aria-expanded={open} aria-label="Go to a district" onClick={() => setOpen((o) => !o)}>
+        📍 <span className="wide-only">Go to</span>
       </button>
       {open && (
         <div className="goto-menu" role="menu">
@@ -441,6 +456,9 @@ function CareerPanel({ item, closeRef, onClose }) {
 }
 
 export function HelpOverlay({ onClose }) {
+  // Focus the button without scrolling to it: on a phone it's far below the title.
+  const go = useRef();
+  useEffect(() => go.current?.focus({ preventScroll: true }), []);
   return (
     <div className="city-help" role="dialog" aria-modal="true" aria-labelledby="city-help-title" onClick={onClose}>
       <div className="city-help-card" onClick={(e) => e.stopPropagation()}>
@@ -454,6 +472,11 @@ export function HelpOverlay({ onClose }) {
           your clock (a day every 4 minutes), so watch it rise and set.
         </p>
         <dl>
+          <dt className="touch-only">On a touch screen</dt>
+          <dd className="touch-only">
+            Tap <strong>Car</strong> or <strong>Drone</strong> to drive. The arrows steer, and letting go hands back to the autopilot;{" "}
+            <strong>AUTO</strong> on the speedometer turns it off or on. <strong>⋯</strong> holds the camera views, music and settings.
+          </dd>
           <dt>Look around</dt>
           <dd>Drag to spin the planet, scroll or pinch to zoom. Click a building to open it.</dd>
           <dt>Autopilot</dt>
@@ -467,15 +490,15 @@ export function HelpOverlay({ onClose }) {
             One vehicle that transforms: press <kbd>V</kbd> and watch the car rebuild itself into a drone
             and lift off — or the drone land and become the car again.
           </dd>
-          <dt>Car</dt>
-          <dd>
+          <dt className="keys-only">Car</dt>
+          <dd className="keys-only">
             <kbd>W</kbd>
             <kbd>A</kbd>
             <kbd>S</kbd>
             <kbd>D</kbd> or arrow keys. Pull up to a building and press <kbd>E</kbd>.
           </dd>
-          <dt>Drone</dt>
-          <dd>
+          <dt className="keys-only">Drone</dt>
+          <dd className="keys-only">
             A racing FPV quad: same keys to fly, <kbd>Space</kbd>/<kbd>R</kbd> to climb, <kbd>Shift</kbd>/<kbd>F</kbd>{" "}
             to descend. Fly over the river and rooftops — or over the poles.
           </dd>
@@ -484,15 +507,15 @@ export function HelpOverlay({ onClose }) {
             Drag while driving to look around; <kbd>T</kbd> switches to <em>Eye view</em> to circle the
             vehicle freely (scroll to zoom).
           </dd>
-          <dt>Shortcuts</dt>
-          <dd>
+          <dt className="keys-only">Shortcuts</dt>
+          <dd className="keys-only">
             <kbd>C</kbd> look around / drive · <kbd>V</kbd> car / drone · <kbd>T</kbd> chase / eye ·{" "}
             <kbd>P</kbd> autopilot · <kbd>X</kbd> unstuck · <kbd>K</kbd> screenshot · <kbd>M</kbd> music ·{" "}
             <kbd>N</kbd> next track · <kbd>H</kbd> help ·{" "}
             <kbd>Esc</kbd> close / exit
           </dd>
         </dl>
-        <button className="btn btn-primary" onClick={onClose} autoFocus>
+        <button className="btn btn-primary" onClick={onClose} ref={go}>
           Let&rsquo;s go
         </button>
       </div>

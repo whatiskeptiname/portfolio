@@ -33,5 +33,14 @@ describe("graphics settings", () => {
     expect(pixelRatio({ resolution: 1.5 }, 1)).toBe(1);
     expect(pixelRatio({ resolution: 1.5 }, 2)).toBe(1.5);
     expect(pixelRatio({ resolution: 0.75 }, 2)).toBe(0.75);
+    // A laptop-sized window or larger is untouched.
+    expect(pixelRatio({ resolution: 0.75 }, 2, 1280 * 800)).toBe(0.75);
+    expect(pixelRatio({ resolution: 0.75 }, 2, 1920 * 1080)).toBe(0.75);
+    // A phone renders about the pixels a laptop would at the same setting...
+    const phone = pixelRatio({ resolution: 0.75 }, 3, 390 * 844);
+    expect(phone * phone * 390 * 844).toBeCloseTo(0.75 * 0.75 * 1280 * 800, -2);
+    // ...but never past its own screen, or past 2×.
+    expect(pixelRatio({ resolution: 1.5 }, 1, 390 * 844)).toBe(1);
+    expect(pixelRatio({ resolution: 1.5 }, 3, 390 * 844)).toBe(2);
   });
 });
