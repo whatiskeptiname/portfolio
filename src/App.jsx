@@ -1,6 +1,7 @@
 // src/App.jsx
 import React, { Suspense, lazy, useEffect, useState } from "react";
 import { CaseStudies, Contact, Experience, Footer, Header, Hero, OpenSource, Toolbox } from "./components/site/Sections";
+import LifeBackground from "./components/site/LifeBackground";
 
 // The 3D city (and three.js) only downloads when someone opens it.
 const CityExplorer = lazy(() => import("./city/CityExplorer"));
@@ -42,6 +43,7 @@ export default function App() {
 
   return (
     <>
+      <LifeBackground />
       <a className="skip-link" href="#work">Skip to work</a>
       <Header />
       <main>

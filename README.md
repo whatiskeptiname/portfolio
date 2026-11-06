@@ -82,6 +82,24 @@ header; the choice is remembered and applied before the page first paints
 (an inline script in `index.html` sets `data-theme` on `<html>`), and the
 simulation player and the planet's glass panels follow it too.
 
+Behind it all, quietly, runs **Conway's Game of Life** (`LifeBackground.jsx`, rules
+in `src/lib/life.js`): small squares in the accent colour, one generation every 1.4
+seconds. Cells fade in when born, strengthen as they age so stable structures stand
+out, and leave a faint trace for one generation when they die. Each
+universe starts with units scattered at random (16% of the view) and evolves by the
+exact rules on an infinite plane, with nothing added and no wrap-around.
+
+You can draw on it: **click and drag on the empty background** to paint new cells.
+The simulation holds while the button is down and the layer brightens so you can
+see them. A plain click, or a tap on a touch screen, plants a random connected
+cluster of 1 to 5 cells instead.
+
+A universe ends when too few units are left in view (under 0.5%), when more have
+drifted out of bounds than remain, or when only still lifes and oscillators are
+left and nothing new has appeared for 12 generations. A diagonal wave then fades it
+out and fades the next one in. It rests while the tab is hidden or a simulation is
+open, and holds one still generation with reduced motion.
+
 The header highlights the section you're reading as you scroll (your name
 lights up while you're on the hero). The "D"
 of its *3D planet* button is the planet (`PlanetD.jsx`): a sphere lit from
@@ -482,6 +500,7 @@ src/
 | `projects.js` | Filters, overrides, sorts and groups repos |
 | `career.js` | Résumé dates, timeline maths, the résumé districts |
 | `sims.js` | Models behind the case-study simulations |
+| `life.js` | Conway's Game of Life, for the page background |
 | `layout.js` | The planet: districts, roads, river, sea, mountains, bridges, buildings, billboards, trees, collisions |
 | `globe.js` | Maps the flat layout onto the sphere |
 | `terrain.js` | Swells and hills |
@@ -534,7 +553,7 @@ src/
 npm test
 ```
 
-**189 unit tests** cover everything in `src/lib`, including:
+**212 unit tests** cover everything in `src/lib`, including:
 
 - **Layout:** layout determinism, roads, junctions, bridges, the river,
   sea and mountains, terrain.
