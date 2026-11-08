@@ -331,11 +331,15 @@ always gives the same planet. Distances are real: **1 unit = 1 m** (a car is
 - **Two hemispheres.** Résumé districts (Work, Learning, Community) in the
   north on wheat-gold ground; one district per programming language in the
   south on green. Each project or role is a building; click it for details.
-- **Roads.** The equator highway runs all the way round. A winding side road
-  links each district to it, and country lanes link neighbouring districts.
-  Each district has a roundabout at its centre. Side roads meet roundabouts
-  and the highway with flared, curved kerbs (`src/lib/junctions.js`).
-  **Traffic keeps left**, as in Nepal.
+- **Roads.** The equator highway runs all the way round: a dual
+  carriageway, two lanes each way (4.25 m each), with a double yellow line
+  down the middle and a dashed line between the lanes. A winding side road
+  links each district to it, and country lanes link neighbouring districts;
+  side roads are one lane each way, 10 m across. Each district has a
+  roundabout at its centre. Side roads meet roundabouts and the highway with
+  flared, curved kerbs (`src/lib/junctions.js`). **Traffic keeps left**, as
+  in Nepal: on the highway everyone cruises in the left-hand lane and
+  overtakes in the one beside it; the stop lines at the lights span both.
 - **Surfaces and speed limits:** 150 km/h on the highway, 90 on roads, 70 on
   district paving, 45 on grass (with less grip, gravel and judder).
 - **Street furniture:** street lamps along every road that light up at night
@@ -481,8 +485,10 @@ On by default: the vehicle starts on the equator highway and drives itself.
   (`src/lib/avoid.js`), or stops and says why if there's no way round. Off-road
   while cruising, it drives back to the highway by road. If it gets pinned, it
   backs off gently and tries another line, re-planning if that keeps failing.
-- **Overtaking:** it pulls out past a slow (moving, not queueing) car only
-  once it can actually see 15 m of the other lane ahead (line of sight, so a
+- **Overtaking:** on the highway it moves into the second lane going its
+  way; on a side road, into the oncoming lane. It pulls out past a slow
+  (moving, not queueing) car only once it can actually see 15 m of that lane
+  ahead (line of sight, so a
   building, tree, car or hill in the way means waiting) with nothing coming
   in it: no oncoming car, nothing in the next lane ahead or catching up
   behind, and no junction or roundabout within 20 m of where the pass ends. The pass isn't a fixed manoeuvre: every step it
