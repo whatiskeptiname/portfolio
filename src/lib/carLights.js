@@ -5,6 +5,9 @@
 //  - reverse lights: white while going backwards;
 //  - indicators: blink on the side it's changing lane or turning toward, and
 //    keep blinking a moment after; both together (hazards) when told to.
+//    Steering by hand, a turn only counts once the car has actually turned
+//    `turnAngle` radians while the steering is held one way — the same at any
+//    speed — so tapping to steer, or a small correction, never sets them off.
 // Steering is positive to the left (it turns the heading anticlockwise from
 // above); a lane shift is positive to the right of the direction of travel.
 
@@ -17,18 +20,26 @@ const SHIFTING = 0.25; // m/s of sideways lane shift that counts as a lane chang
  * Updates `car`'s indicator state and returns how lit each lamp is (0…1).
  * @param {object} car  keeps its own blink state between frames
  * @param {{ steer: number, speed: number, shift?: number, braking: boolean,
- *           reversing: boolean, hazard?: boolean, night: boolean, t: number, dt: number }} input
+ *           reversing: boolean, hazard?: boolean, night: boolean, t: number, dt: number,
+ *           yaw?: number, turnAngle?: number }} input
  */
-export function carLamps(car, { steer, speed, shift = 0, braking, reversing, hazard = false, night, t, dt }) {
+export function carLamps(car, { steer, speed, shift = 0, braking, reversing, hazard = false, night, t, dt, yaw = 0, turnAngle = 0 }) {
   const ease = 1 - Math.exp(-3 * Math.max(dt, 0));
   car.lampSteer = (car.lampSteer ?? 0) + (steer - (car.lampSteer ?? 0)) * ease;
+  // How far the car has turned since the steering was last centred or
+  // reversed: a fresh turn starts from where it was pointing then.
+  const way = Math.abs(steer) > TURNING ? Math.sign(steer) : 0;
+  if (way === 0 || way !== car.steerWay) car.turnFrom = yaw;
+  car.steerWay = way;
+  const turned = Math.atan2(Math.sin(yaw - (car.turnFrom ?? yaw)), Math.cos(yaw - (car.turnFrom ?? yaw)));
+  const turning = turnAngle > 0 ? (Math.abs(turned) >= turnAngle && Math.sign(turned) === way ? way : 0) : Math.abs(car.lampSteer) > TURNING ? Math.sign(car.lampSteer) : 0;
   const sideways = dt > 0 ? (shift - (car.lampShift ?? shift)) / dt : 0;
   car.lampShift = shift;
 
   let want = 0; // -1 left, 1 right, 2 both
   if (hazard) want = 2;
   else if (Math.abs(sideways) > SHIFTING) want = sideways > 0 ? 1 : -1;
-  else if (Math.abs(car.lampSteer) > TURNING && Math.abs(speed) > 1) want = car.lampSteer > 0 ? -1 : 1;
+  else if (turning && Math.abs(speed) > 1) want = turning > 0 ? -1 : 1;
   if (want) {
     car.blinker = want;
     car.blinkUntil = t + HOLD;

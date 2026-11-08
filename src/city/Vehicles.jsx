@@ -29,6 +29,7 @@ export const CAR_RADIUS = 1.3;
 export const DRONE_RADIUS = 1.4;
 export const DRONE_MAX_ALT = 60;
 
+const TURN_SIGNAL_ANGLE = (20 * Math.PI) / 180;
 const forwardOf = (yaw) => [-Math.sin(yaw), -Math.cos(yaw)];
 const tilt = new THREE.Matrix4();
 const tiltEuler = new THREE.Euler();
@@ -619,6 +620,10 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
           night,
           t,
           dt: delta,
+          // Steering by hand: signal once the car has really turned (about
+          // 20°) with the wheel held over, never for taps or corrections.
+          yaw: s.yaw,
+          turnAngle: s.auto || s.route ? 0 : TURN_SIGNAL_ANGLE,
         });
         for (const k in LAMP_GLOW) lamps[k].emissiveIntensity = LAMP_GLOW[k] * lit[k];
         // For the dashboard: which tell-tales are lit.

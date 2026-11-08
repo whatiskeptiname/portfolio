@@ -50,6 +50,45 @@ describe("car lights", () => {
     expect(drive({}, { steer: 0.6, speed: 0.3 }, 2).some((l) => l.left || l.right)).toBe(false);
   });
 
+  // Steering by hand: the car's heading turns while the wheel is held over.
+  function turn(car, { steer, rate, seconds, from = 0, yaw0 = 0 }) {
+    const frames = [];
+    let yaw = yaw0;
+    for (let t = from; t < from + seconds; t += 1 / 60) {
+      yaw += rate * steer * (1 / 60);
+      frames.push(carLamps(car, { ...base, steer, yaw, turnAngle: 0.35, t }));
+    }
+    return { frames, yaw };
+  }
+
+  it("by hand, signals once the car has turned far enough, at any speed", () => {
+    // Fast (turning quickly) and slow (turning slowly) both signal at ~20°, not before.
+    for (const rate of [1.5, 0.3]) {
+      const car = {};
+      const before = turn(car, { steer: 1, rate, seconds: 0.3 / rate });
+      expect(before.frames.some((l) => l.left || l.right)).toBe(false);
+      const after = turn(car, { steer: 1, rate, seconds: 0.4 / rate, from: 0.3 / rate, yaw0: before.yaw });
+      expect(after.frames.some((l) => l.left)).toBe(true);
+      expect(after.frames.some((l) => l.right)).toBe(false);
+    }
+  });
+
+  it("by hand, never signals for tap-tap steering", () => {
+    const car = {};
+    let t = 0;
+    let yaw = 0;
+    const frames = [];
+    for (let tap = 0; tap < 10; tap++) {
+      const held = turn(car, { steer: -1, rate: 1.2, seconds: 0.25, from: t, yaw0: yaw });
+      const off = turn(car, { steer: 0, rate: 1.2, seconds: 0.2, from: t + 0.25, yaw0: held.yaw });
+      frames.push(...held.frames, ...off.frames);
+      yaw = off.yaw;
+      t += 0.45;
+    }
+    expect(Math.abs(yaw)).toBeGreaterThan(2); // it turned a long way, in small taps
+    expect(frames.some((l) => l.left || l.right)).toBe(false);
+  });
+
   it("puts the hazards on: both sides together", () => {
     const frames = drive({}, { hazard: true, reversing: true }, 1);
     expect(frames.some((l) => l.left && l.right)).toBe(true);
