@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  SURFACE_TOP,
   BUILDING_RADIUS,
   PLAZA_RADIUS,
   ROUNDABOUT_ISLAND,
@@ -294,5 +295,18 @@ describe("createLayout", () => {
   it("handles a single group and no groups", () => {
     expect(createLayout([group("Go", 2)]).buildings).toHaveLength(2);
     expect(createLayout([]).cities).toHaveLength(0);
+  });
+});
+
+
+describe("the road surface the cars ride on", () => {
+  it("has a height for every kind of surface there is", () => {
+    const world = createLayout([{ language: "C++", projects: [{ name: "a", stars: 0 }, { name: "b", stars: 0 }] }], "surface");
+    const kinds = new Set();
+    for (let x = -world.width / 2; x < world.width / 2; x += 4) {
+      for (let z = -world.bounds.halfZ; z < world.bounds.halfZ; z += 4) kinds.add(surfaceAt(world, x, z));
+    }
+    for (const kind of kinds) expect(SURFACE_TOP[kind], kind).toBeTypeOf("number");
+    expect(SURFACE_TOP.highway).toBeGreaterThan(SURFACE_TOP.road); // the highway covers the spurs where they meet it
   });
 });

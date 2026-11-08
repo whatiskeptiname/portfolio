@@ -10,7 +10,7 @@ import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { frameAt } from "../lib/globe";
-import { BRIDGE_HEIGHT, MOUNTAIN_HEIGHT, PLAZA_RADIUS, ROUNDABOUT_ISLAND, bridgeElevation, wrapDelta } from "../lib/layout";
+import { BRIDGE_HEIGHT, MOUNTAIN_HEIGHT, PLAZA_RADIUS, ROUNDABOUT_ISLAND, SURFACE_TOP, bridgeElevation, wrapDelta } from "../lib/layout";
 import { terrainAt } from "../lib/terrain";
 import { highwayJunctions, openArcs, openRuns, roundaboutJunctions } from "../lib/junctions";
 import { useDisposable } from "./gpu";
@@ -231,14 +231,14 @@ export function Roads({ layout }) {
     const minor = layout.roads
       .filter((r) => r.kind !== "highway")
       .map((r) => {
-        const [pts, hs] = lift(r.points, 0.15);
+        const [pts, hs] = lift(r.points, SURFACE_TOP.road);
         return ribbonGeometry(R, pts, r.halfWidth, hs, 1 / (r.halfWidth * 2));
       });
     const highway = layout.roads.find((r) => r.kind === "highway");
     const out = { minor: minor.length ? mergeGeometries(minor) : null };
     minor.forEach((g) => g.dispose());
     if (highway) {
-      const [pts, hs] = lift(highway.points, 0.22);
+      const [pts, hs] = lift(highway.points, SURFACE_TOP.highway);
       out.highway = ribbonGeometry(R, pts, highway.halfWidth, hs, 1 / (highway.halfWidth * 2));
 
       // Spurs flare into the highway with curved kerbs, like the roundabouts.
@@ -470,8 +470,8 @@ export function Districts({ layout, driving, labels = true }) {
     const kerbs = [];
     const islands = [];
     for (const c of layout.cities) {
-      paving[c.side === "north" ? "north" : "south"].push(discGeometry(R, c.x, c.z, c.radius + 1.5, 0.06, 64, 5));
-      asphalt.push(annulusGeometry(R, c.x, c.z, ROUNDABOUT_ISLAND, ring, 0.17, 72));
+      paving[c.side === "north" ? "north" : "south"].push(discGeometry(R, c.x, c.z, c.radius + 1.5, SURFACE_TOP.paved, 64, 5));
+      asphalt.push(annulusGeometry(R, c.x, c.z, ROUNDABOUT_ISLAND, ring, SURFACE_TOP.roundabout, 72));
       markings.push(annulusGeometry(R, c.x, c.z, (ROUNDABOUT_ISLAND + ring) / 2 - 0.08, (ROUNDABOUT_ISLAND + ring) / 2 + 0.08, 0.18, 0, 16));
       kerbs.push(annulusGeometry(R, c.x, c.z, ROUNDABOUT_ISLAND - 0.05, ROUNDABOUT_ISLAND + 0.3, 0.24, 48));
       islands.push(discGeometry(R, c.x, c.z, ROUNDABOUT_ISLAND, 0.22, 40, 2));

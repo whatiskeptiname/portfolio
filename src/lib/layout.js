@@ -646,6 +646,12 @@ export function surfaceAt(world, x, z) {
   return "grass";
 }
 
+// How far each kind of surface is drawn above the ground (m). The road meshes
+// are built at these heights, and the cars ride on them, so the two always agree.
+// (The roundabout ring is drawn 2 cm above the roads it joins; cars on it ride
+// at road height, which doesn't show.)
+export const SURFACE_TOP = { highway: 0.22, road: 0.15, roundabout: 0.17, paved: 0.06, grass: 0 };
+
 /**
  * Height of the road deck at (x, z): bridges arch up over the river, rising
  * smoothly from each bank. 0 away from bridges (and off their roads).

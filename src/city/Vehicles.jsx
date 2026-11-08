@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { BILLBOARD_RADIUS, BUILDING_RADIUS, HIGHWAY_HALF_WIDTH, bridgeElevation, collides, surfaceAt, worldDistance, wrapDelta } from "../lib/layout";
+import { BILLBOARD_RADIUS, BUILDING_RADIUS, HIGHWAY_HALF_WIDTH, SURFACE_TOP, collides, bridgeElevation, surfaceAt, worldDistance, wrapDelta } from "../lib/layout";
 import { crossPole, eastStretch, frameAt } from "../lib/globe";
 import { sunlightAt, surfaceMatrix } from "./globe3d";
 import { TRANSFORM_SECONDS, TransformRig } from "./Transform";
@@ -569,7 +569,9 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
     }
     s.x = wrapDelta(s.x, layout.width);
     // Ride over the rolling country and up and over the arched bridges.
-    const ground = bridgeElevation(layout, s.x, s.z) + terrainAt(layout, s.x, s.z);
+    // …and on top of the road surface, which is drawn a little above the ground.
+    const deck = type === "car" || (s.alt ?? 0) < 0.3 ? SURFACE_TOP[surfaceAt(layout, s.x, s.z)] ?? 0 : 0;
+    const ground = bridgeElevation(layout, s.x, s.z) + terrainAt(layout, s.x, s.z) + deck;
     s.ground = THREE.MathUtils.lerp(s.ground ?? 0, ground, 1 - Math.exp(-20 * delta));
 
     const hover = !m && type === "drone" && s.alt > 0.3 ? Math.sin(clock.elapsedTime * 3.1) * 0.08 : 0;

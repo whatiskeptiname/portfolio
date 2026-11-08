@@ -10,7 +10,7 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { bridgeElevation, createRng } from "../lib/layout";
+import { HIGHWAY_HALF_WIDTH, SURFACE_TOP, bridgeElevation, createRng } from "../lib/layout";
 import { signalColor, stepSignals, trafficTime } from "../lib/traffic";
 import { createTraffic, stepTraffic } from "../lib/trafficSim";
 import { sunlightAt, surfaceMatrix } from "./globe3d";
@@ -177,7 +177,9 @@ export function Traffic({ layout, graph, signals, count, carsRef, player, vehicl
     const you = vehicleType === "car" || (p.alt ?? 0) < 1.5 ? p : null;
     stepTraffic(cars, { world: layout, graph, signals, t: trafficTime(), player: you }, dt);
     cars.forEach((car, i) => {
-      surfaceMatrix(R, car.x, car.z, bridgeElevation(layout, car.x, car.z), car.yaw, m);
+      // On the road surface, which is drawn a little above the ground.
+      const deck = Math.abs(car.z) <= HIGHWAY_HALF_WIDTH + 0.3 ? SURFACE_TOP.highway : SURFACE_TOP.road;
+      surfaceMatrix(R, car.x, car.z, bridgeElevation(layout, car.x, car.z) + deck, car.yaw, m);
       const { style, slot } = fleet.slots[i];
       bodies[style].current.setMatrixAt(slot, m);
       const reversing = car.speed < -0.1;
