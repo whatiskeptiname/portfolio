@@ -802,33 +802,39 @@ function CarModel({ wheels, frontPivots, lamps = WARM_LAMPS }) {
     };
 
     // Side view: nose at −x (it becomes −z, forward), y up.
+    // A low wedge nose with a flat front face (where the lamps and grille sit),
+    // a bonnet sweeping up to the windscreen, and a short squared-off tail.
     const shell = new THREE.Shape();
-    shell.moveTo(-2.28, 0.34);
+    shell.moveTo(-2.22, 0.34);
     shell.lineTo(2.22, 0.34);
     shell.quadraticCurveTo(2.36, 0.36, 2.36, 0.58);
     shell.lineTo(2.33, 0.94);
     shell.quadraticCurveTo(2.3, 1.07, 2.08, 1.09);
     shell.lineTo(1.22, 1.1);
     shell.lineTo(-0.9, 1.08);
-    shell.quadraticCurveTo(-1.85, 1.01, -2.2, 0.88);
-    shell.quadraticCurveTo(-2.37, 0.81, -2.37, 0.62);
-    shell.quadraticCurveTo(-2.37, 0.38, -2.28, 0.34);
+    shell.quadraticCurveTo(-1.7, 1.0, -2.12, 0.84);
+    shell.quadraticCurveTo(-2.34, 0.78, -2.38, 0.66);
+    shell.lineTo(-2.4, 0.5);
+    shell.quadraticCurveTo(-2.4, 0.36, -2.22, 0.34);
 
     const paint = [
-      extrudeAcross(shell, 2.08, 0.14, 4, 14),
+      extrudeAcross(shell, 2.08, 0.08, 3, 14),
       extrudeAcross(profile([[-0.14, 1.77], [0.76, 1.77], [0.72, 1.85], [-0.1, 1.85]]), 1.82, 0.04),
     ];
     const glass = [extrudeAcross(profile([[-0.88, 1.06], [1.22, 1.06], [1.02, 1.68], [0.72, 1.79], [-0.16, 1.79]]), 1.84, 0.08)];
     const trim = [
       extrudeAcross(profile([[1.95, 1.18], [2.35, 1.22], [2.4, 1.32], [2.0, 1.3]]), 1.9, 0.03), // spoiler
       box(0.06, 0.07, 0.22, [0, 1.88, 0.62], [-0.25, 0, 0]), // roof fin
-      box(1.05, 0.2, 0.08, [0, 0.6, -2.4]), // grille
-      box(1.5, 0.12, 0.12, [0, 0.42, -2.34]), // lower intake
-      box(1.95, 0.03, 0.2, [0, 0.33, -2.3]), // splitter
+      // The front face is at about z −2.48: everything on it stands just proud.
+      box(0.86, 0.15, 0.1, [0, 0.6, -2.47]), // grille
+      box(1.5, 0.07, 0.1, [0, 0.36, -2.46]), // lower intake
+      box(1.8, 0.025, 0.12, [0, 0.3, -2.33]), // splitter, tucked under the chin
       box(1.7, 0.14, 0.12, [0, 0.4, 2.36]), // diffuser
     ];
     const chrome = [
-      ...[0.55, 0.62, 0.69].map((y) => box(0.98, 0.012, 0.02, [0, y, -2.45])), // grille slats
+      ...[0.56, 0.6, 0.64].map((y) => box(0.8, 0.012, 0.02, [0, y, -2.525])), // grille slats
+      box(0.9, 0.015, 0.03, [0, 0.685, -2.52]), // grille surround, top
+      box(0.9, 0.015, 0.03, [0, 0.515, -2.52]), // and bottom
       ...[-0.5, 0.5].map((x) => at(new THREE.CylinderGeometry(0.055, 0.06, 0.14, 14, 1, true), [x, 0.38, 2.42], [Math.PI / 2, 0, 0])), // exhausts
     ];
     const seams = [];
@@ -837,9 +843,10 @@ function CarModel({ wheels, frontPivots, lamps = WARM_LAMPS }) {
       const x = side * 0.72;
       const flank = side * 1.045;
       const indicator = side < 0 ? lamp.left : lamp.right; // left is −x: the nose faces −z
-      lamp.head.push(box(0.5, 0.14, 0.12, [x, 0.8, -2.36], [-0.35, 0, 0]));
+      lamp.head.push(box(0.46, 0.09, 0.12, [side * 0.68, 0.67, -2.47], [-0.25, side * 0.08, 0])); // slim lamps at the top corners of the face
+      trim.push(box(0.52, 0.13, 0.1, [side * 0.68, 0.665, -2.455], [-0.25, side * 0.08, 0])); // a dark surround, so each sits in the body
       lamp.tail.push(box(0.52, 0.12, 0.08, [x, 0.85, 2.44]));
-      indicator.push(box(0.14, 0.08, 0.1, [side * 0.99, 0.74, -2.26]), box(0.16, 0.08, 0.06, [side * 0.88, 0.7, 2.45]));
+      indicator.push(box(0.12, 0.06, 0.1, [side * 0.92, 0.6, -2.45]), box(0.16, 0.08, 0.06, [side * 0.88, 0.7, 2.45]));
       lamp.reverse.push(box(0.22, 0.07, 0.04, [x * 0.62, 0.56, 2.44]));
       // Flank: wheel-arch trims, door seams and handles, side skirt, beltline.
       for (const z of [-1.4, 1.42]) trim.push(at(new THREE.TorusGeometry(0.5, 0.05, 6, 24, Math.PI), [flank + side * 0.02, 0.42, z], [0, Math.PI / 2, 0]));
@@ -874,7 +881,7 @@ function CarModel({ wheels, frontPivots, lamps = WARM_LAMPS }) {
       seams: merge(seams),
       lamps: Object.fromEntries(Object.entries(lamp).map(([k, list]) => [k, merge(list)])),
       brake: merge([box(1.5, 0.07, 0.05, [0, 0.98, 2.47])]),
-      plate: merge([box(0.6, 0.16, 0.02, [0, 0.66, 2.5])]),
+      plate: merge([box(0.6, 0.16, 0.02, [0, 0.66, 2.5]), box(0.5, 0.11, 0.02, [0, 0.45, -2.5])]), // rear and front
       caliper: merge([box(0.07, 0.12, 0.18, [0, 0, 0])]),
       wheel: { left: wheelParts(-1), right: wheelParts(1) },
     };
