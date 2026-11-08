@@ -315,6 +315,8 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
     audio.transform(type === "drone", TRANSFORM_SECONDS);
   }, [type, layout, state]);
 
+  // Moves the vehicle. Runs before everything else each frame (priority −1):
+  // the cameras, the route view and the cockpit all read the pose it sets.
   useFrame(({ clock }, rawDelta) => {
     const delta = Math.min(rawDelta, 0.05);
     const s = state.current;
@@ -619,6 +621,9 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
           dt: delta,
         });
         for (const k in LAMP_GLOW) lamps[k].emissiveIntensity = LAMP_GLOW[k] * lit[k];
+        // For the dashboard: which tell-tales are lit.
+        s.lamps = lit;
+        s.night = night;
       } else {
         if (headlight.current) headlight.current.intensity = 0; // the drone has no headlight
         if (s.realistic) {
@@ -645,7 +650,7 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
       }
     }
     if (active) onMove?.(s, s.alt);
-  });
+  }, -1); // before the camera (priority 0), so it follows this frame's pose, not the last one
 
   return (
     <group ref={root} matrixAutoUpdate={false}>
@@ -1180,9 +1185,11 @@ function firstPerson(camera, s, vehicle, o, f, delta, baseFov) {
   }
 }
 
+// Chase distances (the first that a building doesn't block wins) and the Eye
+// view's starting distance, in metres.
 const CHASE = {
-  car: { distances: [10, 8, 6, 4.5, 3], height: 3, lift: 0.2, look: 1.2, eye: 13 },
-  drone: { distances: [9, 7, 5, 3.5], height: 2.2, lift: 0.15, look: 0.4, eye: 7 },
+  car: { distances: [12, 9.6, 7.2, 5.4, 3.6], height: 3, lift: 0.2, look: 1.2, eye: 19 },
+  drone: { distances: [10.8, 8.4, 6, 4.2], height: 2.2, lift: 0.15, look: 0.4, eye: 10 },
 };
 
 /**
