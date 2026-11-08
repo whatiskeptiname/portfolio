@@ -147,6 +147,7 @@
 }
 .chapter-cover {
   display: block;
+  text-decoration: none; /* it's a link: no underline on the caption */
   border-radius: 16px;
   overflow: hidden;
   background: var(--surface);
@@ -1702,25 +1703,32 @@ a.chapter-cover:hover {
 }
 
 /* ---------- Chapter covers: the method and the step it's on ---------- */
+/* The caption sits under the picture, not over it, so none of the animation
+   is hidden. It's always two lines — the method, then the step it's on — so
+   the card doesn't jump as the steps change. */
 .cover {
-  position: relative;
+  display: flex;
+  flex-direction: column;
 }
 .cover-caption {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  --cap-size: 11px;
   margin: 0;
-  padding: 18px 10px 7px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 8px;
-  align-items: baseline;
-  font-size: 11px;
+  padding: 6px 10px;
+  height: calc(2 * 1.3 * var(--cap-size) + 12px);
+  box-sizing: border-box;
+  font-size: var(--cap-size);
   line-height: 1.3;
   color: var(--text);
-  background: linear-gradient(to top, var(--surface-2) 62%, transparent);
+  background: var(--surface-2);
+  border-top: 1px solid var(--line);
   pointer-events: none;
+}
+.cover-caption strong,
+.cover-caption span {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .cover-caption strong {
   color: var(--c-a);
@@ -1732,6 +1740,7 @@ a.chapter-cover:hover {
 }
 .chapter-cover .cover-caption,
 .chapter-hero .cover-caption {
-  font-size: 13px;
-  padding: 24px 14px 10px;
+  --cap-size: 13px;
+  padding: 6px 14px;
+  height: calc(2 * 1.3 * var(--cap-size) + 12px);
 }
