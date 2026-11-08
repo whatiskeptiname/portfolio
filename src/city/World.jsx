@@ -599,38 +599,115 @@ function SurfaceLabel({ R, position, children, fadeWhen }) {
 
 // --- trees -------------------------------------------------------------------
 
+// The kinds of tree, each one merged mesh (trunk and leaves, coloured per
+// part). All about the same height as before (~3.5 m), so sight lines and
+// collisions are unchanged.
+function treePart(geometry, color, [x, y, z] = [0, 0, 0], [sx, sy, sz] = [1, 1, 1]) {
+  const g = geometry.scale(sx, sy, sz).translate(x, y, z);
+  const flat = g.index ? g.toNonIndexed() : g;
+  if (flat !== g) g.dispose();
+  flat.deleteAttribute("uv");
+  flat.computeVertexNormals();
+  const c = new THREE.Color(color);
+  const colors = new Float32Array(flat.attributes.position.count * 3);
+  for (let i = 0; i < colors.length; i += 3) colors.set([c.r, c.g, c.b], i);
+  flat.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  return flat;
+}
+const TREE_KINDS = {
+  broadleaf: () => [
+    treePart(new THREE.CylinderGeometry(0.22, 0.32, 1.9, 6), "#6f4a2b", [0, 0.95, 0]),
+    treePart(new THREE.IcosahedronGeometry(1.25, 0), "#3f7d4a", [0, 2.75, 0]),
+    treePart(new THREE.IcosahedronGeometry(0.85, 0), "#4a8a50", [0.75, 2.35, 0.2]),
+    treePart(new THREE.IcosahedronGeometry(0.8, 0), "#367043", [-0.6, 2.45, -0.35]),
+  ],
+  autumn: () => [
+    treePart(new THREE.CylinderGeometry(0.22, 0.32, 1.9, 6), "#6f4a2b", [0, 0.95, 0]),
+    treePart(new THREE.IcosahedronGeometry(1.25, 0), "#c9772c", [0, 2.75, 0]),
+    treePart(new THREE.IcosahedronGeometry(0.85, 0), "#d99a35", [0.75, 2.35, 0.2]),
+    treePart(new THREE.IcosahedronGeometry(0.8, 0), "#b4552a", [-0.6, 2.45, -0.35]),
+  ],
+  pine: () => [
+    treePart(new THREE.CylinderGeometry(0.16, 0.24, 1.2, 6), "#5b3c24", [0, 0.6, 0]),
+    treePart(new THREE.ConeGeometry(1.25, 1.5, 8), "#2c5a37", [0, 1.75, 0]),
+    treePart(new THREE.ConeGeometry(0.95, 1.3, 8), "#306140", [0, 2.6, 0]),
+    treePart(new THREE.ConeGeometry(0.62, 1.1, 8), "#356a45", [0, 3.35, 0]),
+  ],
+  birch: () => [
+    treePart(new THREE.CylinderGeometry(0.12, 0.17, 2.7, 6), "#e4e0d4", [0, 1.35, 0]),
+    treePart(new THREE.CylinderGeometry(0.175, 0.175, 0.12, 6), "#2b2b2b", [0, 0.9, 0]),
+    treePart(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 6), "#2b2b2b", [0, 1.8, 0]),
+    treePart(new THREE.IcosahedronGeometry(0.9, 0), "#6f9e46", [0, 3.15, 0], [0.95, 1.4, 0.95]),
+  ],
+  bush: () => [
+    treePart(new THREE.IcosahedronGeometry(0.85, 0), "#3e6f37", [0, 0.6, 0]),
+    treePart(new THREE.IcosahedronGeometry(0.65, 0), "#477d3e", [0.6, 0.5, 0.25]),
+    treePart(new THREE.IcosahedronGeometry(0.6, 0), "#38653a", [-0.5, 0.45, -0.3]),
+  ],
+};
+const KIND_NAMES = Object.keys(TREE_KINDS);
+
+// A steady pseudo-random number in [0, 1) for a spot on the ground.
+const spotNoise = (x, z, salt = 0) => {
+  const v = Math.sin(x * 12.9898 + z * 78.233 + salt * 37.719) * 43758.5453;
+  return v - Math.floor(v);
+};
+
+// Which kind grows where: pines take over toward the poles, birches and bushes
+// are scattered through, and the odd broadleaf has turned.
+function treeKind(t, halfZ) {
+  const north = Math.min(1, Math.abs(t.z) / halfZ);
+  const r = spotNoise(t.x, t.z);
+  const pines = 0.12 + 0.6 * Math.max(0, north - 0.3);
+  if (r < pines) return "pine";
+  if (r < pines + 0.14) return "birch";
+  if (r < pines + 0.24) return "bush";
+  if (r < pines + 0.29) return "autumn";
+  return "broadleaf";
+}
+
 export function Trees({ layout }) {
-  const trunks = useRef();
-  const crowns = useRef();
+  const refs = { broadleaf: useRef(), autumn: useRef(), pine: useRef(), birch: useRef(), bush: useRef() };
+  const geometries = useDisposable(() => Object.fromEntries(KIND_NAMES.map((k) => [k, mergeGeometries(TREE_KINDS[k]())])), []);
+  const material = useDisposable(() => new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.9 }), []);
+  const groups = useMemo(() => {
+    const out = Object.fromEntries(KIND_NAMES.map((k) => [k, []]));
+    for (const t of layout.trees) out[treeKind(t, layout.bounds.halfZ)].push(t);
+    return out;
+  }, [layout]);
+
   useLayoutEffect(() => {
     const R = layout.radius;
     const local = new THREE.Matrix4();
     const q = new THREE.Quaternion();
-    layout.trees.forEach((t, i) => {
-      const base = surfaceMatrix(R, t.x, t.z, -0.1); // on the ground, terrain included
-      const s = t.scale;
-      local.compose(new THREE.Vector3(0, 0.9 * s, 0), q, new THREE.Vector3(s, s, s));
-      trunks.current.setMatrixAt(i, base.clone().multiply(local));
-      local.compose(new THREE.Vector3(0, 2.6 * s, 0), q, new THREE.Vector3(s, s * 1.15, s));
-      crowns.current.setMatrixAt(i, base.clone().multiply(local));
-    });
-    for (const m of [trunks.current, crowns.current]) {
-      m.instanceMatrix.needsUpdate = true;
-      m.computeBoundingSphere();
+    const up = new THREE.Vector3(0, 1, 0);
+    const shade = new THREE.Color();
+    for (const kind of KIND_NAMES) {
+      const mesh = refs[kind].current;
+      if (!mesh) continue;
+      groups[kind].forEach((t, i) => {
+        const base = surfaceMatrix(R, t.x, t.z, -0.1); // on the ground, terrain included
+        const s = t.scale;
+        // Turned and coloured a little differently each, so no two match.
+        q.setFromAxisAngle(up, spotNoise(t.x, t.z, 1) * Math.PI * 2);
+        local.compose(new THREE.Vector3(), q, new THREE.Vector3(s, s * (0.9 + 0.25 * spotNoise(t.x, t.z, 2)), s));
+        mesh.setMatrixAt(i, base.multiply(local));
+        const light = 0.86 + 0.28 * spotNoise(t.x, t.z, 3);
+        mesh.setColorAt(i, shade.setRGB(light, light * (0.97 + 0.06 * spotNoise(t.x, t.z, 4)), light));
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      mesh.computeBoundingSphere();
     }
-  }, [layout]);
+    // (refs is rebuilt each render, but always points at the same meshes)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layout, groups]);
 
-  const n = layout.trees.length;
   return (
-    <group key={n}>
-      <instancedMesh ref={trunks} args={[undefined, undefined, n]} castShadow>
-        <cylinderGeometry args={[0.25, 0.35, 1.8, 6]} />
-        <meshStandardMaterial color="#7a5230" />
-      </instancedMesh>
-      <instancedMesh ref={crowns} args={[undefined, undefined, n]} castShadow receiveShadow>
-        <icosahedronGeometry args={[1.4, 0]} />
-        <meshStandardMaterial color="#3f7d4a" flatShading />
-      </instancedMesh>
+    <group key={layout.trees.length}>
+      {KIND_NAMES.filter((k) => groups[k].length).map((k) => (
+        <instancedMesh key={k} ref={refs[k]} args={[geometries[k], material, groups[k].length]} castShadow receiveShadow />
+      ))}
     </group>
   );
 }
