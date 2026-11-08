@@ -78,6 +78,17 @@ export function presetOf(settings) {
   return "custom";
 }
 
+// A processor with at least this many threads is taken as fast enough for High.
+export const FAST_CORES = 8;
+
+/**
+ * Whether to suggest High graphics when the planet opens: the device reports a
+ * fast processor, it isn't on High already, and the visitor hasn't said no.
+ */
+export function offerHigh(settings, { cores, declined = false } = {}) {
+  return !declined && (cores ?? 0) >= FAST_CORES && presetOf(settings) !== "high";
+}
+
 /** Fills in anything missing or invalid from the default preset. */
 export function normalize(raw) {
   const base = PRESETS[DEFAULT_PRESET];

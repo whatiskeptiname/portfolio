@@ -12,6 +12,10 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { bridgeElevation } from "../lib/layout";
 import { speedColor } from "../lib/routing";
+
+// From a vehicle's middle to just in front of it (m): the car is 4.3 m long and
+// its bumper sticks out a little; the drone is small.
+const NOSE = { car: 2.7, drone: 0.7 };
 import { onGround, surfaceMatrix } from "./globe3d";
 
 const pathMaterial = () =>
@@ -108,7 +112,9 @@ function planGeometry() {
   return g;
 }
 
-export function RouteViz({ layout, state }) {
+// `inside`: seen from the driver's seat, where the stop wall would fill the
+// windscreen, so it's left out.
+export function RouteViz({ layout, state, inside = false }) {
   const R = layout.radius;
   const group = useRef();
   const current = useRef(null); // { route, search, born, waveTime } — the planning wave
@@ -207,10 +213,14 @@ export function RouteViz({ layout, state }) {
     planGeo.computeBoundingSphere();
     materials.path.uniforms.uReveal.value = reveal * (list.at(-1).d + 6);
     materials.path.uniforms.uTravelled.value = 0;
-    // Where it means to stop: the end of the plan.
+    // Where it means to stop: the end of the plan. The plan tracks the car's
+    // middle, so the wall goes where its front bumper will be.
     if (drive.stopAt != null) {
       const last = list.at(-1);
-      return { x: last.x, z: last.z, yaw: last.yaw, h: air ? (s.alt ?? 0) + (s.ground ?? 0) : bridgeElevation(layout, last.x, last.z) };
+      const nose = air ? NOSE.drone : NOSE.car;
+      const x = last.x - Math.sin(last.yaw) * nose;
+      const z = last.z - Math.cos(last.yaw) * nose;
+      return { x, z, yaw: last.yaw, h: air ? (s.alt ?? 0) + (s.ground ?? 0) : bridgeElevation(layout, x, z) };
     }
     return null;
   };
@@ -237,7 +247,7 @@ export function RouteViz({ layout, state }) {
     // 2. The plan it's following right now.
     const stop = writePlan(s, sweep);
     if (wall.current) {
-      wall.current.visible = Boolean(stop);
+      wall.current.visible = Boolean(stop) && !inside;
       if (stop) {
         surfaceMatrix(R, stop.x, stop.z, stop.h + 0.75, stop.yaw, wallMatrix);
         wall.current.matrix.copy(wallMatrix);

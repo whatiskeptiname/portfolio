@@ -13,7 +13,7 @@ import { terrainAt } from "./terrain";
 // always noticed this close. `over`: closer than this you see between and
 // over other cars (only buildings block the view); further away, cars hide
 // what's behind them too. `eye`: the driver's eye height above the road.
-export const VIEW = { range: 150, min: 10, max: 500, aware: 8, over: 25, eye: 1.2 };
+export const VIEW = { range: 50, min: 10, max: 500, aware: 8, over: 25, eye: 1.2 };
 /** The drone's camera: a cone ahead, and close-up awareness all round. */
 export const DRONE_VIEW = { halfAngle: (40 * Math.PI) / 180, near: 2.5 };
 const CAR_SIZE = 1.5; // a car blocks sight lines within this radius of its centre

@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Icon from "../components/Icon";
 import { LanguageDot, Stars } from "../components/ProjectCard";
-import { presetOf } from "../lib/graphics";
+import { offerHigh, presetOf } from "../lib/graphics";
 import { isLow } from "../lib/battery";
 import { AUTO_SPEED, CAR_LIMITS, KMH_PER_UNIT, PILOT_DEFAULTS, PILOT_RULES, gearOf } from "../lib/autopilot";
 import { VIEW } from "../lib/perception";
@@ -296,16 +296,81 @@ export function StartHint({ driving, sound, onToggle, onSound }) {
   );
 }
 
-/** Fades out a few seconds after you start driving (or switch vehicle). */
-export function KeyHints({ type, droneMode }) {
-  const [visible, setVisible] = useState(true);
+/**
+ * On a device with a fast processor, suggest High graphics the first time the
+ * planet opens, and never again: being asked once is remembered, whatever the
+ * answer. Yes switches every setting to High.
+ */
+export function HighOffer({ settings, onAccept }) {
+  const cores = typeof navigator !== "undefined" ? navigator.hardwareConcurrency : 0;
+  const [declined, setDeclined] = useState(() => {
+    try {
+      return localStorage.getItem("city-high-offer") !== null;
+    } catch {
+      return false;
+    }
+  });
+  const showing = offerHigh(settings, { cores, declined });
+  // Asked once is enough: remember it as soon as the question appears.
   useEffect(() => {
-    setVisible(true);
-    const id = setTimeout(() => setVisible(false), 9000);
+    if (!showing) return;
+    try {
+      localStorage.setItem("city-high-offer", "asked");
+    } catch {
+      // Not remembered; it may ask again next time.
+    }
+  }, [showing]);
+  const [accepted, setAccepted] = useState(false);
+  useEffect(() => {
+    if (!accepted) return;
+    const id = setTimeout(() => setAccepted(false), 4000);
     return () => clearTimeout(id);
-  }, [type]);
+  }, [accepted]);
+  if (accepted) {
+    return (
+      <div className="high-offer is-done" role="status">
+        Switched to High. You can change it any time in Settings.
+      </div>
+    );
+  }
+  if (!showing) return null;
+  const decline = () => {
+    setDeclined(true);
+    try {
+      localStorage.setItem("city-high-offer", "no");
+    } catch {
+      // Not remembered; it will ask again next time.
+    }
+  };
   return (
-    <div className={`key-hints${visible ? "" : " hidden"}`} aria-hidden="true">
+    <div className="high-offer" role="dialog" aria-label="Graphics suggestion">
+      <p>
+        <strong>Your device has a fast processor ({cores} threads).</strong> Switch to High graphics for sharper shadows, the full black hole,
+        a denser sky and busier roads?
+      </p>
+      <div className="high-offer-actions">
+        <button
+          className="start-chip is-primary"
+          onClick={() => {
+            onAccept();
+            setAccepted(true);
+          }}
+        >
+          Use High
+        </button>
+        <button className="start-chip" onClick={decline}>
+          Not now
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** The keys for the vehicle you're in, shown while you drive or fly. */
+export function KeyHints({ type, droneMode }) {
+  // Shown the whole time you drive or fly, so the controls are always to hand.
+  return (
+    <div className="key-hints" aria-hidden="true">
       {type === "drone" && droneMode === "realistic" ? (
         <>
           <span>

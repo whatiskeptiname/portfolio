@@ -31,7 +31,7 @@ import { Clouds } from "./Clouds";
 import { openingCamera, shiftFor } from "../lib/opening";
 import { ChaseCamera, Vehicle } from "./Vehicles";
 import Minimap from "./Minimap";
-import { BatteryPrompt, AutopilotPanel, DriverPanel, FpvOverlay, Gauge, GoToMenu, GraphicsPanel, HelpOverlay, InfoPanel, InputsPanel, KeyHints, StartHint, Toolbar, TouchPad } from "./Hud";
+import { BatteryPrompt, AutopilotPanel, DriverPanel, FpvOverlay, Gauge, GoToMenu, GraphicsPanel, HelpOverlay, HighOffer, InfoPanel, InputsPanel, KeyHints, StartHint, Toolbar, TouchPad } from "./Hud";
 import Icon from "../components/Icon";
 import { audio } from "./audio";
 import { radio } from "./radio";
@@ -161,16 +161,17 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
     auto: true,
     lastInput: 0,
   });
-  // Autopilot cruise speed (km/h), from the settings panel.
+  // Autopilot cruise speed (km/h), from the settings panel: 80 unless changed. (A
+  // new key, so visits that saved the old 30 km/h default start at 80.)
   const [autoKmh, setAutoKmh] = useState(() => {
     try {
-      return parseAutoSpeed(localStorage.getItem("city-autospeed"));
+      return parseAutoSpeed(localStorage.getItem("city-cruise-kmh"));
     } catch {
       return parseAutoSpeed(null);
     }
   });
   useEffect(() => {
-    remember("city-autospeed", autoKmh);
+    remember("city-cruise-kmh", autoKmh);
     vehicleState.current.autoSpeed = autoKmh / KMH_PER_UNIT;
   }, [autoKmh]);
   // Drone altitude hold (plane units; the HUD shows metres): − / + step it,
@@ -203,20 +204,20 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
     s.droneAltTarget = next;
     setDroneAlt(next);
   }, []);
-  // Show the autopilot's route planning and speed plan (G, or in ⚙).
-  // The autopilot's visuals start off every visit; switch them on in the autopilot settings.
-  const [routeViz, setRouteViz] = useState(false);
-  // How far the autopilot sees (all round, in line of sight), from ⚙.
+  // Show the autopilot's route planning and speed plan (G, or in ⚙). On by default.
+  const [routeViz, setRouteViz] = useState(true);
+  // How far the autopilot sees (all round, in line of sight), from ⚙: 50 m unless
+  // changed. (A new key, so visits that saved the old 150 m default start at 50 m.)
   const [viewRange, setViewRange] = useState(() => {
     try {
-      const v = Number(localStorage.getItem("city-view-range"));
+      const v = Number(localStorage.getItem("city-view-range-m") ?? NaN);
       return Number.isFinite(v) && v >= VIEW.min && v <= VIEW.max ? v : VIEW.range;
     } catch {
       return VIEW.range;
     }
   });
   useEffect(() => {
-    remember("city-view-range", viewRange);
+    remember("city-view-range-m", viewRange);
     vehicleState.current.viewRange = viewRange;
   }, [viewRange]);
   // Time of day: the planet's fast day/night cycle, or always day / always night.
@@ -243,7 +244,8 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
     remember("city-pilot-rules", JSON.stringify(pilotRules));
     vehicleState.current.pilot = pilotRules;
   }, [pilotRules]);
-  const [showInputs, setShowInputs] = useState(false);
+  // The inputs readout (O): on by default.
+  const [showInputs, setShowInputs] = useState(true);
   // Show what the autopilot sees and why it does what it does (I, or in ⚙).
   const [decisions, setDecisions] = useState(false);
   // Where the autopilot goes: round the equator, or touring every road.
@@ -580,7 +582,7 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
               vehicleType={vehicle}
             />
           )}
-          {routeViz && <RouteViz layout={layout} state={vehicleState} />}
+          {routeViz && <RouteViz layout={layout} state={vehicleState} inside={driving && view === "fpv"} />}
           {decisions && driving && <DriverView layout={layout} state={vehicleState} type={vehicle} />}
           {hoveredId && hoveredId !== selectedId && <HoverLabel R={R} building={buildingsById.get(hoveredId)} />}
         </Suspense>
@@ -675,6 +677,7 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
       {driving && decisions && <DriverPanel vehicle={vehicleState} />}
       {driving && <Gauge vehicle={vehicleState} type={vehicle} onToggleAuto={toggleAutopilot} altitude={droneAlt} onAltitude={nudgeAltitude} />}
       {driving && <KeyHints type={vehicle} droneMode={droneMode} />}
+      <HighOffer settings={gfx} onAccept={() => updateGfx("high")} />
       <StartHint
         driving={driving}
         sound={sound}

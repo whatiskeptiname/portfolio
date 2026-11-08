@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_PRESET, PRESETS, loadGraphics, normalize, pixelRatio, presetOf, saveGraphics } from "./graphics";
+import { DEFAULT_PRESET, PRESETS, loadGraphics, normalize, offerHigh, pixelRatio, presetOf, saveGraphics } from "./graphics";
 
 const memoryStorage = () => {
   const m = new Map();
@@ -27,6 +27,15 @@ describe("graphics settings", () => {
     expect(loadGraphics(store)).toEqual(PRESETS.high);
     store.setItem("city-graphics", "{not json");
     expect(loadGraphics(store)).toEqual(PRESETS.low);
+  });
+
+  it("suggests High only on a fast processor, not on High already, and only until declined", () => {
+    expect(offerHigh(PRESETS.low, { cores: 12 })).toBe(true);
+    expect(offerHigh(PRESETS.medium, { cores: 8 })).toBe(true);
+    expect(offerHigh(PRESETS.low, { cores: 4 })).toBe(false);
+    expect(offerHigh(PRESETS.low, {})).toBe(false);
+    expect(offerHigh(PRESETS.high, { cores: 16 })).toBe(false);
+    expect(offerHigh(PRESETS.low, { cores: 16, declined: true })).toBe(false);
   });
 
   it("never renders above the screen's own pixel ratio", () => {

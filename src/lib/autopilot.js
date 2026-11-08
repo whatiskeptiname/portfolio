@@ -70,7 +70,7 @@ export function yawToward(dx, dz) {
 export const DRONE_ALT = { min: 0, max: 60, fallback: 12, step: 2 };
 
 /** The autopilot cruise speed the settings panel offers, in km/h. */
-export const AUTO_SPEED = { min: 20, max: 150, fallback: 30 };
+export const AUTO_SPEED = { min: 20, max: 150, fallback: 80 };
 
 /** A saved cruise speed (km/h), clamped to the range, or the fallback. */
 export function parseAutoSpeed(raw) {

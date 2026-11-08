@@ -104,7 +104,7 @@ describe("the drone's camera cone", () => {
   });
 
   it("doesn't see what's below the cone when flying high, only what's further ahead inside it", () => {
-    const high = { ...me, alt: 30 };
+    const high = { ...me, alt: 30, viewRange: 150 }; // a view distance long enough to reach the far car
     const others = [
       { x: 10, z: 0, yaw: 0 }, // just ahead, but far below the cone's lower edge
       { x: 70, z: 0, yaw: 0 }, // further ahead: inside the cone
