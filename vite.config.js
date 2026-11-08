@@ -18,5 +18,8 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    // Some tests drive whole trips or minutes of traffic through the simulation:
+    // a couple of seconds here, several times that on a slower CI runner.
+    testTimeout: 30000,
   },
 })
