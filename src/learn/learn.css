@@ -536,6 +536,14 @@ a.chapter-cover:hover {
 }
 
 /* ---------- Simulations ---------- */
+/* Dragging inside a simulation or a walkthrough moves it; it must never start
+   selecting the text around it. */
+.sim,
+.reel {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
 .sim {
   margin: 0;
   border: 1px solid var(--line);
@@ -768,6 +776,7 @@ a.chapter-cover:hover {
 }
 .sim-svg .region-a {
   fill: var(--c-a);
+  transition: opacity 200ms ease;
 }
 .sim-svg .region-b {
   fill: var(--c-b);

@@ -226,6 +226,7 @@ export function GaussianSim({ onState }) {
   const D = frame([0, 0.12], [440, 620]);
   const svgRef = useRef(null);
   const drag = (e) => {
+    if (e.type === "pointerdown") e.preventDefault(); // a drag, not a text selection
     if (e.type === "pointermove" && e.buttons !== 1 && e.pointerType !== "touch") return;
     const p = svgPoint(svgRef.current, e);
     setX0(Math.round(Math.max(145, Math.min(195, X.f.invert(p.x)))));

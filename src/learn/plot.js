@@ -91,6 +91,7 @@ export function useDrag(onMove) {
   const svgRef = useRef(null);
   const handlers = {
     onPointerDown: (e) => {
+      e.preventDefault(); // a drag, not the start of a text selection
       e.currentTarget.setPointerCapture?.(e.pointerId);
       onMove(svgPoint(svgRef.current, e), e, "start");
     },

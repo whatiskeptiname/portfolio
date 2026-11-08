@@ -271,6 +271,7 @@ export function IoUSim({ onState }) {
   const score = iou(box, TRUTH);
   useReport(onState, { iou: score });
   const down = (e) => {
+    e.preventDefault(); // a drag, not a text selection
     const p = svgPoint(svgRef.current, e);
     grab.current = { dx: p.x - box.x, dy: p.y - box.y };
     e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -580,6 +581,7 @@ export function LatentSim({ onState }) {
   const pad = { x: 20, y: 20, s: 220 };
   const toZ = (p) => [((p.x - pad.x) / pad.s) * 4 - 2, 2 - ((p.y - pad.y) / pad.s) * 4];
   const pick = (e) => {
+    if (e.type === "pointerdown") e.preventDefault(); // a drag, not a text selection
     if (e.type === "pointermove" && e.buttons !== 1 && e.pointerType !== "touch") return;
     const p = svgPoint(svgRef.current, e);
     const [a, b] = toZ(p);
