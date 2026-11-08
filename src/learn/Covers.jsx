@@ -156,14 +156,44 @@ function VisionCover({ t }) {
 
 const COVERS = { trees: TreesCover, bayes: BayesCover, time: TimeCover, vision: VisionCover };
 
+// What each cover is showing: the method, and the step it's on (by its clock).
+const CAPTIONS = {
+  trees: (t) => {
+    const p = t % 7;
+    return {
+      method: "Decision tree",
+      step: p < 1.6 ? "1 · Ask the best first question" : p < 3.6 ? "2 · Ask again inside each side" : p < 5 ? "3 · Each region takes its majority" : "A few simple questions, readable rules",
+    };
+  },
+  bayes: (t) => {
+    const n = Math.min(60, Math.floor((t % 9) * 9));
+    return { method: "Bayesian updating", step: n < 10 ? "1 · Start unsure: a wide belief" : n < 40 ? "2 · Each result nudges the belief" : "3 · More data: narrower, surer" };
+  },
+  time: (t) => {
+    const shown = (t % 8) * 14;
+    return { method: "Forecasting", step: shown < 36 ? "1 · Learn the trend and the season" : shown < 72 ? "2 · …from the past only" : "3 · Project ahead; the range widens" };
+  },
+  vision: (t) => {
+    const s = (t * 9) % (64 + 12);
+    return { method: "Convolution", step: s < 22 ? "1 · Slide a 3×3 filter over the image" : s < 50 ? "2 · Multiply and add at every spot" : "3 · The output lights up the edges" };
+  },
+};
+
 export default function Cover({ kind, running = true }) {
   const [t, ref] = useClock(running);
   const Picture = COVERS[kind];
+  const caption = CAPTIONS[kind]?.(t + 4.5);
   return (
     <div className="cover" ref={ref} aria-hidden="true">
       <svg viewBox={`0 0 ${W} ${H}`} className="sim-svg">
         {Picture && <Picture t={t + 4.5} />}
       </svg>
+      {caption && (
+        <p className="cover-caption">
+          <strong>{caption.method}</strong>
+          <span key={caption.step}>{caption.step}</span>
+        </p>
+      )}
     </div>
   );
 }
