@@ -1,48 +1,105 @@
 // src/city/Cockpit.jsx — the inside of the car, for the first-person view:
-// right-hand drive (as in Nepal). A sculpted, stitched dashboard with air vents
-// and a soft ambient light strip; a digital cluster with speed and rev dials,
-// gear, the limit and tell-tales (indicators, headlights, autopilot); a centre
-// touchscreen with heading and autopilot status; a head-up display on the
-// windscreen; a flat-bottomed wheel with paddles that turns as you steer;
-// door cards, a centre console with the gear selector, sun visors and a roof
-// lining; tinted glass framed by the A-pillars; and a working rear-view
-// mirror, a small second camera looking back, refreshed a few times a second.
+// right-hand drive (as in Nepal). Framed like a real cabin: a clear windscreen
+// with a black ceramic border, wipers parked at its foot, A-pillars, a header
+// and roof lining with sun visors and a map-light console; side windows with
+// their frames, B-pillars and door cards; a deep stitched dashboard with vents,
+// a cluster under its hood (speed and rev dials, gear, the limit and
+// tell-tales), a centre touchscreen and a head-up display; a flat-bottomed
+// wheel on its column that turns as you steer; a centre console with the gear
+// selector; and three working mirrors. One small camera at the back of the
+// cabin looks backwards, wide, a few times a second: the rear-view mirror shows
+// the middle of that picture and each door mirror its own side.
 // Rendered inside the car's own group, so it moves with it exactly. Front is −z.
 import React, { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { CAR_LIMITS, KMH_PER_UNIT, gearOf } from "../lib/autopilot";
 
-const MIRROR = { w: 256, h: 80, every: 3 };
+// The mirror camera's picture: wide and short. Across it (u, 0 to 1) the
+// right of the car is on the left, as the camera looks backwards.
+const MIRROR = { w: 768, h: 128, fov: 22, every: 3 };
+const CROP = { right: [0, 0.25], middle: [0.22, 0.78], left: [0.75, 1] };
 const COLOURS = {
   leather: "#1b1c21",
   soft: "#25272d",
   stitch: "#5b5f68",
   trim: "#8d939c",
-  lining: "#2b2c31",
+  lining: "#3a3b41",
+  frit: "#050607",
   ambient: "#2dd4bf",
   paint: "#e0283f",
 };
 
-function pillar(from, to, thickness) {
+// The windscreen, side on: its foot and top edge (height, distance forward).
+const SCREEN = { foot: [1.06, -1.15], top: [1.9, -0.42], width: 1.78 };
+SCREEN.height = Math.hypot(SCREEN.top[0] - SCREEN.foot[0], SCREEN.top[1] - SCREEN.foot[1]);
+SCREEN.tilt = Math.atan2(SCREEN.top[1] - SCREEN.foot[1], SCREEN.top[0] - SCREEN.foot[0]);
+SCREEN.centre = [0, (SCREEN.foot[0] + SCREEN.top[0]) / 2, (SCREEN.foot[1] + SCREEN.top[1]) / 2];
+/** Where the windscreen is at a given height. */
+const screenZ = (y) => SCREEN.foot[1] + ((y - SCREEN.foot[0]) / (SCREEN.top[0] - SCREEN.foot[0])) * (SCREEN.top[1] - SCREEN.foot[1]);
+
+/** A bar (box or rod) from one point to another. */
+function strut(from, to) {
   const a = new THREE.Vector3(...from);
   const b = new THREE.Vector3(...to);
-  const mid = a.clone().add(b).multiplyScalar(0.5);
-  const len = a.distanceTo(b);
   const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
-  return { position: mid, quaternion: q, args: [thickness, len, thickness] };
+  return { position: a.clone().add(b).multiplyScalar(0.5), quaternion: q, length: a.distanceTo(b) };
 }
 
-/** The dashboard's side profile (distance forward, height), swept across the car. */
+/** A rounded rectangle centred on the origin. */
+function roundedRect(w, h, r) {
+  const s = new THREE.Shape();
+  const x = -w / 2;
+  const y = -h / 2;
+  s.moveTo(x + r, y);
+  s.lineTo(x + w - r, y);
+  s.quadraticCurveTo(x + w, y, x + w, y + r);
+  s.lineTo(x + w, y + h - r);
+  s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  s.lineTo(x + r, y + h);
+  s.quadraticCurveTo(x, y + h, x, y + h - r);
+  s.lineTo(x, y + r);
+  s.quadraticCurveTo(x, y, x + r, y);
+  return s;
+}
+
+/** A mirror's housing: a soft rounded shell whose open face (the glass side) is at z = 0. */
+function housing(w, h, r, depth, bevel) {
+  const g = new THREE.ExtrudeGeometry(roundedRect(w, h, r), { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel * 0.8, bevelSegments: 4, curveSegments: 8 });
+  g.translate(0, 0, -depth - bevel);
+  return g;
+}
+
+/** Mirror glass showing a slice [u0, u1] of the mirror camera's picture, flipped as a mirror flips it. */
+function mirrorGlass(w, h, r, [u0, u1]) {
+  const g = new THREE.ShapeGeometry(roundedRect(w, h, r), 8);
+  const pos = g.attributes.position;
+  const uv = g.attributes.uv;
+  for (let i = 0; i < pos.count; i++) uv.setXY(i, u1 - ((pos.getX(i) + w / 2) / w) * (u1 - u0), (pos.getY(i) + h / 2) / h);
+  uv.needsUpdate = true;
+  return g;
+}
+
+/** A flat outline (side on: distance back, height) standing at x, like a window. */
+function sidePanel(points, x) {
+  const g = new THREE.ShapeGeometry(new THREE.Shape(points.map(([z, y]) => new THREE.Vector2(z, y))));
+  g.rotateY(-Math.PI / 2); // shape x becomes the car's z
+  g.translate(x, 0, 0);
+  return g;
+}
+
+/** The dashboard's side profile (distance forward, height), swept across the car:
+ *  a rounded lip facing you, a long top reaching the foot of the windscreen. */
 function dashGeometry() {
   const s = new THREE.Shape();
-  s.moveTo(0.3, 0.7);
-  s.lineTo(0.3, 0.9);
-  s.quadraticCurveTo(0.3, 1.02, 0.42, 1.03); // the rounded lip facing you
-  s.lineTo(0.7, 1.0);
-  s.quadraticCurveTo(0.9, 0.99, 0.96, 0.97); // down to the windscreen
-  s.lineTo(0.96, 0.8);
-  s.lineTo(0.3, 0.7);
+  s.moveTo(0.3, 0.62);
+  s.lineTo(0.3, 0.95);
+  s.quadraticCurveTo(0.3, 1.08, 0.44, 1.09);
+  s.lineTo(0.75, 1.1);
+  s.quadraticCurveTo(1.0, 1.09, 1.15, 1.06);
+  s.lineTo(1.2, 0.98);
+  s.lineTo(1.2, 0.75);
+  s.lineTo(0.3, 0.62);
   const g = new THREE.ExtrudeGeometry(s, { depth: 1.76, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 3, curveSegments: 10 });
   // Shape x is distance forward (−z in the car); its extrusion runs across the car.
   g.rotateY(Math.PI / 2);
@@ -52,6 +109,8 @@ function dashGeometry() {
 
 /** A flat-bottomed wheel rim: an arc with a straight bar across the bottom. */
 const RIM = { r: 0.19, tube: 0.028, gap: (70 * Math.PI) / 180 };
+/** The wheel's hub, and how far it leans back from upright. */
+const WHEEL = { at: [0.42, 1.18, -0.25], tilt: -0.45 };
 
 /** Two canvases: the instrument cluster and the centre screen; plus the HUD. */
 function useScreens() {
@@ -242,48 +301,65 @@ function drawHud({ ctx, canvas }, s) {
   ctx.fillText(String(limit), 196, 52);
 }
 
+
 export function Cockpit({ state, mirror = true }) {
   const wheel = useRef();
-  const mirrorMesh = useRef();
+  const glasses = useRef([]);
   const ambient = useRef();
   const { gl, scene } = useThree();
   const screens = useScreens();
-  const dash = useMemo(dashGeometry, []);
+
+  const parts = useMemo(() => {
+    const H = SCREEN.height;
+    // The front door window, side on (distance back, height): from the
+    // A-pillar along the roof rail to the B-pillar, down to the sill.
+    const pane = [
+      [-1.08, 1.13],
+      [screenZ(1.88), 1.88],
+      [0.56, 1.9],
+      [0.56, 1.13],
+    ];
+    return {
+      dash: dashGeometry(),
+      mirrorShell: housing(0.25, 0.075, 0.03, 0.02, 0.01),
+      mirrorGlass: mirrorGlass(0.234, 0.062, 0.025, CROP.middle),
+      wingShell: housing(0.25, 0.15, 0.06, 0.07, 0.035),
+      wingGlass: { [-1]: mirrorGlass(0.215, 0.12, 0.05, CROP.left), [1]: mirrorGlass(0.215, 0.12, 0.05, CROP.right) },
+      sideGlass: { [-1]: sidePanel(pane, -0.945), [1]: sidePanel(pane, 0.945) },
+      sail: {
+        [-1]: sidePanel([[-1.1, 1.12], [-0.86, 1.12], [screenZ(1.32), 1.32]], -0.93),
+        [1]: sidePanel([[-1.1, 1.12], [-0.86, 1.12], [screenZ(1.32), 1.32]], 0.93),
+      },
+      pillars: [-1, 1].map((side) => strut([side * 0.89, SCREEN.foot[0], SCREEN.foot[1] - 0.01], [side * 0.86, SCREEN.top[0] + 0.02, SCREEN.top[1] - 0.01])),
+      stem: strut([0, 1.835, -0.44], [0, 1.78, -0.405]),
+      H,
+    };
+  }, []);
 
   const mirrorRig = useMemo(() => {
     const target = new THREE.WebGLRenderTarget(MIRROR.w, MIRROR.h);
     target.texture.colorSpace = THREE.SRGBColorSpace;
-    const camera = new THREE.PerspectiveCamera(42, MIRROR.w / MIRROR.h, 0.3, 400);
+    const camera = new THREE.PerspectiveCamera(MIRROR.fov, MIRROR.w / MIRROR.h, 0.3, 400);
     return { target, camera, frame: 0 };
   }, []);
   useEffect(
     () => () => {
       for (const k of ["cluster", "centre", "hud"]) screens[k].texture.dispose();
       mirrorRig.target.dispose();
-      dash.dispose();
+      const { dash, mirrorShell, mirrorGlass: g, wingShell, wingGlass, sideGlass, sail } = parts;
+      for (const geo of [dash, mirrorShell, g, wingShell, ...Object.values(wingGlass), ...Object.values(sideGlass), ...Object.values(sail)]) geo.dispose();
     },
-    [screens, mirrorRig, dash]
+    [screens, mirrorRig, parts]
   );
-
-  const pillars = useMemo(
-    () => [
-      pillar([-0.9, 0.98, -0.85], [-0.84, 1.95, -0.05], 0.06),
-      pillar([0.9, 0.98, -0.85], [0.84, 1.95, -0.05], 0.06),
-    ],
-    []
-  );
-  const glass = useMemo(() => {
-    const dy = 1.95 - 0.98;
-    const dz = 0.8;
-    return { position: [0, (0.98 + 1.95) / 2, -0.45], tilt: Math.atan2(dz, dy), height: Math.hypot(dy, dz) };
-  }, []);
 
   const tmp = useMemo(() => ({ pos: new THREE.Vector3(), look: new THREE.Vector3(), up: new THREE.Vector3() }), []);
 
   useFrame(({ clock }) => {
     const s = state.current;
-    // The wheel turns with the steering (about 2.5 turns lock to lock, scaled down).
-    if (wheel.current) wheel.current.rotation.z = -(s.steer ?? 0) * 2.4;
+    // The wheel turns with the steering (about 2.5 turns lock to lock, scaled
+    // down). Steering is positive to the left, and the wheel faces you, so
+    // left is anticlockwise as you see it: a positive turn about its axis.
+    if (wheel.current) wheel.current.rotation.z = (s.steer ?? 0) * 2.4;
     // The ambient strip glows more at night.
     if (ambient.current) ambient.current.opacity = s.night ? 0.9 : 0.35;
 
@@ -296,39 +372,103 @@ export function Cockpit({ state, mirror = true }) {
       for (const k of ["cluster", "centre", "hud"]) screens[k].texture.needsUpdate = true;
     }
 
-    // Rear-view mirror: a camera at the back of the cabin looking backwards.
-    if (mirror && mirrorMesh.current && s.worldMatrix && ++mirrorRig.frame % MIRROR.every === 0) {
+    // The mirrors: one wide camera at the back of the cabin looking backwards.
+    const glass = glasses.current.filter(Boolean);
+    if (mirror && glass.length && s.worldMatrix && ++mirrorRig.frame % MIRROR.every === 0) {
       const m = s.worldMatrix;
-      tmp.pos.set(0, 1.75, 1.2).applyMatrix4(m);
-      tmp.look.set(0, 1.4, 12).applyMatrix4(m);
+      tmp.pos.set(0, 1.72, 1.2).applyMatrix4(m);
+      tmp.look.set(0, 1.45, 12).applyMatrix4(m);
       tmp.up.set(0, 1, 0).transformDirection(m);
       const cam = mirrorRig.camera;
       cam.position.copy(tmp.pos);
       cam.up.copy(tmp.up);
       cam.lookAt(tmp.look);
-      mirrorMesh.current.visible = false;
+      for (const g of glass) g.visible = false;
       const before = gl.getRenderTarget();
       gl.setRenderTarget(mirrorRig.target);
       gl.render(scene, cam);
       gl.setRenderTarget(before);
-      mirrorMesh.current.visible = true;
+      for (const g of glass) g.visible = true;
     }
   });
 
   const leather = <meshStandardMaterial color={COLOURS.leather} roughness={0.82} />;
   const trim = <meshStandardMaterial color={COLOURS.trim} metalness={0.85} roughness={0.32} />;
+  const lining = <meshStandardMaterial color={COLOURS.lining} roughness={0.95} />;
+  const frit = <meshBasicMaterial color={COLOURS.frit} side={THREE.DoubleSide} />;
+  const paint = <meshPhysicalMaterial color={COLOURS.paint} metalness={0.15} roughness={0.38} clearcoat={1} clearcoatRoughness={0.12} />;
+  const reflection = (i) =>
+    mirror ? (
+      <meshBasicMaterial map={mirrorRig.target.texture} toneMapped={false} />
+    ) : (
+      <meshStandardMaterial key={i} color="#8597a8" metalness={0.25} roughness={0.25} />
+    );
   const sideBar = RIM.r * Math.cos(RIM.gap / 2);
   const halfBar = RIM.r * Math.sin(RIM.gap / 2);
+  const H = parts.H;
 
   return (
     <group>
-      {/* Front seats with headrests (seen when you look round). */}
+      {/* The floor: carpet over the whole cabin, the bulkhead and sloping toe
+          boards under the dash, the pedals, a rear bench, and the back panel —
+          so looking down shows the car, not the road through it. */}
+      <mesh position={[0, 0.42, 0.06]}>
+        <boxGeometry args={[1.9, 0.04, 2.56]} />
+        <meshStandardMaterial color="#141518" roughness={1} />
+      </mesh>
+      <mesh position={[0, 0.72, -1.2]}>
+        <boxGeometry args={[1.84, 0.62, 0.04]} />
+        <meshStandardMaterial color="#141518" roughness={1} />
+      </mesh>
+      <mesh position={[0, 0.52, -1.0]} rotation-x={-0.75}>
+        <boxGeometry args={[1.84, 0.03, 0.36]} />
+        <meshStandardMaterial color="#17181b" roughness={1} />
+      </mesh>
+      {[
+        [0.3, 0.07, 0.06],
+        [0.52, 0.05, 0.1],
+      ].map(([x, w, h]) => (
+        <group key={x} position={[x, 0.6, -0.86]} rotation-x={-0.6}>
+          <mesh>
+            <boxGeometry args={[w, h, 0.012]} />
+            <meshStandardMaterial color="#2a2c31" roughness={0.6} metalness={0.5} />
+          </mesh>
+        </group>
+      ))}
+      <mesh position={[0, 0.66, 1.0]}>
+        <boxGeometry args={[1.76, 0.18, 0.5]} />
+        <meshStandardMaterial color="#202227" roughness={0.95} />
+      </mesh>
+      <mesh position={[0, 0.98, 1.2]} rotation-x={-0.18}>
+        <boxGeometry args={[1.76, 0.5, 0.12]} />
+        <meshStandardMaterial color="#202227" roughness={0.95} />
+      </mesh>
+      <mesh position={[0, 0.8, 1.3]}>
+        <boxGeometry args={[1.84, 0.8, 0.04]} />
+        <meshStandardMaterial color="#141518" roughness={1} />
+      </mesh>
+
+      {/* Front seats: cushion, backrest with side bolsters, headrest. */}
       {[-0.42, 0.42].map((x) => (
         <group key={x} position={[x, 0, 0.62]}>
+          <mesh position={[0, 0.7, -0.28]}>
+            <boxGeometry args={[0.52, 0.12, 0.5]} />
+            <meshStandardMaterial color="#202227" roughness={0.95} />
+          </mesh>
+          <mesh position={[0, 0.55, -0.28]}>
+            <boxGeometry args={[0.4, 0.2, 0.4]} />
+            <meshStandardMaterial color="#0d0e10" roughness={0.9} />
+          </mesh>
           <mesh position={[0, 1.18, 0]} rotation-x={-0.12}>
             <boxGeometry args={[0.52, 0.7, 0.14]} />
             <meshStandardMaterial color="#202227" roughness={0.95} />
           </mesh>
+          {[-1, 1].map((side) => (
+            <mesh key={side} position={[side * 0.24, 1.12, -0.06]} rotation-x={-0.12}>
+              <boxGeometry args={[0.07, 0.56, 0.12]} />
+              <meshStandardMaterial color="#26282e" roughness={0.9} />
+            </mesh>
+          ))}
           <mesh position={[0, 1.62, 0.06]}>
             <boxGeometry args={[0.3, 0.2, 0.12]} />
             <meshStandardMaterial color="#202227" roughness={0.95} />
@@ -336,26 +476,37 @@ export function Cockpit({ state, mirror = true }) {
         </group>
       ))}
 
-      {/* The sculpted dashboard, a stitched seam along its lip, and the ambient strip. */}
-      <mesh geometry={dash}>
+      {/* The dashboard: a deep, soft top up to the windscreen, a stitched lip,
+          a metal trim line with the ambient strip, a defrost slot and speakers. */}
+      <mesh geometry={parts.dash}>
         <meshStandardMaterial color={COLOURS.soft} roughness={0.9} />
       </mesh>
-      <mesh position={[0, 1.035, -0.43]}>
+      <mesh position={[0, 1.112, -0.45]}>
         <boxGeometry args={[1.7, 0.004, 0.006]} />
         <meshStandardMaterial color={COLOURS.stitch} roughness={0.7} />
       </mesh>
-      <mesh position={[0, 0.86, -0.29]}>
+      <mesh position={[0, 0.82, -0.29]}>
         <boxGeometry args={[1.66, 0.012, 0.004]} />
         <meshBasicMaterial ref={ambient} color={COLOURS.ambient} transparent opacity={0.4} toneMapped={false} />
       </mesh>
-      <mesh position={[0, 0.88, -0.3]}>
+      <mesh position={[0, 0.84, -0.3]}>
         <boxGeometry args={[1.7, 0.03, 0.012]} />
         {trim}
       </mesh>
+      <mesh position={[0, 1.088, -1.04]}>
+        <boxGeometry args={[1.4, 0.004, 0.03]} />
+        <meshBasicMaterial color="#060708" />
+      </mesh>
+      {[-0.68, 0.68].map((x) => (
+        <mesh key={x} position={[x, 1.09, -0.96]} scale={[1.6, 1, 1]}>
+          <cylinderGeometry args={[0.045, 0.045, 0.004, 24]} />
+          <meshStandardMaterial color="#121317" roughness={0.6} metalness={0.4} />
+        </mesh>
+      ))}
 
       {/* Air vents: two in the middle, one at each end, with slats. */}
       {[-0.78, -0.2, 0.06, 0.78].map((x) => (
-        <group key={x} position={[x, 0.95, -0.305]}>
+        <group key={x} position={[x, 0.91, -0.305]}>
           <mesh>
             <boxGeometry args={[0.14, 0.07, 0.02]} />
             <meshStandardMaterial color="#08090b" roughness={0.9} />
@@ -369,23 +520,24 @@ export function Cockpit({ state, mirror = true }) {
         </group>
       ))}
 
-      {/* Instrument cluster under its hood, facing the driver, high enough to
-          read over the wheel. */}
-      <mesh position={[0.42, 1.24, -0.66]} rotation-x={-0.3}>
-        <boxGeometry args={[0.66, 0.03, 0.16]} />
-        {leather}
-      </mesh>
-      <mesh position={[0.42, 1.13, -0.62]} rotation-x={-0.5}>
-        <boxGeometry args={[0.64, 0.24, 0.1]} />
-        {leather}
-      </mesh>
-      <mesh position={[0.42, 1.14, -0.565]} rotation-x={-0.5}>
-        <planeGeometry args={[0.6, 0.197]} />
-        <meshBasicMaterial map={screens.cluster.texture} toneMapped={false} />
-      </mesh>
+      {/* Instrument cluster under its hood, facing the driver over the wheel. */}
+      <group position={[0.42, 1.23, -0.76]} rotation-x={-0.35}>
+        <mesh>
+          <boxGeometry args={[0.64, 0.24, 0.1]} />
+          {leather}
+        </mesh>
+        <mesh position={[0, 0.005, 0.052]}>
+          <planeGeometry args={[0.6, 0.197]} />
+          <meshBasicMaterial map={screens.cluster.texture} toneMapped={false} />
+        </mesh>
+        <mesh position={[0, 0.135, 0.03]}>
+          <boxGeometry args={[0.68, 0.025, 0.2]} />
+          {leather}
+        </mesh>
+      </group>
 
-      {/* Centre touchscreen, angled a little toward the driver. */}
-      <group position={[-0.08, 1.14, -0.62]} rotation={[-0.3, 0.2, 0]}>
+      {/* Centre touchscreen on a slim stand, turned a little toward the driver. */}
+      <group position={[0.0, 1.24, -0.66]} rotation={[-0.25, 0.22, 0]}>
         <mesh position={[0, 0, -0.012]}>
           <boxGeometry args={[0.36, 0.23, 0.02]} />
           <meshStandardMaterial color="#0a0b0e" roughness={0.4} metalness={0.3} />
@@ -394,26 +546,30 @@ export function Cockpit({ state, mirror = true }) {
           <planeGeometry args={[0.33, 0.206]} />
           <meshBasicMaterial map={screens.centre.texture} toneMapped={false} />
         </mesh>
+        <mesh position={[0, -0.12, -0.04]}>
+          <boxGeometry args={[0.08, 0.06, 0.04]} />
+          <meshStandardMaterial color="#0a0b0e" roughness={0.5} />
+        </mesh>
       </group>
 
       {/* Head-up display, floating on the windscreen in front of the driver. */}
-      <mesh position={[0.42, 1.3, -0.8]} rotation-x={-0.1}>
+      <mesh position={[0.42, 1.45, screenZ(1.45) + 0.02]} rotation-x={-0.1}>
         <planeGeometry args={[0.26, 0.098]} />
         <meshBasicMaterial map={screens.hud.texture} transparent opacity={0.85} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
       </mesh>
 
-      {/* Steering column with its stalks, and the flat-bottomed wheel. */}
-      <mesh position={[0.42, 0.98, -0.32]} rotation-x={-1.15}>
-        <cylinderGeometry args={[0.045, 0.06, 0.26, 16]} />
-        {leather}
-      </mesh>
-      {[-1, 1].map((side) => (
-        <mesh key={side} position={[0.42 + side * 0.1, 1.0, -0.27]} rotation-z={side * 1.35}>
-          <cylinderGeometry args={[0.008, 0.008, 0.12, 8]} />
-          <meshStandardMaterial color="#2a2d33" roughness={0.6} />
+      {/* Steering column with its stalks (fixed), and the wheel (turns). */}
+      <group position={WHEEL.at} rotation-x={WHEEL.tilt}>
+        <mesh position={[0, 0, -0.17]} rotation-x={Math.PI / 2}>
+          <cylinderGeometry args={[0.045, 0.06, 0.26, 16]} />
+          <meshStandardMaterial color="#121317" roughness={0.85} />
         </mesh>
-      ))}
-      <group position={[0.42, 1.05, -0.2]} rotation-x={-1.15}>
+        {[-1, 1].map((side) => (
+          <mesh key={side} position={[side * 0.1, 0.01, -0.07]} rotation-z={side * 1.35}>
+            <cylinderGeometry args={[0.008, 0.008, 0.12, 8]} />
+            <meshStandardMaterial color="#2a2d33" roughness={0.6} />
+          </mesh>
+        ))}
         <group ref={wheel}>
           <mesh rotation-z={-Math.PI / 2 + RIM.gap / 2}>
             <torusGeometry args={[RIM.r, RIM.tube, 12, 48, Math.PI * 2 - RIM.gap]} />
@@ -422,6 +578,11 @@ export function Cockpit({ state, mirror = true }) {
           <mesh position={[0, -sideBar, 0]} rotation-z={Math.PI / 2}>
             <cylinderGeometry args={[RIM.tube, RIM.tube, halfBar * 2, 12]} />
             <meshStandardMaterial color="#17181c" roughness={0.7} />
+          </mesh>
+          {/* A stitched marker at twelve o'clock. */}
+          <mesh position={[0, RIM.r, 0]}>
+            <boxGeometry args={[0.012, RIM.tube * 2.05, RIM.tube * 2.05]} />
+            <meshStandardMaterial color="#6d7178" roughness={0.7} />
           </mesh>
           {/* Spokes: left, right and down, in brushed metal. */}
           {[-1, 1].map((side) => (
@@ -486,113 +647,211 @@ export function Cockpit({ state, mirror = true }) {
         </mesh>
       ))}
 
-      {/* Door cards: armrest, window sill, handle, speaker, and the ambient line. */}
+      {/* Each side: the door card (armrest with window switches, pull handle,
+          speaker, ambient line, sill), the window in its frame, the B-pillar,
+          the roof rail, and the door mirror outside. */}
       {[-1, 1].map((side) => (
-        <group key={side} position={[side * 0.93, 0, 0]}>
-          <mesh position={[0, 0.86, -0.05]}>
-            <boxGeometry args={[0.06, 0.52, 1.35]} />
-            <meshStandardMaterial color="#1f2126" roughness={0.88} />
+        <group key={side}>
+          <group position={[side * 0.93, 0, 0]}>
+            <mesh position={[0, 0.76, 0.03]}>
+              <boxGeometry args={[0.06, 0.72, 2.26]} />
+              <meshStandardMaterial color="#1f2126" roughness={0.88} />
+            </mesh>
+            <mesh position={[-side * 0.06, 0.9, 0.05]}>
+              <boxGeometry args={[0.1, 0.05, 0.5]} />
+              {leather}
+            </mesh>
+            {[-0.06, 0.0].map((z) => (
+              <mesh key={z} position={[-side * 0.06, 0.93, z - 0.1]}>
+                <boxGeometry args={[0.03, 0.012, 0.035]} />
+                <meshStandardMaterial color="#0b0c0f" roughness={0.5} />
+              </mesh>
+            ))}
+            <mesh position={[0, 1.13, -0.24]}>
+              <boxGeometry args={[0.08, 0.025, 1.72]} />
+              {trim}
+            </mesh>
+            <mesh position={[-side * 0.032, 1.08, -0.24]}>
+              <boxGeometry args={[0.004, 0.01, 1.66]} />
+              <meshBasicMaterial color={COLOURS.ambient} transparent opacity={0.45} toneMapped={false} />
+            </mesh>
+            <mesh position={[-side * 0.035, 1.0, -0.42]}>
+              <boxGeometry args={[0.012, 0.03, 0.11]} />
+              {trim}
+            </mesh>
+            <mesh position={[-side * 0.032, 0.7, -0.6]} rotation-z={Math.PI / 2}>
+              <cylinderGeometry args={[0.07, 0.07, 0.006, 24]} />
+              <meshStandardMaterial color="#0b0c0f" roughness={0.8} />
+            </mesh>
+          </group>
+          {/* The window: faint glass, a rubber seal along the sill, and the
+              black sail where the mirror is fixed. */}
+          <mesh geometry={parts.sideGlass[side]}>
+            <meshBasicMaterial color="#a9cdee" transparent opacity={0.07} depthWrite={false} side={THREE.DoubleSide} />
           </mesh>
-          <mesh position={[-side * 0.06, 0.9, 0.05]}>
-            <boxGeometry args={[0.1, 0.05, 0.5]} />
-            {leather}
+          <mesh position={[side * 0.945, 1.15, -0.26]}>
+            <boxGeometry args={[0.02, 0.018, 1.64]} />
+            <meshStandardMaterial color="#0a0b0d" roughness={0.8} />
           </mesh>
-          <mesh position={[0, 1.13, -0.05]}>
-            <boxGeometry args={[0.08, 0.025, 1.36]} />
-            {trim}
+          <mesh geometry={parts.sail[side]}>{frit}</mesh>
+          <mesh position={[side * 0.91, 1.51, 0.63]}>
+            <boxGeometry args={[0.08, 0.8, 0.14]} />
+            {lining}
           </mesh>
-          <mesh position={[-side * 0.032, 1.08, -0.05]}>
-            <boxGeometry args={[0.004, 0.01, 1.3]} />
-            <meshBasicMaterial color={COLOURS.ambient} transparent opacity={0.45} toneMapped={false} />
+          <mesh position={[side * 0.895, 1.91, 0.36]}>
+            <boxGeometry args={[0.1, 0.07, 1.6]} />
+            {lining}
           </mesh>
-          <mesh position={[-side * 0.035, 1.0, -0.42]}>
-            <boxGeometry args={[0.012, 0.03, 0.11]} />
-            {trim}
+          {/* Door mirror: a rounded shell in the body colour on a short arm. */}
+          <mesh position={[side * 1.02, 1.17, -0.97]}>
+            <boxGeometry args={[0.16, 0.035, 0.07]} />
+            <meshStandardMaterial color="#111215" roughness={0.6} />
           </mesh>
-          <mesh position={[-side * 0.032, 0.7, -0.45]} rotation-z={Math.PI / 2}>
-            <cylinderGeometry args={[0.07, 0.07, 0.006, 24]} />
-            <meshStandardMaterial color="#0b0c0f" roughness={0.6} metalness={0.4} />
-          </mesh>
+          <group position={[side * 1.2, 1.21, -0.93]} rotation-y={side * -0.38}>
+            <mesh geometry={parts.wingShell}>{paint}</mesh>
+            <mesh position={[0, 0, 0.001]} scale={[1.04, 1.06, 1]}>
+              <shapeGeometry args={[roundedRect(0.215, 0.12, 0.05)]} />
+              <meshBasicMaterial color="#0a0b0d" />
+            </mesh>
+            <mesh ref={(el) => (glasses.current[side < 0 ? 0 : 1] = el)} geometry={parts.wingGlass[side]} position={[0, 0, 0.003]}>
+              {reflection(side)}
+            </mesh>
+          </group>
         </group>
       ))}
 
-      {/* A-pillars, the windscreen header, roof lining and sun visors. */}
-      {pillars.map((p, i) => (
+      {/* A-pillars, the windscreen header, roof lining, sun visors (folded up,
+          with their hinge rods, clips and vanity mirrors), the map-light console
+          and a grab handle over the passenger door. */}
+      {parts.pillars.map((p, i) => (
         <mesh key={i} position={p.position} quaternion={p.quaternion}>
-          <boxGeometry args={p.args} />
-          <meshStandardMaterial color={COLOURS.lining} roughness={0.95} />
+          <boxGeometry args={[0.1, p.length, 0.07]} />
+          {lining}
         </mesh>
       ))}
-      <mesh position={[0, 1.97, -0.05]}>
-        <boxGeometry args={[1.76, 0.06, 0.1]} />
-        <meshStandardMaterial color={COLOURS.lining} roughness={0.95} />
+      <mesh position={[0, 1.925, SCREEN.top[1] - 0.02]}>
+        <boxGeometry args={[1.8, 0.07, 0.14]} />
+        {lining}
       </mesh>
-      <mesh position={[0, 2.0, 0.5]}>
-        <boxGeometry args={[1.8, 0.03, 1.1]} />
+      <mesh position={[0, 1.955, 0.37]}>
+        <boxGeometry args={[1.84, 0.03, 1.6]} />
         <meshStandardMaterial color={COLOURS.lining} roughness={1} />
       </mesh>
-      {[-0.42, 0.42].map((x) => (
-        <mesh key={x} position={[x, 1.955, 0.06]} rotation-x={0.12}>
-          <boxGeometry args={[0.5, 0.025, 0.16]} />
-          <meshStandardMaterial color="#34353b" roughness={1} />
+      {[-1, 1].map((side) => (
+        <group key={side} position={[side * 0.45, 1.912, -0.27]} rotation-x={0.06}>
+          <mesh>
+            <boxGeometry args={[0.6, 0.026, 0.2]} />
+            <meshStandardMaterial color="#45464d" roughness={1} />
+          </mesh>
+          <mesh position={[0, -0.0135, 0.01]} rotation-x={Math.PI / 2}>
+            <planeGeometry args={[0.22, 0.09]} />
+            <meshStandardMaterial color="#2f3036" roughness={0.6} />
+          </mesh>
+          <mesh position={[side * 0.31, 0.012, -0.07]} rotation-z={Math.PI / 2}>
+            <cylinderGeometry args={[0.008, 0.008, 0.06, 8]} />
+            {trim}
+          </mesh>
+          <mesh position={[-side * 0.32, 0.016, -0.07]}>
+            <boxGeometry args={[0.03, 0.02, 0.03]} />
+            <meshStandardMaterial color="#202126" roughness={0.8} />
+          </mesh>
+        </group>
+      ))}
+      <mesh position={[0, 1.925, -0.24]}>
+        <boxGeometry args={[0.24, 0.035, 0.16]} />
+        <meshStandardMaterial color="#202126" roughness={0.8} />
+      </mesh>
+      {[-0.06, 0.06].map((x) => (
+        <mesh key={x} position={[x, 1.906, -0.24]} rotation-x={Math.PI / 2}>
+          <planeGeometry args={[0.07, 0.05]} />
+          <meshStandardMaterial color="#8d9198" roughness={0.5} side={THREE.DoubleSide} />
         </mesh>
       ))}
-      <mesh position={[0, 1.97, 0.12]}>
-        <boxGeometry args={[0.24, 0.035, 0.12]} />
+      <mesh position={[-0.86, 1.86, 0.15]} rotation={[Math.PI, Math.PI / 2, 0]}>
+        <torusGeometry args={[0.07, 0.012, 8, 16, Math.PI]} />
         <meshStandardMaterial color="#202126" roughness={0.8} />
       </mesh>
 
-      {/* Windscreen glass: a faint tint, and a darker shade band along the top. */}
-      <mesh position={glass.position} rotation-x={glass.tilt}>
-        <planeGeometry args={[1.76, glass.height]} />
-        <meshPhysicalMaterial color="#b8d8ff" transparent opacity={0.06} roughness={0} metalness={0} depthWrite={false} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh position={[0, 1.86, -0.13]} rotation-x={glass.tilt}>
-        <planeGeometry args={[1.74, 0.16]} />
-        <meshBasicMaterial color="#0c1a2a" transparent opacity={0.45} depthWrite={false} side={THREE.DoubleSide} />
-      </mesh>
+      {/* The windscreen: clear glass, so only its black ceramic border shows,
+          with the dotted shade behind the mirror; the wipers park at its foot. */}
+      <group position={SCREEN.centre} rotation-x={SCREEN.tilt}>
+        <mesh position={[0, H / 2 - 0.035, 0.004]}>
+          <planeGeometry args={[SCREEN.width, 0.07]} />
+          {frit}
+        </mesh>
+        <mesh position={[0, -H / 2 + 0.03, 0.004]}>
+          <planeGeometry args={[SCREEN.width, 0.06]} />
+          {frit}
+        </mesh>
+        {[-1, 1].map((side) => (
+          <mesh key={side} position={[side * (SCREEN.width / 2 - 0.025), 0, 0.004]}>
+            <planeGeometry args={[0.05, H]} />
+            {frit}
+          </mesh>
+        ))}
+        <mesh position={[0, H / 2 - 0.12, 0.004]}>
+          <planeGeometry args={[0.18, 0.12]} />
+          {frit}
+        </mesh>
+        {[
+          [0.22, 0.62],
+          [-0.52, 0.56],
+        ].map(([x, len]) => (
+          <group key={x} position={[x, -H / 2 + 0.06, -0.02]} rotation-z={0.05}>
+            <mesh>
+              <boxGeometry args={[len, 0.014, 0.012]} />
+              <meshStandardMaterial color="#0b0c0e" roughness={0.6} />
+            </mesh>
+            <mesh position={[0, 0.016, -0.004]}>
+              <boxGeometry args={[len * 0.92, 0.01, 0.02]} />
+              <meshStandardMaterial color="#141518" roughness={0.9} />
+            </mesh>
+          </group>
+        ))}
+      </group>
 
-      {/* The bonnet out front, in the car's paint, and the wing mirrors. */}
-      <mesh position={[0, 0.84, -1.55]} rotation-x={0.08}>
-        <boxGeometry args={[2.0, 0.08, 1.45]} />
-        <meshPhysicalMaterial color={COLOURS.paint} metalness={0.15} roughness={0.38} clearcoat={1} clearcoatRoughness={0.12} />
+      {/* Rear-view mirror: a sensor cover on the glass, a stem and ball joint,
+          and a frameless, rounded mirror turned toward the driver. */}
+      <mesh position={[0, 1.85, screenZ(1.85) + 0.028]} rotation-x={SCREEN.tilt}>
+        <boxGeometry args={[0.12, 0.1, 0.05]} />
+        <meshStandardMaterial color="#121317" roughness={0.7} />
       </mesh>
-      <mesh position={[0, 0.8, -2.28]} rotation-x={0.5}>
-        <boxGeometry args={[2.0, 0.08, 0.2]} />
-        <meshPhysicalMaterial color={COLOURS.paint} metalness={0.15} roughness={0.38} clearcoat={1} />
+      <mesh position={parts.stem.position} quaternion={parts.stem.quaternion}>
+        <cylinderGeometry args={[0.009, 0.011, parts.stem.length, 10]} />
+        <meshStandardMaterial color="#121317" roughness={0.5} metalness={0.3} />
+      </mesh>
+      <group position={[0, 1.765, -0.385]} rotation={[-0.06, 0.32, 0]}>
+        <mesh position={[0, 0.012, -0.05]}>
+          <sphereGeometry args={[0.016, 12, 10]} />
+          <meshStandardMaterial color="#121317" roughness={0.5} metalness={0.3} />
+        </mesh>
+        <mesh geometry={parts.mirrorShell}>
+          <meshStandardMaterial color="#0b0c0f" metalness={0.4} roughness={0.35} />
+        </mesh>
+        <mesh ref={(el) => (glasses.current[2] = el)} geometry={parts.mirrorGlass} position={[0, 0, 0.002]}>
+          {reflection(0)}
+        </mesh>
+      </group>
+
+      {/* Outside: the cowl, the bonnet in the car's paint, its nose and wings. */}
+      <mesh position={[0, 1.0, -1.24]} rotation-x={-0.45}>
+        <boxGeometry args={[1.9, 0.02, 0.22]} />
+        <meshStandardMaterial color="#0d0e10" roughness={0.85} />
+      </mesh>
+      <mesh position={[0, 0.9, -1.8]} rotation-x={-0.12}>
+        <boxGeometry args={[1.96, 0.06, 1.06]} />
+        {paint}
+      </mesh>
+      <mesh position={[0, 0.79, -2.32]} rotation-x={0.5}>
+        <boxGeometry args={[1.96, 0.08, 0.2]} />
+        {paint}
       </mesh>
       {[-1, 1].map((side) => (
-        <group key={side}>
-          <mesh position={[side * 0.97, 0.84, -1.5]}>
-            <boxGeometry args={[0.14, 0.14, 1.5]} />
-            <meshPhysicalMaterial color="#c81f35" metalness={0.15} roughness={0.4} clearcoat={1} />
-          </mesh>
-          <mesh position={[side * 1.17, 1.22, -0.72]}>
-            <boxGeometry args={[0.2, 0.15, 0.28]} />
-            <meshPhysicalMaterial color={COLOURS.paint} metalness={0.15} roughness={0.4} clearcoat={1} />
-          </mesh>
-          <mesh position={[side * 1.17, 1.22, -0.575]}>
-            <planeGeometry args={[0.16, 0.11]} />
-            <meshStandardMaterial color="#8fa6b8" metalness={0.9} roughness={0.15} />
-          </mesh>
-        </group>
-      ))}
-
-      {/* Rear-view mirror, frameless with a thin bezel. */}
-      <mesh position={[0.15, 1.86, -0.12]} rotation-x={-0.08}>
-        <boxGeometry args={[0.32, 0.105, 0.03]} />
-        <meshStandardMaterial color="#0b0c0f" metalness={0.4} roughness={0.4} />
-      </mesh>
-      <mesh position={[0.15, 1.92, -0.1]}>
-        <boxGeometry args={[0.03, 0.06, 0.03]} />
-        <meshStandardMaterial color="#0b0c0f" />
-      </mesh>
-      {mirror && (
-        <mesh ref={mirrorMesh} position={[0.15, 1.86, -0.1]} rotation-x={-0.08} scale-x={-1}>
-          <planeGeometry args={[0.29, 0.088]} />
-          <meshBasicMaterial map={mirrorRig.target.texture} toneMapped={false} side={THREE.DoubleSide} />
+        <mesh key={side} position={[side * 0.98, 0.88, -1.75]}>
+          <boxGeometry args={[0.14, 0.12, 1.2]} />
+          <meshPhysicalMaterial color="#c81f35" metalness={0.15} roughness={0.4} clearcoat={1} />
         </mesh>
-      )}
+      ))}
     </group>
   );
 }
