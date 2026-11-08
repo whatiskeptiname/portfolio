@@ -644,7 +644,8 @@ export function LearnSection() {
     <section id="learn">
       <div className="container">
         <SectionHead id="learn">
-          Hands-on machine learning lessons. Each takes one idea and gives you a simulation to play with until it clicks.
+          Quick, hands-on explainers of how machine learning systems actually work, for when you use them more than you build them. They grew
+          out of lectures I've taught and the hands-on tasks I designed and worked through.
         </SectionHead>
         <ol className="learn-doors">
           {CATALOG.map((c) => (
@@ -661,7 +662,7 @@ export function LearnSection() {
                 </Suspense>
                 <span className="learn-door-text">
                   <strong>{c.title}</strong>
-                  <span>{c.blurb}</span>
+                  <span>{c.hook}</span>
                 </span>
               </a>
             </li>

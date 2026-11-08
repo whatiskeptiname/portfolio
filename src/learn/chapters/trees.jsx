@@ -1,14 +1,40 @@
 // Chapter: decision trees and the ensembles built from them.
 import React from "react";
 import { Eq, M, Table } from "../kit";
+import { FOREST_REEL } from "../reels";
 import { BoostSim, BootstrapSim, CrowdSim, DepthSim, LeakSim, SearchSim, ShapSim, SplitSim, ThresholdSim } from "../sims/trees";
 
 export default {
+  history: "Decision trees grew up in the 1980s to turn data into rules a person could read. Ensembles of them, from the late 1990s on, made them the go-to model for tables of data, which they still are.",
   lessons: [
     {
       id: "splits",
       title: "Twenty questions with data",
       lead: "How a decision tree picks its questions.",
+      history: "In the 1980s, statisticians wanted rules a person could read straight off the data. Leo Breiman and colleagues published CART in 1984, and Ross Quinlan published ID3 in 1986. Their purity scores are older still: Corrado Gini proposed his index in 1912 to measure inequality, and entropy is from Claude Shannon's 1948 theory of communication.",
+      gist: [
+        "A tree is a list of yes/no questions, each about one column, learned from data.",
+        "Each question is picked because it best separates the outcomes; the tree never plans ahead.",
+        "You can read a small tree out loud, which is why people still like them.",
+      ],
+      practice: {
+        adjust: [
+          "Which columns it may use, and how text categories are turned into numbers.",
+          "The split score (Gini or entropy). It rarely changes the result, so don't spend long on it.",
+        ],
+        wrong: [
+          "A column that secretly contains the answer (like a cancellation date) makes a perfect, useless first split.",
+          "Columns with many values, such as IDs or postcodes, get picked because they can be split so many ways.",
+        ],
+        notice: [
+          "Print the first few splits. If the first question looks too good to be true, it probably leaks the answer.",
+          "An ID-like column near the top of feature importance is a red flag.",
+        ],
+        ask: [
+          "Show me the first three splits and how many rows go each way.",
+          "Which of these columns wouldn't be known at the moment we make the prediction?",
+        ],
+      },
       idea: (
         <p>
           A decision tree plays twenty questions with your data. At every step it asks the single yes/no question that best sorts the rows into
@@ -123,8 +149,32 @@ export default {
 
     {
       id: "overfitting",
-      title: "When a tree memorises",
+      title: "Too clever by half",
       lead: "Depth, overfitting, and the trade between bias and variance.",
+      history: "Trees that grow until they fit everything were a problem from the start. The CART book of 1984 deliberately grew trees too big and then pruned them back, because stopping early often stopped too soon. The name for the underlying trade-off, bias against variance, was made famous by a 1992 paper by Geman, Bienenstock and Doursat.",
+      gist: [
+        "A tree can always memorise its training data if you let it grow.",
+        "The score that matters is the one on data it hasn't seen.",
+        "Limiting depth or leaf size trades a little training accuracy for much better results on new data.",
+      ],
+      practice: {
+        adjust: [
+          "max_depth: usually somewhere from 3 to 10 for a single tree.",
+          "min_samples_leaf, for example 20 to 100 rows, so no rule rests on a handful of people.",
+        ],
+        wrong: [
+          "Reporting training accuracy as if it were the real score.",
+          "Tuning depth on the test set, so it stops being a fair test.",
+        ],
+        notice: [
+          "A big gap between the training score and the validation score.",
+          "The model changes a lot when you retrain it on a slightly different sample.",
+        ],
+        ask: [
+          "What's the training score next to the cross-validated score?",
+          "Plot validation accuracy against depth and show me where it peaks.",
+        ],
+      },
       idea: (
         <p>
           Let a tree keep asking questions and it will eventually give every training row a leaf of its own. It's then perfect on data it has seen and
@@ -238,8 +288,32 @@ export default {
 
     {
       id: "metrics",
-      title: "The accuracy trap",
+      title: "94% accurate, 100% useless",
       lead: "Precision, recall, F1 and ROC curves, and why accuracy lies when one answer is rare.",
+      history: "ROC curves come from Second World War radar, where operators had to tell enemy planes from noise and the trade-off between misses and false alarms was a matter of life and death. Precision and recall come from information retrieval, where researchers in the 1950s and 60s measured how well search systems found the right documents; Keith van Rijsbergen's 1979 book gave us the measure behind F1.",
+      gist: [
+        "Accuracy hides failure when one outcome is rare.",
+        "Precision: of the cases flagged, how many were real. Recall: of the real cases, how many were flagged.",
+        "The threshold is a business decision: it trades missed cases against false alarms.",
+      ],
+      practice: {
+        adjust: [
+          "The decision threshold, set from what a miss and a false alarm each cost.",
+          "Class weights during training when the interesting outcome is rare.",
+        ],
+        wrong: [
+          "Celebrating 95% accuracy on data that's 95% one class.",
+          "Balancing the test set, so its numbers no longer match the real world.",
+        ],
+        notice: [
+          "Always look at the confusion matrix, not a single number.",
+          "Compare with the model that always says no.",
+        ],
+        ask: [
+          "What are precision and recall at the threshold we'd actually use?",
+          "How many false alarms a day would this create for the people handling them?",
+        ],
+      },
       idea: (
         <p>
           If 6 in every 100 card payments are fraud, a model that says "honest" every single time is 94% accurate and catches nothing. Accuracy hides
@@ -287,7 +361,7 @@ export default {
             </li>
             <li>
               Fill in missing values inside the training pipeline (a median, or a "was missing" flag), never with numbers computed from the whole
-              dataset. More on that in "Testing honestly".
+              dataset. More on that in "No peeking at the exam".
             </li>
           </ul>
         </>
@@ -353,8 +427,33 @@ export default {
 
     {
       id: "forests",
-      title: "Why a forest beats a tree",
+      title: "Wisdom of the random crowd",
       lead: "Bagging, random forests and the wisdom of a crowd.",
+      history: "In 1906 Francis Galton watched about 800 people guess the weight of an ox at a country fair. The middle guess was 1,207 pounds; the ox weighed 1,198. Ninety years later Leo Breiman turned that idea into bagging (1996) and then random forests (2001), building on Tin Kam Ho's random-feature trees from 1995.",
+      gist: [
+        "A forest averages many deep trees, each trained on a random resample of rows and columns.",
+        "It works because the trees make different mistakes, which cancel out when they vote.",
+        "It's a strong default that needs little tuning.",
+      ],
+      practice: {
+        adjust: [
+          "Number of trees: more is never worse, only slower. A few hundred is typical.",
+          "max_features: fewer columns per split makes the trees more different from each other.",
+        ],
+        wrong: [
+          "Expecting more trees to fix a data problem. They only reduce variance.",
+          "Reading the default feature importance as the truth; it favours columns with many values.",
+        ],
+        notice: [
+          "The out-of-bag score estimates accuracy for free, without a separate validation set.",
+          "Near-perfect training accuracy is normal for a forest. Judge it on validation.",
+        ],
+        ask: [
+          "What's the out-of-bag score, and how does it compare with cross-validation?",
+          "Does adding more trees still change the validation score?",
+        ],
+      },
+      reel: FOREST_REEL,
       idea: (
         <p>
           One tree is a nervous guesser. A forest is a crowd of nervous guessers who are wrong in <em>different</em> ways, so when they vote, their
@@ -474,8 +573,32 @@ export default {
 
     {
       id: "boosting",
-      title: "Boosting: learning from mistakes",
+      title: "Fail, fix, repeat",
       lead: "Gradient boosting, and what XGBoost, LightGBM and CatBoost each add.",
+      history: "In 1988 Michael Kearns and Leslie Valiant asked whether many models that are only slightly better than guessing could be combined into one excellent model. Robert Schapire proved they could in 1990, and with Yoav Freund built AdaBoost (1995). Jerome Friedman's gradient boosting (2001) generalised it, and XGBoost (2016) made it the tool that won data-science competitions.",
+      gist: [
+        "Boosting builds small trees one after another, each fixing what the earlier ones got wrong.",
+        "For tables of data it's usually the most accurate choice (XGBoost, LightGBM, CatBoost).",
+        "Learning rate and number of trees work together; early stopping picks the number for you.",
+      ],
+      practice: {
+        adjust: [
+          "Learning rate (0.01 to 0.1 is common), with early stopping on a validation set.",
+          "Tree size (max_depth or num_leaves) and how many rows and columns each tree samples.",
+        ],
+        wrong: [
+          "Training thousands of trees without early stopping, so it slowly memorises noise.",
+          "Tuning on one lucky split. On small datasets boosting scores jump around.",
+        ],
+        notice: [
+          "Plot training and validation loss per round. Validation should flatten, not climb back up.",
+          "Compare with a random forest. If boosting barely wins, the simpler model may be better.",
+        ],
+        ask: [
+          "At which round did early stopping kick in, and what was the validation loss there?",
+          "Why this library? Many categorical columns suit CatBoost; lots of rows suit LightGBM.",
+        ],
+      },
       idea: (
         <p>
           A forest's trees work side by side. Boosting's trees work in a line. Each new tree looks only at what the team so far still gets wrong and
@@ -585,8 +708,32 @@ export default {
 
     {
       id: "honest-testing",
-      title: "Testing honestly",
+      title: "No peeking at the exam",
       lead: "Cross-validation, searching for settings, pipelines that don't leak, and saving the result.",
+      history: "Statisticians Mervyn Stone and Seymour Geisser formalised cross-validation in the mid-1970s, because testing a model on the data it was built from gave flattering answers. Leakage got its own well-known paper in 2011, after leaks kept turning up in data-mining competitions, where models had in effect been shown the answers.",
+      gist: [
+        "A score only counts if nothing about the test rows leaked into training.",
+        "Cross-validation rotates which rows are held out; a pipeline keeps every preparation step inside that rotation.",
+        "Keep one final test set and look at it once.",
+      ],
+      practice: {
+        adjust: [
+          "Number of folds (5 is standard), split so each fold has the same share of each outcome.",
+          "The search budget: a fixed number of random or Bayesian tries rather than a giant grid.",
+        ],
+        wrong: [
+          "Scaling, filling gaps or choosing columns on the full dataset before splitting.",
+          "Trying dozens of settings and reporting the best score as if it were unbiased.",
+        ],
+        notice: [
+          "A suspiciously high score on a hard problem usually means a leak.",
+          "A big drop between the cross-validated score and the final test set.",
+        ],
+        ask: [
+          "Is every preprocessing step inside the pipeline that gets cross-validated?",
+          "What did the untouched test set score, and when was it first used?",
+        ],
+      },
       idea: (
         <p>
           A score is only worth something if the model never peeked at the rows it's scored on. Peeking sneaks in easily, through steps that look
@@ -715,6 +862,30 @@ export default {
       id: "explaining",
       title: "Why did it say that?",
       lead: "Feature importance and SHAP values.",
+      history: "Lloyd Shapley worked out in 1953 how to split a team's winnings fairly among its players, work that later earned him a Nobel Memorial Prize in economics (2012). In 2017 Scott Lundberg and Su-In Lee applied the same idea to model predictions as SHAP, just as models became too complex to read and people started asking for explanations.",
+      gist: [
+        "SHAP splits one prediction into pushes from each feature, starting from the average case.",
+        "The pushes always add up to the prediction, which makes them easy to explain to people.",
+        "It explains what the model did, not what causes the outcome in the real world.",
+      ],
+      practice: {
+        adjust: [
+          "Which background data defines \"the average case\".",
+          "Whether to explain probabilities or log-odds. Log-odds add up exactly; probabilities read more easily.",
+        ],
+        wrong: [
+          "Treating SHAP values as cause and effect.",
+          "Trusting the split of credit between strongly correlated features; it can be arbitrary.",
+        ],
+        notice: [
+          "A summary plot dominated by an unexpected feature often reveals a leak.",
+          "Go through a few individual explanations with someone who knows the domain.",
+        ],
+        ask: [
+          "Show me the SHAP summary plot and the explanation for three typical cases.",
+          "Which features are correlated, so their credit might be shared out oddly?",
+        ],
+      },
       idea: (
         <p>
           SHAP splits a prediction among the features, the way you'd split a restaurant bill fairly. Start from the average customer's risk. Each

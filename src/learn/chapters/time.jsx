@@ -4,11 +4,36 @@ import { Eq, M, Table } from "../kit";
 import { ACFSim, BacktestSim, ComponentsSim, FanSim, ForecastSim, HierarchySim, MetricsSim, MLForecastSim, StationaritySim } from "../sims/time";
 
 export default {
+  history: "Most of the forecasting toolkit was built in the 1950s to 70s for inventory, economics and engineering. Forecasting competitions since 1982 have kept everyone honest, and since 2018 machine learning has joined the winners.",
   lessons: [
     {
       id: "components",
-      title: "When order matters",
+      title: "Don't shuffle the calendar",
       lead: "What a time series is, and the four parts most of them are made of.",
+      history: "Governments needed to know whether unemployment had really risen or it was just January, so statisticians built seasonal adjustment. The US Census Bureau's X-11 method (1965) did it for official statistics for decades, and STL, published in 1990 by Robert Cleveland and colleagues, is the flexible version most people use today.",
+      gist: [
+        "A time series is data where order matters: today depends on yesterday.",
+        "Most series are a trend, a season, longer cycles and noise added together.",
+        "Pulling them apart (decomposition) is the first thing to look at.",
+      ],
+      practice: {
+        adjust: [
+          "The time step (daily, weekly, monthly) you aggregate to.",
+          "How missing periods are filled, using only the past.",
+        ],
+        wrong: [
+          "Shuffling rows, or splitting train and test at random.",
+          "Filling gaps with values computed from the future.",
+        ],
+        notice: [
+          "A decomposition plot shows which part dominates.",
+          "Sudden breaks (a new pricing policy, a pandemic) that no past pattern explains.",
+        ],
+        ask: [
+          "Show me the series split into trend, season and what's left.",
+          "Were there events that changed the pattern?",
+        ],
+      },
       idea: (
         <p>
           In most datasets you can shuffle the rows and nothing changes. In a time series the order is the whole point: today depends on
@@ -121,6 +146,30 @@ export default {
       id: "stationarity",
       title: "Making a series sit still",
       lead: "Stationarity, logs and differencing.",
+      history: "George Box and Gwilym Jenkins' 1970 book made 'difference the series until it's stationary' the standard first step in forecasting. David Dickey and Wayne Fuller gave us a test for it in 1979, and the KPSS test, which asks the opposite question, followed in 1992.",
+      gist: [
+        "Many models assume a series behaves the same way all the time.",
+        "Logs steady a growing spread; differences remove trends and seasons.",
+        "You forecast the steady version, then undo the steps.",
+      ],
+      practice: {
+        adjust: [
+          "Whether to take the log, and how many regular and seasonal differences.",
+          "Which tests to rely on: ADF and KPSS together.",
+        ],
+        wrong: [
+          "Differencing a series that was already steady, which adds noise.",
+          "Modelling raw prices, which wander like a random walk.",
+        ],
+        notice: [
+          "Rolling mean and spread that stay flat after transforming.",
+          "Leftover errors with no trend or season remaining.",
+        ],
+        ask: [
+          "What transformations were applied before modelling?",
+          "What do the ADF and KPSS tests say after transforming?",
+        ],
+      },
       idea: (
         <p>
           Many forecasting models assume the series behaves the same way throughout: same average, same spread, same rhythm. That's called
@@ -235,8 +284,32 @@ export default {
 
     {
       id: "memory",
-      title: "How much a series remembers",
+      title: "Echoes of last month",
       lead: "Autocorrelation, partial autocorrelation, and reading AR and MA patterns.",
+      history: "In 1927 Udny Yule modelled the number of sunspots each year as a weighted echo of the previous years, the first autoregressive model. The same year Eugen Slutsky showed that averaging random shocks produces wave-like patterns, the idea behind moving-average models.",
+      gist: [
+        "Autocorrelation shows how much a value resembles its own past values.",
+        "Slowly fading memory suggests an AR model; a single sharp echo suggests MA.",
+        "The same plot of the leftover errors tells you whether a model missed something.",
+      ],
+      practice: {
+        adjust: [
+          "How many past steps (lags) to consider.",
+          "The seasonal period to check: 7 for daily data with a weekly cycle, 12 for monthly.",
+        ],
+        wrong: [
+          "Reading every small bar as meaningful.",
+          "Skipping the check of the leftover errors after fitting.",
+        ],
+        notice: [
+          "Spikes at seasonal lags in the leftover errors mean a missing seasonal term.",
+          "A Ljung–Box test that fails means pattern is left over.",
+        ],
+        ask: [
+          "Show me the ACF and PACF of the residuals.",
+          "Is anything left at the seasonal lag?",
+        ],
+      },
       idea: (
         <p>
           The autocorrelation function (ACF) asks: how alike is this month to the month before? To the one before that? Plotting the answers shows a
@@ -346,8 +419,32 @@ export default {
 
     {
       id: "classical",
-      title: "Simple forecasters that are hard to beat",
+      title: "Beat 'same as last year' first",
       lead: "Naive, seasonal naive, moving averages and exponential smoothing.",
+      history: "Exponential smoothing came from practical jobs in the 1950s: Robert Brown used it for US Navy inventory and tracking, Charles Holt added a trend in 1957, and Peter Winters added seasons in 1960. From 1982 Spyros Makridakis ran forecasting competitions that kept finding these simple methods hard to beat.",
+      gist: [
+        "Simple forecasts such as \"same as last year\" are often hard to beat.",
+        "Exponential smoothing weights recent data more; Holt–Winters adds trend and season.",
+        "Every fancy model should be compared with these baselines.",
+      ],
+      practice: {
+        adjust: [
+          "Which baseline to compare against: naive or seasonal naive.",
+          "The smoothing weights, usually fitted automatically.",
+        ],
+        wrong: [
+          "Reporting a complex model's accuracy with no baseline beside it.",
+          "Using a method without a season on clearly seasonal data.",
+        ],
+        notice: [
+          "MASE below 1 means you beat the naive forecast.",
+          "A flat forecast for data that's clearly seasonal.",
+        ],
+        ask: [
+          "How does it compare with \"same as last year\"?",
+          "Which smoothing settings were fitted, and do they make sense?",
+        ],
+      },
       idea: (
         <p>
           Before any clever model, try the dumb ones: "same as last month", "same as this month last year", "the average of recent months".
@@ -457,6 +554,30 @@ export default {
       id: "arima",
       title: "ARIMA and friends",
       lead: "AR, MA, ARIMA and SARIMA, automatic selection, and Prophet.",
+      history: "Box and Jenkins published their method in 1970, and for decades fitting an ARIMA meant an expert reading ACF plots. Rob Hyndman and Yeasmin Khandakar's automatic ARIMA (2008) made it one function call, and Facebook released Prophet in 2017 so analysts without that expertise could forecast business data.",
+      gist: [
+        "ARIMA models what's left after steadying the series, using its own past and past surprises.",
+        "Forecasts for steady series drift back to the average; for wandering series the uncertainty keeps growing.",
+        "Tools such as AutoARIMA and Prophet choose much of the model for you.",
+      ],
+      practice: {
+        adjust: [
+          "The orders (p, d, q) and seasonal orders, usually chosen automatically.",
+          "For Prophet: holidays, changepoints and how flexible the trend is.",
+        ],
+        wrong: [
+          "Trusting prediction intervals when the leftover errors aren't random.",
+          "Letting automatic selection run without checking the result makes sense.",
+        ],
+        notice: [
+          "Intervals that widen further ahead, as they should.",
+          "Leftover errors with no autocorrelation and a steady spread.",
+        ],
+        ask: [
+          "Which orders were selected, and do the residuals pass the checks?",
+          "How wide are the intervals 1, 6 and 12 steps ahead?",
+        ],
+      },
       idea: (
         <p>
           ARIMA combines the last two lessons' ideas: difference the series until it's stationary (the I), then model what's left with its own
@@ -577,8 +698,32 @@ export default {
 
     {
       id: "ml-forecasting",
-      title: "Machine learning for forecasting",
+      title: "Trees can't predict a record",
       lead: "Lag features, why trees can't extrapolate, and where deep learning fits.",
+      history: "For years the forecasting competitions were won by statistical methods. That changed in 2018, when the M4 competition was won by Slawek Smyl's hybrid of exponential smoothing and a neural network, and in 2020 the M5 competition, on Walmart sales, was dominated by LightGBM models built on lag features.",
+      gist: [
+        "Turn a series into a table of past values and any regression model can forecast.",
+        "Tree models can't predict beyond the values they've seen, so they flatline on growing series.",
+        "Predicting changes, or removing the trend first, fixes that.",
+      ],
+      practice: {
+        adjust: [
+          "Which lags, rolling statistics and calendar features to create.",
+          "Whether to forecast step by step, or with one model per horizon.",
+        ],
+        wrong: [
+          "Features that use information from the period being predicted.",
+          "Using trees on the raw levels of a growing series.",
+        ],
+        notice: [
+          "Forecasts that stall at the historical maximum.",
+          "Great backtest scores that collapse in production, a sign of leakage.",
+        ],
+        ask: [
+          "Could every feature actually be computed at the moment we forecast?",
+          "Does the model predict levels or changes?",
+        ],
+      },
       idea: (
         <p>
           Any regression model can forecast if you turn the series into a table: each row is a moment in time, the target is the value, and the
@@ -698,8 +843,32 @@ export default {
 
     {
       id: "evaluation",
-      title: "Testing a forecast honestly",
+      title: "No time travel allowed",
       lead: "Walk-forward validation and choosing an error metric.",
+      history: "Forecasters learned the hard way that models tested on the past they were built from look far better than they perform. Rolling-origin testing became standard advice by 2000, and in 2006 Rob Hyndman and Anne Koehler proposed MASE because percentage errors blew up on series with zeros, like spare-part demand.",
+      gist: [
+        "Test forecasts the way reality will: train on the past, predict the future.",
+        "Walk-forward validation repeats that at several cut-off dates.",
+        "Choose the error metric on purpose; percentages break near zero.",
+      ],
+      practice: {
+        adjust: [
+          "The cut-off dates, the forecast horizon and the gap between folds.",
+          "The metric: MAE or RMSE for one series, MASE or WMAPE across many.",
+        ],
+        wrong: [
+          "Shuffled cross-validation, which lets the model see the future.",
+          "Using MAPE when some actual values are close to zero.",
+        ],
+        notice: [
+          "Error that grows with the horizon, as it should.",
+          "Errors much worse for particular products or periods.",
+        ],
+        ask: [
+          "Was this tested with walk-forward validation?",
+          "What's the error by horizon and by product group?",
+        ],
+      },
       idea: (
         <p>
           The only fair test of a forecast is the one reality gives it: train on the past, predict the future, compare. Ordinary cross-validation
@@ -814,6 +983,30 @@ export default {
       id: "hierarchies",
       title: "Forecasts that add up",
       lead: "Hierarchical forecasting: bottom-up, top-down and reconciliation.",
+      history: "Companies have always needed store, region and national plans that agree. For decades the choice was bottom-up or top-down. In 2011 Rob Hyndman and colleagues showed how to reconcile forecasts from every level at once, and the MinT method (2019) improved on it.",
+      gist: [
+        "Forecasts for stores, regions and the total should add up.",
+        "Separate forecasts rarely do; reconciliation adjusts them until they do.",
+        "Using information from every level usually improves accuracy too.",
+      ],
+      practice: {
+        adjust: [
+          "The method: bottom-up, top-down, or reconciliation (OLS or MinT).",
+          "Which levels to forecast directly.",
+        ],
+        wrong: [
+          "Top-down splits that use out-of-date shares.",
+          "Bottom-up forecasts that are too noisy at the lowest level.",
+        ],
+        notice: [
+          "Any mismatch between levels shows up at once in finance reports.",
+          "Compare accuracy at each level, not just the total.",
+        ],
+        ask: [
+          "Do the forecasts add up across the hierarchy?",
+          "How accurate is each level before and after reconciliation?",
+        ],
+      },
       idea: (
         <p>
           A business forecasts sales for every store, every region and the whole company. Forecast each separately and the stores won't add up to

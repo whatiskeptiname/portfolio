@@ -4,11 +4,36 @@ import { Eq, M, Table } from "../kit";
 import { CLIPSim, ConvSim, DepthSignalSim, DiffusionSim, GradCamSim, IoUSim, LatentSim, MaskSim, NMSSim, PatchSim, QuantSim, ReceptiveSim } from "../sims/vision";
 
 export default {
+  history: "The idea of stacked edge detectors goes back to experiments on cats' visual cortex in 1959. It took until 2012, with enough data and graphics cards, for it to beat everything else, and since then vision has moved from recognising objects to outlining and creating them.",
   lessons: [
     {
       id: "convolution",
-      title: "How a computer looks at a picture",
+      title: "A picture is a spreadsheet",
       lead: "Pixels, filters and convolution, the building block of vision models.",
+      history: "In 1959 David Hubel and Torsten Wiesel found cells in a cat's visual cortex that fire for edges at particular angles, work that won a Nobel Prize in 1981. Kunihiko Fukushima built a network inspired by it in 1980, and in 1989 Yann LeCun trained a convolutional network to read handwritten zip codes; versions of it later read cheques in American banks.",
+      gist: [
+        "To a computer, an image is a grid of numbers.",
+        "A convolution slides a small pattern detector over it and records how well each spot matches.",
+        "Vision networks stack many learned detectors, from edges up to whole objects.",
+      ],
+      practice: {
+        adjust: [
+          "Input resolution: higher sees more detail and costs more.",
+          "Augmentation (flips, crops, colour changes) so the model sees more variety.",
+        ],
+        wrong: [
+          "Preparing images one way in training and another way in production.",
+          "Resizing that squashes objects out of shape.",
+        ],
+        notice: [
+          "Accuracy that drops on images from a different camera or lighting.",
+          "Look at a batch of the prepared images with your own eyes.",
+        ],
+        ask: [
+          "Is image preparation identical in training and production?",
+          "What resolution and augmentation were used?",
+        ],
+      },
       idea: (
         <p>
           To a computer an image is a grid of numbers. A convolution slides a small grid of weights, a filter, across it, and at every position
@@ -123,8 +148,32 @@ export default {
 
     {
       id: "deep-networks",
-      title: "Going deeper",
+      title: "Deeper, with shortcuts",
       lead: "From LeNet to ResNet: skip connections, batch normalisation and transfer learning.",
+      history: "In 2012 AlexNet won the ImageNet challenge with a top-5 error of 15.3%, against 26.2% for the runner-up, and deep learning took over computer vision. Networks kept getting deeper until, past about twenty layers, they got worse. In 2015 Kaiming He and colleagues fixed that with skip connections; their 152-layer ResNet won ImageNet that year.",
+      gist: [
+        "Deeper networks learn richer features; skip connections make very deep ones trainable.",
+        "You almost never train from scratch: you start from a pretrained model.",
+        "With little data, retrain only the last layer; with more, fine-tune more of it.",
+      ],
+      practice: {
+        adjust: [
+          "Which pretrained model to start from, and how many layers to unfreeze.",
+          "A small learning rate for fine-tuning.",
+        ],
+        wrong: [
+          "Training from scratch on a few hundred images.",
+          "Leaving the model in training mode at inference, so batch normalisation misbehaves.",
+        ],
+        notice: [
+          "Fine-tuning should beat a frozen-backbone baseline.",
+          "Predictions that change with batch size point to a batch-norm mode problem.",
+        ],
+        ask: [
+          "Which pretrained weights, and which layers were fine-tuned?",
+          "What does a frozen-backbone baseline score?",
+        ],
+      },
       idea: (
         <p>
           Deeper networks can learn richer features, but past about twenty layers plain networks got worse, not better: the learning signal faded
@@ -240,8 +289,32 @@ export default {
 
     {
       id: "detection",
-      title: "Finding things",
+      title: "Draw a box around it",
       lead: "Object detection: boxes, IoU, non-maximum suppression and mAP.",
+      history: "In 2001 Paul Viola and Michael Jones built a face detector fast enough for consumer cameras. The PASCAL VOC challenge (from 2005) fixed the rule that a box counts when IoU is at least 0.5. Deep learning arrived with R-CNN in 2014, and YOLO (2016) made detection fast enough for live video.",
+      gist: [
+        "Detection gives a box, a label and a confidence for every object.",
+        "A box counts as correct when it overlaps the true one enough (IoU).",
+        "Duplicate boxes are removed with non-maximum suppression.",
+      ],
+      practice: {
+        adjust: [
+          "The confidence threshold and the overlap threshold for removing duplicates.",
+          "Model size (speed against accuracy) and input resolution for small objects.",
+        ],
+        wrong: [
+          "Tuning thresholds on the test set.",
+          "Missing small objects because images were shrunk too much.",
+        ],
+        notice: [
+          "mAP@0.5 and mAP@0.5:0.95 tell different stories; the second rewards tight boxes.",
+          "Look at the failures: missed small objects, neighbours merged into one box.",
+        ],
+        ask: [
+          "What are precision and recall at the threshold we'll deploy with?",
+          "How does it do on small or crowded objects?",
+        ],
+      },
       idea: (
         <p>
           Classification says what's in a picture. Detection says what, and where: a box and a label for every object. Detectors make many
@@ -360,8 +433,32 @@ export default {
 
     {
       id: "segmentation",
-      title: "Outlining every pixel",
+      title: "Colouring inside the lines",
       lead: "Semantic, instance and panoptic segmentation, U-Net, dilated convolutions and SAM.",
+      history: "In 2015 Olaf Ronneberger, Philipp Fischer and Thomas Brox designed U-Net for microscope images, where labelled examples are scarce, and it won a cell-tracking challenge that year. In 2023 Meta released Segment Anything, trained on over a billion masks, which outlines objects it was never specifically taught.",
+      gist: [
+        "Segmentation labels every pixel instead of drawing boxes.",
+        "Semantic segmentation gives classes; instance segmentation separates individual objects.",
+        "Foundation models like SAM can outline almost anything from a single click.",
+      ],
+      practice: {
+        adjust: [
+          "Which task you really need: semantic, instance or panoptic.",
+          "The loss (Dice for small objects) and the output resolution.",
+        ],
+        wrong: [
+          "Judging by pixel accuracy, which the background dominates.",
+          "Coarse masks because the output was scaled up too much.",
+        ],
+        notice: [
+          "IoU or Dice for each class, not one overall number.",
+          "Look at the edges: blurry boundaries mean lost detail.",
+        ],
+        ask: [
+          "What's the IoU or Dice for each class?",
+          "Could SAM with prompts do this without training a new model?",
+        ],
+      },
       idea: (
         <p>
           Boxes are rough: a box around a person also contains the wall behind them. Segmentation labels every pixel. The challenge is that
@@ -489,8 +586,32 @@ export default {
 
     {
       id: "generative",
-      title: "Making new images",
+      title: "Sculpting pictures out of noise",
       lead: "Autoencoders, GANs and diffusion models.",
+      history: "Variational autoencoders (Kingma and Welling, 2013) and GANs (Ian Goodfellow and colleagues, 2014) were the first generators that worked well. Diffusion models began in 2015 with Jascha Sohl-Dickstein and colleagues, inspired by thermodynamics, became practical with Jonathan Ho's DDPM in 2020, and reached the public with Stable Diffusion in 2022.",
+      gist: [
+        "Generative models learn to turn random numbers into realistic images.",
+        "Diffusion models do it by removing noise step by step, and are the current standard.",
+        "Quality is measured by comparing feature statistics (FID) and by people looking.",
+      ],
+      practice: {
+        adjust: [
+          "Number of denoising steps (quality against speed) and guidance strength.",
+          "The prompt and other conditioning, for text-to-image.",
+        ],
+        wrong: [
+          "Judging a model from a few hand-picked samples.",
+          "Outputs that copy training images too closely.",
+        ],
+        notice: [
+          "Lack of variety across many samples.",
+          "FID on a fixed set of samples, plus human review.",
+        ],
+        ask: [
+          "Show me 50 random samples, not the best 5.",
+          "Where did the training images come from, and do outputs resemble them too closely?",
+        ],
+      },
       idea: (
         <p>
           Recognising pictures means squeezing them down to a few meaningful numbers. Generating them runs that in reverse: start from some
@@ -613,8 +734,32 @@ export default {
 
     {
       id: "transformers",
-      title: "Attention instead of convolution",
+      title: "An image is worth 16×16 words",
       lead: "Vision transformers, Swin, self-supervised learning and CLIP.",
+      history: "Transformers were invented in 2017 for translating text ('Attention is all you need'). In 2020 a Google team tried the same architecture on images cut into patches, and titled their paper with the phrase above. OpenAI's CLIP followed in 2021, trained on 400 million image–caption pairs from the internet.",
+      gist: [
+        "Vision transformers treat image patches like words and let every patch look at every other.",
+        "They need lots of data or pretraining, but scale very well.",
+        "CLIP links images and text, so you can classify with words alone.",
+      ],
+      practice: {
+        adjust: [
+          "Patch size and resolution; cost grows quickly with more patches.",
+          "The wording of the prompts for zero-shot classification.",
+        ],
+        wrong: [
+          "Training a vision transformer from scratch on a small dataset.",
+          "Trusting zero-shot labels on specialised images (X-rays, satellite) without testing.",
+        ],
+        notice: [
+          "Zero-shot accuracy on a small labelled sample of your own data.",
+          "Attention that lands on the object, not the background.",
+        ],
+        ask: [
+          "How does zero-shot CLIP do on 200 of our own labelled images?",
+          "Which pretrained model, and was it fine-tuned?",
+        ],
+      },
       idea: (
         <p>
           A convolution only looks at a pixel's neighbours; seeing across the image takes many layers. A vision transformer cuts the image into
@@ -737,8 +882,32 @@ export default {
 
     {
       id: "shipping",
-      title: "Seeing what it saw, and shipping it",
+      title: "Trust it, then shrink it",
       lead: "Grad-CAM explanations, ONNX export and quantisation.",
+      history: "Explanation tools spread after models were caught cheating: in a 2016 experiment, researchers deliberately trained a husky-or-wolf classifier where every wolf photo had snow, and their explanation method showed it was looking at the snow. Grad-CAM followed in 2017, the same year Facebook and Microsoft launched ONNX, and Google's 2018 work on integer-only inference helped make 8-bit models standard on phones.",
+      gist: [
+        "Check what the model looks at before trusting it.",
+        "Export to a standard format (ONNX) to run it almost anywhere.",
+        "Storing weights in 8 bits makes a model about four times smaller and faster, for a small accuracy cost.",
+      ],
+      practice: {
+        adjust: [
+          "The quantisation method (after training, or during it) and the calibration images.",
+          "The target runtime and hardware: ONNX Runtime, TensorRT, a phone.",
+        ],
+        wrong: [
+          "A heat map showing the model relies on the background, not the object.",
+          "An exported model whose outputs differ from the original.",
+        ],
+        notice: [
+          "Accuracy before and after export and quantisation, on the same test set.",
+          "Speed measured on the real device, including image preparation.",
+        ],
+        ask: [
+          "What's the accuracy drop after INT8, and the speed-up on our device?",
+          "Show me Grad-CAM heat maps for 20 random test images.",
+        ],
+      },
       idea: (
         <p>
           Before you trust a vision model, check what it's looking at: a heat map of the pixels that drove its answer. Before you ship it, make it
@@ -748,8 +917,8 @@ export default {
       ),
       example: (
         <p>
-          A famous story: a model told huskies from wolves with excellent accuracy. A heat map showed it was looking at the snow, not the animal:
-          most wolf photos had snow in them. On a camera at a farm gate, the same model must also run at 30 frames per second on a small board, which
+          In a well-known 2016 experiment, researchers trained a classifier to tell huskies from wolves on photos where every wolf stood in snow.
+          It scored well, and an explanation of its decisions showed why: it was looking at the snow, not the animal. On a camera at a farm gate, the same model must also run at 30 frames per second on a small board, which
           is where quantisation comes in.
         </p>
       ),

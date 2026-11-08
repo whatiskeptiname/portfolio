@@ -1,8 +1,17 @@
-// One lesson, top to bottom: the idea, an example, simulations to play with,
-// how it works, a quick check, saying it back, and where to go deeper.
+// One lesson, top to bottom. The fast path comes first, for readers who use
+// these systems more than they build them: the idea in 60 seconds, an example,
+// a simulation, and what working with it is like in practice. The maths and
+// details fold away, then a quick check, saying it back, and where to go deeper.
 import React, { useEffect, useId, useState } from "react";
 import Icon from "../components/Icon";
+import Reel from "./Reel";
 
+const PRACTICE = [
+  ["adjust", "What you'd adjust"],
+  ["wrong", "What goes wrong"],
+  ["notice", "How you'd notice"],
+  ["ask", "What to ask an AI or a teammate"],
+];
 
 export default function Lesson({ lesson, record, onDone, where }) {
   const [answers, setAnswers] = useState({});
@@ -26,9 +35,26 @@ export default function Lesson({ lesson, record, onDone, where }) {
         {where && <p className="lesson-where">{where}</p>}
       </header>
 
+      {lesson.history && (
+        <p className="origin">
+          <strong>How it started.</strong> {lesson.history}
+        </p>
+      )}
+
       <section className="step step-idea" id="idea" aria-labelledby="h-idea">
-        <h2 id="h-idea">The idea</h2>
+        <h2 id="h-idea">In 60 seconds</h2>
+        {lesson.reel && (
+          // Each scene's caption is one of the "what to remember" points below.
+          <Reel title={lesson.title} scenes={lesson.reel.map((scene, i) => ({ ...scene, caption: scene.caption ?? lesson.gist[i] }))} />
+        )}
         <div className="idea">{lesson.idea}</div>
+        {lesson.gist && (
+          <ul className="gist" aria-label="What to remember">
+            {lesson.gist.map((g) => (
+              <li key={g}>{g}</li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="step" id="example" aria-labelledby="h-example">
@@ -43,10 +69,35 @@ export default function Lesson({ lesson, record, onDone, where }) {
         ))}
       </section>
 
+      {lesson.practice && (
+        <section className="step" id="practice" aria-labelledby="h-practice">
+          <h2 id="h-practice">In practice</h2>
+          <dl className="practice">
+            {PRACTICE.map(([key, label]) =>
+              lesson.practice[key]?.length ? (
+                <div key={key} className={`practice-row practice-${key}`}>
+                  <dt>{label}</dt>
+                  <dd>
+                    <ul>
+                      {lesson.practice[key].map((t) => (
+                        <li key={t}>{key === "ask" ? `"${t}"` : t}</li>
+                      ))}
+                    </ul>
+                  </dd>
+                </div>
+              ) : null
+            )}
+          </dl>
+        </section>
+      )}
+
       {lesson.how && (
         <section className="step" id="how" aria-labelledby="h-how">
-          <h2 id="h-how">How it works</h2>
-          <div className="prose-col">{lesson.how}</div>
+          <h2 id="h-how">The details</h2>
+          <details className="details">
+            <summary>Show the maths and the finer points</summary>
+            <div className="prose-col">{lesson.how}</div>
+          </details>
         </section>
       )}
 

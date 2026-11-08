@@ -1409,53 +1409,67 @@ a.tile:hover {
 }
 
 /* ---------- Learn ---------- */
+/* Small doors: four quick concepts in a row, each with its idea playing. */
 .learn-doors {
   list-style: none;
-  margin: 0 0 20px;
+  margin: 0 0 16px;
   padding: 0;
   display: grid;
-  gap: var(--gap);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
-@media (min-width: 720px) {
+@media (min-width: 900px) {
   .learn-doors {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
-.learn-door {
+.learn-door.tile {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   height: 100%;
+  padding: 12px 12px 18px;
   color: inherit;
   text-decoration: none;
-  transition: border-color 200ms ease, transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: border-color 200ms ease;
 }
 .learn-door:hover {
   border-color: var(--accent);
 }
 .learn-door .cover {
-  border-radius: 14px;
+  height: 132px;
+  border-radius: 10px;
   overflow: hidden;
   background: var(--surface-2);
 }
 .learn-door .cover svg {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
 }
 .cover-placeholder {
-  aspect-ratio: 16 / 10;
+  height: 132px;
+}
+.learn-door-text {
+  padding: 0 4px;
 }
 .learn-door-text strong {
   display: block;
   font-family: var(--font-display);
-  font-size: 1.3rem;
+  font-size: 1.12rem;
   font-weight: 560;
+  line-height: 1.25;
   margin-bottom: 4px;
 }
 .learn-door-text span {
+  display: block;
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.learn-all.btn {
+  padding: 7px 14px;
+  font-size: 0.88rem;
 }
 
 /* ---------- Shared bits ---------- */

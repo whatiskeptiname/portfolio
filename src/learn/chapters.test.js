@@ -5,6 +5,15 @@ import { CATALOG } from "./catalog";
 import { CHAPTERS } from "./chapters";
 
 describe("the lessons", () => {
+  it("every catalogue entry has a title, a blurb and a short hook for the landing page", () => {
+    for (const c of CATALOG) {
+      expect(c.title).toBeTruthy();
+      expect(c.blurb).toBeTruthy();
+      expect(c.hook).toBeTruthy();
+      expect(c.hook.length).toBeLessThan(70);
+    }
+  });
+
   it("every catalogue entry has its lessons", () => {
     expect(CHAPTERS.map((c) => c.id)).toEqual(CATALOG.map((c) => c.id));
   });
@@ -24,7 +33,11 @@ describe("the lessons", () => {
         it(`${lesson.title} is complete`, () => {
           expect(lesson.title).toBeTruthy();
           expect(lesson.lead).toBeTruthy();
+          expect(lesson.history).toBeTruthy();
           expect(lesson.idea).toBeTruthy();
+          // The fast path: three things to remember, and what it's like in practice.
+          expect(lesson.gist.length).toBeGreaterThanOrEqual(2);
+          for (const key of ["adjust", "wrong", "notice", "ask"]) expect(lesson.practice[key].length).toBeGreaterThan(0);
           expect(lesson.example).toBeTruthy();
           expect(lesson.play.length).toBeGreaterThan(0);
           for (const p of lesson.play) {

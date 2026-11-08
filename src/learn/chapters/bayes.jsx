@@ -4,11 +4,36 @@ import { Eq, M, Table } from "../kit";
 import { EstimatorSim, GaussianSim, GPSim, MCMCSim, NetworkSim, UncertaintySim, UpdateSim } from "../sims/bayes";
 
 export default {
+  history: "Bayes' rule is from 1763, but for two centuries it was mostly too hard to compute with. Computers, and sampling methods from around 1990, turned it into everyday practice wherever being honest about uncertainty matters.",
   lessons: [
     {
       id: "uncertainty",
       title: "Two kinds of not knowing",
       lead: "Uncertainty you can shrink with data, and uncertainty you can't.",
+      history: "Economist Frank Knight drew a similar line in 1921, between risk you can measure and uncertainty you can't. In machine learning the words aleatoric and epistemic were popularised by a 2017 paper by Alex Kendall and Yarin Gal on vision models, such as those in self-driving cars, that need to know when they're unsure.",
+      gist: [
+        "Some uncertainty comes from too little data, and more data shrinks it.",
+        "Some comes from the world being random, and no amount of data removes it.",
+        "Good systems report both, so you know whether to collect more data or plan for a range.",
+      ],
+      practice: {
+        adjust: [
+          "How much data you collect for the groups the model is unsure about.",
+          "Whether the model gives a single number or a range (prediction intervals or quantiles).",
+        ],
+        wrong: [
+          "Giving confident point predictions for groups the model has barely seen.",
+          "Promising that more data will make a random outcome predictable.",
+        ],
+        notice: [
+          "Intervals much wider for some groups point to thin data there.",
+          "Check that 90% intervals contain the real value about 90% of the time.",
+        ],
+        ask: [
+          "How wide are the prediction intervals, and for which groups are they widest?",
+          "Would more data shrink this uncertainty, or is it noise in the outcome itself?",
+        ],
+      },
       idea: (
         <p>
           Some uncertainty is ignorance: you haven't seen enough yet, and more data will shrink it. Some is just how the world is: even with perfect
@@ -111,8 +136,32 @@ export default {
 
     {
       id: "estimation",
-      title: "Three ways to estimate",
+      title: "Four out of five isn't 80%",
       lead: "Maximum likelihood, MAP and the full posterior.",
+      history: "Thomas Bayes' essay on updating beliefs was published in 1763, two years after he died, by his friend Richard Price. Pierre-Simon Laplace worked out the same ideas independently and used them, among other things, to ask how sure we can be that the sun will rise tomorrow. Ronald Fisher championed maximum likelihood, which needs no prior, in the 1910s and 1920s.",
+      gist: [
+        "With little data, a raw rate like 4 out of 5 is unreliable.",
+        "A prior is what you believed beforehand; blending it with the data gives a sensible estimate.",
+        "The full posterior gives a range, which is what most decisions need.",
+      ],
+      practice: {
+        adjust: [
+          "The prior: what similar cases usually look like, and how much weight it gets.",
+          "Which summary to report: the most likely value, the average, or an interval.",
+        ],
+        wrong: [
+          "Ranking by raw rates, so tiny samples with a lucky streak come out on top.",
+          "A prior so strong that real evidence can't move it.",
+        ],
+        notice: [
+          "Top-ranked items with very few observations behind them.",
+          "Estimates that barely change as data arrives, a sign the prior is too strong.",
+        ],
+        ask: [
+          "How many observations sit behind each estimate?",
+          "What prior did we use, and how much do the results change if we vary it?",
+        ],
+      },
       idea: (
         <p>
           You want a number, like a sign-up rate, from a little data. You can trust only the data (maximum likelihood). You can blend the data with
@@ -220,8 +269,32 @@ export default {
 
     {
       id: "updating",
-      title: "Changing your mind one fact at a time",
+      title: "Strong opinions, weakly held",
       lead: "Sequential updating, conjugate priors and the exponential family.",
+      history: "At Bletchley Park during the Second World War, Alan Turing and Jack Good updated their beliefs about German Enigma settings one clue at a time, adding up the weight of evidence in units Turing called bans. The same arithmetic, applied one observation at a time, is what this lesson is about.",
+      gist: [
+        "Today's conclusion is tomorrow's starting point: you update as each piece of evidence arrives.",
+        "People who start with different beliefs end up agreeing once there's enough shared evidence.",
+        "For common cases the update is just adding up counts.",
+      ],
+      practice: {
+        adjust: [
+          "The starting belief, especially for new products or small groups.",
+          "Whether older data should count less over time, if the world changes.",
+        ],
+        wrong: [
+          "Starting from scratch each time and throwing away what was already learned.",
+          "Treating all data as equally current when the world has moved on.",
+        ],
+        notice: [
+          "Estimates jumping around early on is expected; they should settle.",
+          "Two teams with different starting beliefs converging is a sign there's enough data.",
+        ],
+        ask: [
+          "How much of the current estimate comes from the prior, and how much from the data?",
+          "Should older observations be given less weight?",
+        ],
+      },
       idea: (
         <p>
           Today's posterior is tomorrow's prior. Each new observation nudges your belief, and you never need to go back to the start. Two people who
@@ -335,8 +408,32 @@ export default {
 
     {
       id: "gaussians",
-      title: "Many uncertain things at once",
+      title: "Tall parents, slightly tall children",
       lead: "The multivariate Gaussian: correlation, marginals and conditioning.",
+      history: "Carl Friedrich Gauss used the bell curve in 1809 to handle errors in astronomical measurements. In 1886 Francis Galton measured the heights of parents and their grown children and noticed that children of very tall parents were tall, but less extreme. He called it regression towards mediocrity; we still call it regression to the mean.",
+      gist: [
+        "When two quantities move together, knowing one narrows down the other.",
+        "How much it helps depends on how strong the link (the correlation) is.",
+        "Even fairly strong links shrink uncertainty less than people expect.",
+      ],
+      practice: {
+        adjust: [
+          "Which related measurements to feed in alongside the one you care about.",
+          "How correlations are estimated, especially from few data points.",
+        ],
+        wrong: [
+          "Assuming a strong correlation makes the prediction nearly certain.",
+          "Treating variables as independent when they clearly move together.",
+        ],
+        notice: [
+          "Compare the spread of predictions with and without the related variable.",
+          "Look at a scatter plot before trusting a correlation number.",
+        ],
+        ask: [
+          "How much does knowing X reduce our uncertainty about Y?",
+          "Is the relationship roughly a straight line, or is the correlation hiding something?",
+        ],
+      },
       idea: (
         <p>
           When two uncertain quantities are linked, learning one tells you something about the other. A multivariate Gaussian is the simplest way to
@@ -439,8 +536,32 @@ export default {
 
     {
       id: "networks",
-      title: "Drawing what depends on what",
+      title: "The sprinkler did it",
       lead: "Bayesian networks, Markov random fields and conditional independence.",
+      history: "Judea Pearl coined the term Bayesian network in 1985 and set out the theory in a 1988 book, to let computers reason with uncertain evidence. The work earned him the Turing Award in 2011. The wet grass and sprinkler is the textbook example used ever since.",
+      gist: [
+        "A Bayesian network is a diagram of what directly influences what.",
+        "From it you can work out the probability of anything, given whatever you've observed.",
+        "Evidence flows in surprising ways: confirming one cause can make another less likely.",
+      ],
+      practice: {
+        adjust: [
+          "The structure: which arrows exist, usually from experts and data together.",
+          "The probability tables, estimated from data or set by experts.",
+        ],
+        wrong: [
+          "Drawing arrows from correlations alone and calling them causes.",
+          "Forgetting that observing a shared effect links its causes.",
+        ],
+        notice: [
+          "Predictions that feel wrong to experts often reveal a missing arrow.",
+          "Test a few \"what if we observe X\" questions against common sense.",
+        ],
+        ask: [
+          "Draw the diagram of what influences what before we fit anything.",
+          "What happens to this prediction if we learn about the other possible cause?",
+        ],
+      },
       idea: (
         <p>
           With many variables, writing down every joint probability is hopeless. But most things depend directly on only a few others. Draw those
@@ -545,8 +666,32 @@ export default {
 
     {
       id: "gaussian-processes",
-      title: "A prior over functions",
+      title: "Join the dots, honestly",
       lead: "Gaussian processes for regression with honest error bars.",
+      history: "In 1951 Danie Krige, a South African mining engineer, needed to estimate how much gold lay between boreholes. His method, later formalised by Georges Matheron and named kriging after him, is Gaussian process regression. Machine learning rediscovered it in the 1990s, notably through Christopher Williams and Carl Rasmussen.",
+      gist: [
+        "A Gaussian process fits a smooth curve through data and gives an error bar everywhere.",
+        "The error bar is small near measurements and grows where there are none.",
+        "How it behaves (smooth, wiggly, repeating) is set by the kernel you choose.",
+      ],
+      practice: {
+        adjust: [
+          "The kernel and its length scale: how far each point's influence reaches.",
+          "The noise level, so it doesn't chase every wobble.",
+        ],
+        wrong: [
+          "Running it on hundreds of thousands of points without an approximation; it gets very slow.",
+          "Extrapolating far from the data and trusting the line while ignoring the widening band.",
+        ],
+        notice: [
+          "The band should widen in gaps. If it doesn't, the length scale is too long.",
+          "Check that the fitted kernel settings make sense in your units.",
+        ],
+        ask: [
+          "Show me the prediction with its uncertainty band, including beyond the data.",
+          "What length scale was fitted, and what does that mean in our units?",
+        ],
+      },
       idea: (
         <p>
           Instead of picking a formula and fitting its numbers, a Gaussian process starts with a belief about what kind of function you're looking
@@ -653,8 +798,32 @@ export default {
 
     {
       id: "mcmc",
-      title: "Sampling when the maths won't close",
+      title: "The random walk that maps the hills",
       lead: "Markov chain Monte Carlo, Metropolis–Hastings and modern samplers.",
+      history: "In 1953 at Los Alamos, Nicholas Metropolis, Arianna and Marshall Rosenbluth, and Augusta and Edward Teller used one of the first computers to simulate atoms with a random walk. W. K. Hastings generalised it in 1970, and from around 1990 it transformed Bayesian statistics, because suddenly almost any model could be fitted.",
+      gist: [
+        "When the maths has no neat answer, you can still get one by sampling.",
+        "MCMC wanders over the possible answers, spending time in each in proportion to how likely it is.",
+        "Tools like PyMC and Stan do the sampling; your job is checking it worked.",
+      ],
+      practice: {
+        adjust: [
+          "Number of chains and samples, and the length of the warm-up.",
+          "The model itself; rewriting it in a different but equivalent form often fixes sampling problems.",
+        ],
+        wrong: [
+          "Using results from chains that never mixed or settled.",
+          "Ignoring sampler warnings such as divergences.",
+        ],
+        notice: [
+          "R-hat close to 1.00 and a healthy effective sample size.",
+          "Trace plots that look like fuzzy caterpillars, not slow drifts.",
+        ],
+        ask: [
+          "What are R-hat and the effective sample size for the main parameters?",
+          "Did the sampler report any divergences or other warnings?",
+        ],
+      },
       idea: (
         <p>
           Most real posteriors have no neat formula. But you don't need the formula if you can collect samples from it. MCMC sends a walker around

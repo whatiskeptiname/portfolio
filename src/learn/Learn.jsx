@@ -3,6 +3,7 @@
 // only when someone comes here.
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Icon from "../components/Icon";
+import LifeBackground from "../components/site/LifeBackground";
 import ThemeToggle from "../components/site/ThemeToggle";
 import { profile } from "../content/profile";
 import { pageTitle } from "../lib/sections";
@@ -50,6 +51,8 @@ export default function Learn({ hash }) {
 
   return (
     <div className="learn">
+      {/* The same Game of Life as the home page behind the contents pages; lessons stay calm. */}
+      {!lesson && <LifeBackground />}
       <header className="learn-bar">
         <div className="learn-bar-inner">
           <nav className="crumbs" aria-label="You are here">
@@ -95,11 +98,12 @@ function Library({ progress }) {
   return (
     <div className="library">
       <header className="library-head">
-        <h1>Learn machine learning by playing with it</h1>
+        <h1>How machine learning systems work, without having to build one</h1>
         <p>
-          Short lessons, each built around one idea. You get the idea in plain words and a real example, then a simulation you can poke at until
-          it makes sense. A few questions check you've got it, and the last step asks you to pick the explanation you'd give a friend. New chapters
-          are added as they're written.
+          Quick explainers for people who use these systems, often through AI tools, more than they build them. The first few minutes of each
+          lesson give you the idea, a simulation to play with, and what working with it is really like: what you'd adjust, what goes wrong and how
+          you'd notice. The maths is folded away for when you want it. The lessons grew out of lectures I've taught and the hands-on tasks I designed
+          and worked through.
         </p>
       </header>
       <ol className="chapters">
@@ -143,6 +147,11 @@ function ChapterPage({ chapter, progress }) {
         <div>
           <h1>{chapter.title}</h1>
           <p className="chapter-blurb">{chapter.blurb}</p>
+          {chapter.history && (
+            <p className="origin">
+              <strong>How it started.</strong> {chapter.history}
+            </p>
+          )}
           <p className="chapter-meta">
             Chapter {CHAPTERS.indexOf(chapter) + 1} · {chapter.lessons.length} lessons{done ? ` · ${done} done` : ""}
           </p>
@@ -210,7 +219,7 @@ function LessonPage({ chapter, lesson, progress, mark }) {
   const step = useStepInView(key);
   const onDone = useCallback((patch) => mark(key, patch), [mark, key]);
   const index = chapter.lessons.indexOf(lesson);
-  const steps = STEPS.filter((s) => s.id !== "how" || lesson.how);
+  const steps = STEPS.filter((s) => (s.id !== "how" || lesson.how) && (s.id !== "practice" || lesson.practice));
   // On narrow screens the lessons are a row of chips: bring this lesson's chip into view.
   const chips = useRef(null);
   useEffect(() => {

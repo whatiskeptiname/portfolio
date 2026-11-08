@@ -29,9 +29,10 @@
   }
 }
 
+/* No background of its own: the page's shows through, and on the contents
+   pages the Game of Life behind it. */
 .learn {
   min-height: 100vh;
-  background: var(--bg);
   color: var(--text);
 }
 .learn ::selection {
@@ -1389,4 +1390,210 @@ a.chapter-cover:hover {
     animation-duration: 1ms !important;
     transition-duration: 1ms !important;
   }
+}
+
+/* ---------- The fast path: what to remember, and what it's like in practice ---------- */
+.gist {
+  list-style: none;
+  margin: 22px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  max-width: 68ch;
+}
+.gist li {
+  position: relative;
+  padding-left: 22px;
+  font-size: 1.04rem;
+}
+.gist li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.62em;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--c-a);
+}
+.practice {
+  margin: 0;
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.practice-row {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 18px;
+  padding: 14px 18px;
+  background: var(--surface);
+}
+.practice dt {
+  font-weight: 650;
+  font-size: 0.95rem;
+}
+.practice-wrong dt {
+  color: var(--c-bad);
+}
+.practice-notice dt {
+  color: var(--c-b);
+}
+.practice-ask dt {
+  color: var(--c-a);
+}
+.practice dd {
+  margin: 0;
+}
+.practice dd ul {
+  margin: 0;
+  padding-left: 1.1em;
+  display: grid;
+  gap: 4px;
+}
+.practice-ask dd ul {
+  list-style: none;
+  padding-left: 0;
+  font-style: italic;
+}
+@media (max-width: 640px) {
+  .practice-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+.details summary {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-weight: 550;
+  font-size: 0.95rem;
+  list-style: none;
+  transition: border-color 150ms ease;
+}
+.details summary::-webkit-details-marker {
+  display: none;
+}
+.details summary::before {
+  content: "+";
+  color: var(--c-a);
+  font-weight: 700;
+}
+.details[open] summary::before {
+  content: "−";
+}
+.details summary:hover {
+  border-color: var(--c-a);
+}
+.details[open] summary {
+  margin-bottom: 18px;
+}
+
+/* A little history before the lesson starts. */
+.origin {
+  max-width: 68ch;
+  margin: 28px 0 0;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.97rem;
+  line-height: 1.6;
+}
+.origin strong {
+  color: var(--text);
+  font-weight: 650;
+}
+.chapter-hero .origin {
+  margin: 4px 0 8px;
+}
+
+/* ---------- The walkthrough at the top of a lesson ---------- */
+.reel {
+  margin: 0 0 26px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.reel-stage {
+  position: relative;
+  padding: 10px 12px 0;
+}
+.reel-start {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border: 0;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  backdrop-filter: blur(2px);
+  color: var(--text);
+  font: 600 1.05rem var(--font-body);
+  cursor: pointer;
+}
+.reel-start-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--c-a);
+  color: var(--bg);
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reel-start:hover .reel-start-icon {
+  transform: scale(1.08);
+}
+.reel-caption {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding: 10px 18px 4px;
+  min-height: 3.4em;
+  font-size: 1.04rem;
+}
+.reel-n {
+  flex: none;
+  color: var(--c-a);
+  font-weight: 650;
+  font-size: 0.85rem;
+}
+.reel-text {
+  animation: why-in 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.reel-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px 14px;
+}
+.reel-progress {
+  flex: 1;
+  display: flex;
+  gap: 4px;
+}
+.reel-seg {
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: var(--line);
+  overflow: hidden;
+  cursor: pointer;
+}
+.reel-seg span {
+  display: block;
+  height: 100%;
+  background: var(--c-a);
+  transform-origin: left;
 }
