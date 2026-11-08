@@ -274,7 +274,9 @@ The last vehicle, camera and all settings are remembered in your browser.
 | <kbd>W</kbd> / <kbd>↑</kbd> | Accelerate |
 | <kbd>S</kbd> / <kbd>↓</kbd> | Brake; once stopped, reverse |
 | <kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd> | Steer |
-| <kbd>Space</kbd> | Handbrake |
+| <kbd>Space</kbd> | Handbrake (with <kbd>W</kbd>: drift) |
+| Hold <kbd>Shift</kbd> with <kbd>W</kbd> / <kbd>S</kbd> / <kbd>Space</kbd> | Press that pedal gradually deeper (the key alone holds it at 10%) |
+| <kbd>L</kbd> | Cruise control: lock the speed you're doing (again to release) |
 
 #### Drone — Arcade mode
 
@@ -374,17 +376,52 @@ always gives the same planet. Distances are real: **1 unit = 1 m** (a car is
   flips in reverse.
 - **Brake, then reverse:** <kbd>S</kbd> brakes while you're rolling forward
   and reverses only once stopped.
-- **Handbrake:** <kbd>Space</kbd> locks the rear wheels. It slows the car
-  more gently than the foot brake; steer while it's on and the back slides
-  out into a handbrake turn, scrubbing off speed until the tyres grip again.
+- **Pedals are your feet:** holding <kbd>W</kbd> holds your foot on the
+  accelerator lightly, at 10%; hold <kbd>Shift</kbd> as well and you press it
+  gradually deeper (to the floor), let go of Shift and your foot stays there,
+  let go of <kbd>W</kbd> and it comes off. The brake (<kbd>S</kbd>) and
+  handbrake (<kbd>Space</kbd>) work the same way, each on its own, and the
+  inputs panel (<kbd>O</kbd>) shows how far each is pressed
+  (`src/lib/pedals.js`).
+- **Cruise control:** <kbd>L</kbd> locks the speed you're doing and holds it
+  while you steer (if the autopilot was driving, you take over). The accelerator still speeds you up past it, and you come
+  back to it when you let go; the brake or handbrake cancels it.
+- **Handbrake and drifting:** <kbd>Space</kbd> locks the rear wheels: they
+  brake, and lose their sideways grip, so steer and the tail steps out. It's
+  a front-wheel-drive car, so with the accelerator down too the front keeps
+  pulling against the locked rear and you hold the slide — a handbrake drift,
+  steered with the throttle and counter-steer (once the tail is loose it keeps
+  rotating until you catch it). Let go and the rear grips again over about
+  half a second, straightening up. Pulled part way, the handbrake takes only
+  part of the grip. The tyres squeal with the slide angle, and the body leans
+  out of it (`src/lib/carPhysics.js`).
+- **Indicators:** steering by hand, they come on once the car has actually
+  turned about 20° with the wheel held over — the same at any speed — never
+  for taps or small corrections.
 - **Holding the brake:** stopped at a light on autopilot, it holds the brake
   instead of rolling in neutral — the gauge shows **H**.
 - **Collisions:** the car is a rectangle against other cars and two circles
-  (nose and tail) against buildings, trees and billboards. Brushing something
-  makes it slide along it rather than stop dead.
-- **Cockpit (FPV):** right-hand drive, a live instrument cluster (speed, gear,
-  limit, autopilot lamp), a steering wheel that turns, slim pillars and a
-  working rear-view mirror.
+  (nose and tail) against buildings, trees and billboards. What happens
+  depends on the angle: a glancing touch scrapes along, keeping most of the
+  speed and turning the car parallel to the wall; a steeper hit loses more and
+  swings it round further; head on, it stops dead and rebounds a little. The
+  speed lost into the wall sets how loud the thud is, how hard the camera
+  jolts and how much the car shudders.
+- **Cars share momentum:** hit another car (or have one hit you) and what
+  counts is how fast the two were closing — both speeds together, so a head-on
+  is far harder than a nudge at a light. The closing speed is shared out by
+  mass with a little bounce: the car that was hit is shoved on, the one that
+  hit it slows, and a blow off either car's centre line spins it. Whatever
+  doesn't fit the way a car points becomes a sideways shove its tyres scrub
+  away. The same goes for every car on the planet — traffic shunting traffic
+  too — and for the drone flying into one (it's light, so it barely moves the
+  car). Shoved cars stop at buildings, trees and the river.
+- **Cockpit (FPV):** right-hand drive, framed like a real cabin: a clear
+  windscreen with a black border and parked wipers, A-pillars, roof lining with
+  sun visors, side windows with their frames and B-pillars, a deep dashboard, a
+  live instrument cluster (speed, gear, limit, autopilot lamp), a head-up
+  display and a steering wheel that turns. The rear-view mirror and both door
+  mirrors are live: one wide camera looks back and each mirror shows its slice.
 
 ### The drone
 
