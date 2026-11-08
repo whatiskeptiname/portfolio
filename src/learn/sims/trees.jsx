@@ -60,6 +60,14 @@ export function SplitSim({ onState }) {
   useReport(onState, { weighted: +weighted.toFixed(3), best: +best.score.toFixed(3), axis });
 
   const sideLabel = axis === "x" ? ["joined recently", "members for longer"] : ["few calls", "many calls"];
+  // Each side is tinted by its majority (amber: most cancelled; teal: most
+  // stayed), more strongly the less mixed it is.
+  const tint = (group) => {
+    const share = group.length ? countClasses(group)[1] / group.length : 0.5;
+    return { className: share >= 0.5 ? "region-b" : "region-a", opacity: 0.06 + Math.abs(share - 0.5) * 0.6 };
+  };
+  const lowSide = tint(left);
+  const highSide = tint(right);
   return (
     <Sim
       label="Drag the line to split the gym members into two groups"
@@ -82,15 +90,15 @@ export function SplitSim({ onState }) {
         <Axes x={X} y={Y} xTicks={[0, 12, 24, 36, 48]} yTicks={[0, 2, 4, 6, 8]} xLabel="months as a member" yLabel="support calls" />
         {axis === "x" ? (
           <>
-            <rect className="region-b" x={X.range[0]} y={Y.range[1]} width={Math.max(0, X.f(v) - X.range[0])} height={Y.range[0] - Y.range[1]} opacity={(countClasses(left)[1] / Math.max(1, left.length)) * 0.5} />
-            <rect className="region-b" x={X.f(v)} y={Y.range[1]} width={Math.max(0, X.range[1] - X.f(v))} height={Y.range[0] - Y.range[1]} opacity={(countClasses(right)[1] / Math.max(1, right.length)) * 0.5} />
+            <rect {...lowSide} x={X.range[0]} y={Y.range[1]} width={Math.max(0, X.f(v) - X.range[0])} height={Y.range[0] - Y.range[1]} />
+            <rect {...highSide} x={X.f(v)} y={Y.range[1]} width={Math.max(0, X.range[1] - X.f(v))} height={Y.range[0] - Y.range[1]} />
             <line className="split" x1={X.f(v)} x2={X.f(v)} y1={Y.range[1]} y2={Y.range[0]} />
             <rect className="handle" x={X.f(v) - 7} y={(Y.range[0] + Y.range[1]) / 2 - 18} width="14" height="36" rx="7" />
           </>
         ) : (
           <>
-            <rect className="region-b" x={X.range[0]} y={Y.f(v)} width={X.range[1] - X.range[0]} height={Math.max(0, Y.range[0] - Y.f(v))} opacity={(countClasses(left)[1] / Math.max(1, left.length)) * 0.5} />
-            <rect className="region-b" x={X.range[0]} y={Y.range[1]} width={X.range[1] - X.range[0]} height={Math.max(0, Y.f(v) - Y.range[1])} opacity={(countClasses(right)[1] / Math.max(1, right.length)) * 0.5} />
+            <rect {...lowSide} x={X.range[0]} y={Y.f(v)} width={X.range[1] - X.range[0]} height={Math.max(0, Y.range[0] - Y.f(v))} />
+            <rect {...highSide} x={X.range[0]} y={Y.range[1]} width={X.range[1] - X.range[0]} height={Math.max(0, Y.f(v) - Y.range[1])} />
             <line className="split" x1={X.range[0]} x2={X.range[1]} y1={Y.f(v)} y2={Y.f(v)} />
             <rect className="handle" x={(X.range[0] + X.range[1]) / 2 - 18} y={Y.f(v) - 7} width="36" height="14" rx="7" />
           </>
@@ -100,7 +108,7 @@ export function SplitSim({ onState }) {
         ))}
       </Canvas>
       <p className="sim-legend">
-        <span className="key key-b" /> cancelled <span className="key key-a" /> stayed. The shading shows how many on each side cancelled.
+        <span className="key key-b" /> cancelled <span className="key key-a" /> stayed. Each side is tinted by its majority; the stronger the tint, the less mixed it is.
       </p>
     </Sim>
   );
