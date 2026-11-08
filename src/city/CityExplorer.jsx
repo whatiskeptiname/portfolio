@@ -26,6 +26,7 @@ import { VIEW } from "../lib/perception";
 import { Buildings } from "./Buildings";
 import { StreetSigns } from "./StreetSigns";
 import { PRESETS, TRAFFIC_CARS, loadGraphics, pixelRatio, saveGraphics } from "../lib/graphics";
+import { CRUISE_MIN } from "../lib/pedals";
 import { BlackHole, Sky } from "./Space";
 import { Clouds } from "./Clouds";
 import { openingCamera, shiftFor } from "../lib/opening";
@@ -422,6 +423,17 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
       else if (e.code === "Equal" || e.code === "NumpadAdd") nudgeAltitude(DRONE_ALT.step);
       else if (e.code === "Minus" || e.code === "NumpadSubtract") nudgeAltitude(-DRONE_ALT.step);
       else if (e.code === "KeyX" && driving) unstick();
+      else if (e.code === "KeyL" && driving && vehicle === "car") {
+        // Cruise control: lock the speed you're doing (or let it go). You're
+        // driving from here, so the autopilot hands over.
+        const s = vehicleState.current;
+        if (s.cruise == null && s.speed >= CRUISE_MIN && s.transform == null) {
+          s.auto = false;
+          s.route = null;
+          s.lastInput = performance.now();
+          s.cruise = s.speed;
+        } else s.cruise = null;
+      }
       else if (e.code === "KeyK") screenshot();
       else if (e.code === "KeyM") radio.toggle();
       else if (e.code === "KeyN") radio.next();
