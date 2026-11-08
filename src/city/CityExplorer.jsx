@@ -27,6 +27,8 @@ import { Buildings } from "./Buildings";
 import { StreetSigns } from "./StreetSigns";
 import { PRESETS, TRAFFIC_CARS, loadGraphics, pixelRatio, saveGraphics } from "../lib/graphics";
 import { CRUISE_MIN } from "../lib/pedals";
+import { audibility, heard, nearestCars } from "../lib/carSound";
+import { velocityOf } from "../lib/carPhysics";
 import { BlackHole, Sky } from "./Space";
 import { Clouds } from "./Clouds";
 import { openingCamera, shiftFor } from "../lib/opening";
@@ -34,7 +36,7 @@ import { ChaseCamera, Vehicle } from "./Vehicles";
 import Minimap from "./Minimap";
 import { BatteryPrompt, AutopilotPanel, DriverPanel, FpvOverlay, Gauge, GoToMenu, GraphicsPanel, HelpOverlay, HighOffer, InfoPanel, InputsPanel, KeyHints, StartHint, Toolbar, TouchPad } from "./Hud";
 import Icon from "../components/Icon";
-import { audio } from "./audio";
+import { PASSERS, audio } from "./audio";
 import { radio } from "./radio";
 import { MiniPlayer, RadioButton, RadioPanel } from "./RadioPanel";
 import "./city.css";
@@ -553,7 +555,7 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
         {gfx.fps < 60 && <FrameLimiter fps={gfx.fps} />}
         <StatsProbe out={stats} />
         <Capture target={capture} />
-        <AudioDriver layout={layout} vehicle={vehicleState} type={vehicle} driving={driving} keys={keys} />
+        <AudioDriver layout={layout} vehicle={vehicleState} type={vehicle} driving={driving} keys={keys} traffic={trafficCars} />
         <SunClock layout={layout} mode={timeMode} vehicle={vehicleState} camera={cameraState} driving={driving} />
         <Sky R={R} mode={gfx.sky} stars={gfx.stars} />
         <BlackHole R={R} quality={gfx.blackHole} />
@@ -676,7 +678,7 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
           onShowInputs={setShowInputs}
         />
       )}
-      {showRadio && <RadioPanel onClose={() => setShowRadio(false)} volume={audioSettings.music} onVolume={(v) => updateAudio({ music: v })} />}
+      {showRadio && <RadioPanel onClose={() => setShowRadio(false)} volume={audioSettings.music} onVolume={(v) => updateAudio({ music: v, musicMuted: false })} />}
       <MiniPlayer
         onOpen={() => {
           setShowRadio(true);
@@ -792,14 +794,26 @@ function Capture({ target }) {
 
 // Feeds the audio engine every frame: engine state, where the black hole is
 // relative to the camera, day/night where you are, the river nearby, bumps,
-// and a chime whenever you roll into a district.
-function AudioDriver({ layout, vehicle, type, driving, keys }) {
+// and a chime whenever you roll into a district. Your vehicle is as loud as
+// it is from where the camera is (silent once the camera leaves the planet),
+// and the nearest traffic is heard passing, from its side, with its pitch
+// rising as it comes and falling as it goes.
+function AudioDriver({ layout, vehicle, type, driving, keys, traffic }) {
   const camera = useThree((s) => s.camera);
   const last = useRef({ bump: 0, bumpAt: 0, district: null });
-  const tmp = useMemo(() => ({ forward: new THREE.Vector3(), toHole: new THREE.Vector3(), up: new THREE.Vector3() }), []);
+  const tmp = useMemo(() => ({ forward: new THREE.Vector3(), toHole: new THREE.Vector3(), up: new THREE.Vector3(), at: new THREE.Vector3() }), []);
   useFrame(() => {
     const s = vehicle.current;
     const R = layout.radius;
+    // How far the camera is from your vehicle: inside it or following, you
+    // hear it fully; zoomed out over the planet, not at all.
+    const audible = s.worldMatrix ? audibility(tmp.at.setFromMatrixPosition(s.worldMatrix).distanceTo(camera.position), 25, 140) : 0;
+    // The traffic within earshot of you, nearest first.
+    let passers = [];
+    if (audible > 0 && type === "car") {
+      const me = { x: s.x, z: s.z, yaw: s.yaw, ...planeVelocity(s) };
+      passers = nearestCars(traffic.current ?? [], me, PASSERS, layout.width).map((c) => ({ speed: c.speed, ...heard(me, { x: c.x, z: c.z, ...planeVelocity(c) }, layout.width) }));
+    }
     camera.getWorldDirection(tmp.forward);
     tmp.toHole.copy(SUN_DIRECTION).multiplyScalar(R * 2.48).sub(camera.position).normalize();
     const facingHole = Math.max(0, tmp.forward.dot(tmp.toHole));
@@ -826,6 +840,8 @@ function AudioDriver({ layout, vehicle, type, driving, keys }) {
       night,
       facingHole,
       river: near === Infinity ? 0 : Math.max(0, 1 - near / 40) * (s.alt < 20 ? 1 : 0.3),
+      audible,
+      passers,
     });
 
     const now = performance.now();
@@ -847,6 +863,12 @@ function AudioDriver({ layout, vehicle, type, driving, keys }) {
     }
   });
   return null;
+}
+
+/** A car's velocity in the plane, for the Doppler effect. */
+function planeVelocity(c) {
+  const v = velocityOf({ ...c, speed: c.speed ?? 0, yaw: c.yaw ?? 0 });
+  return { vx: v.x, vz: v.z };
 }
 
 // Caps the frame rate: with frameloop="demand", only render when this says so.

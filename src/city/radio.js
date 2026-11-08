@@ -167,11 +167,11 @@ class Radio {
     return this.ready;
   }
 
-  /** Player volume = music level × master, 0 when muted, dipped while ducking. */
+  /** Player volume = music level × master, 0 when sound or just the music is muted, dipped while ducking. */
   applyVolume() {
     if (!this.player?.setVolume) return;
     const s = audio.settings;
-    const v = s.enabled ? Math.round(s.music * s.master * this.duckLevel * 140) : 0;
+    const v = s.enabled && !s.musicMuted ? Math.round(s.music * s.master * this.duckLevel * 140) : 0;
     this.player.setVolume(Math.max(0, Math.min(100, v)));
     if (v === 0) this.player.mute();
     else this.player.unMute();

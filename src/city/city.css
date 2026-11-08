@@ -900,6 +900,35 @@ kbd {
   width: 55%;
   accent-color: var(--accent);
 }
+/* A level slider with its own mute button beside it (music, cars). */
+.gfx-level {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 62%;
+}
+.gfx-level .gfx-slider {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+.gfx-mute {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.gfx-mute.is-muted {
+  background: rgba(255, 90, 79, 0.18);
+  border-color: rgba(255, 90, 79, 0.6);
+  color: #ff8a80;
+}
 
 /* ---------- Screenshot flash ---------- */
 .shutter-flash {

@@ -5,7 +5,10 @@
 // Nothing starts until the first click or key press (browser autoplay rules).
 
 const SETTINGS_KEY = "city-audio";
-export const AUDIO_DEFAULTS = { enabled: false, master: 0.7, engine: true, ambience: true, ui: true, music: 0.6 };
+// `cars` is the volume of every car and drone sound (yours and the traffic);
+// `carsMuted` and `musicMuted` silence just those, so either can be off while
+// the other plays.
+export const AUDIO_DEFAULTS = { enabled: false, master: 0.7, engine: true, ambience: true, ui: true, music: 0.6, cars: 1, carsMuted: false, musicMuted: false };
 
 export function loadAudioSettings() {
   try {
@@ -29,6 +32,10 @@ export function saveAudioSettings(s) {
 }
 
 import { GEAR_SPAN } from "../lib/autopilot";
+import { engineRpm, firingRate } from "../lib/carSound";
+
+// The traffic you can hear at once (the nearest cars).
+export const PASSERS = 3;
 
 // Pentatonic scale (Hz) for the district chimes.
 const PENTATONIC = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33, 659.25, 783.99, 880.0];
@@ -70,11 +77,17 @@ class AudioEngine {
     const now = this.ctx.currentTime;
     const { master, buses } = this.voices;
     master.gain.setTargetAtTime(this.settings.enabled ? this.settings.master : 0, now, 0.05);
-    buses.engine.gain.setTargetAtTime(this.settings.engine ? 1 : 0, now, 0.05);
+    buses.engine.gain.setTargetAtTime(this.carsLevel(), now, 0.05);
     buses.ambience.gain.setTargetAtTime(this.settings.ambience ? 1 : 0, now, 0.2);
     buses.ui.gain.setTargetAtTime(this.settings.ui ? 1 : 0, now, 0.05);
     if (this.settings.enabled) this.start();
     else this.stop();
+  }
+
+  /** The car and drone sounds' level: their volume, or nothing when muted. */
+  carsLevel() {
+    const s = this.settings;
+    return s.carsMuted ? 0 : s.cars; // (the old on/off "engine" switch is now this mute)
   }
 
   // --- building blocks ---------------------------------------------------------
@@ -118,6 +131,70 @@ class AudioEngine {
     return g;
   }
 
+  /**
+   * An engine, as a real one sounds: a train of exhaust pulses (a waveform
+   * rich in harmonics, at the firing rate), a half-rate rumble from
+   * cylinder-to-cylinder unevenness, a soft-clipping stage that growls harder
+   * under load, a lowpass that opens with the throttle, and intake hiss.
+   */
+  engineVoice(white, out) {
+    const ac = this.ctx;
+    this._exhaust ??= (() => {
+      // Harmonic strengths of a narrow pulse, with a dip and lift that give
+      // the "brap" of a four-cylinder rather than a buzzer.
+      const amps = [0, 1, 0.85, 0.6, 0.55, 0.38, 0.3, 0.24, 0.2, 0.14, 0.11, 0.08, 0.07, 0.05, 0.04, 0.03];
+      const real = new Float32Array(amps.length);
+      const imag = new Float32Array(amps.length);
+      amps.forEach((a, n) => {
+        const phase = n * 1.7; // spread the phases, so the peaks aren't harsh
+        real[n] = a * Math.cos(phase);
+        imag[n] = a * Math.sin(phase);
+      });
+      return ac.createPeriodicWave(real, imag);
+    })();
+    this._curve ??= (() => {
+      const curve = new Float32Array(1024);
+      for (let i = 0; i < curve.length; i++) {
+        const x = (i / (curve.length - 1)) * 2 - 1;
+        curve[i] = Math.tanh(2.2 * x);
+      }
+      return curve;
+    })();
+    const pulse = ac.createOscillator();
+    pulse.setPeriodicWave(this._exhaust);
+    pulse.frequency.value = 28;
+    pulse.start();
+    const rumble = this.osc("triangle", 14);
+    const rumbleGain = this.gain(0.35);
+    const drive = this.gain(0.6);
+    const shaper = ac.createWaveShaper();
+    shaper.curve = this._curve;
+    const tone = this.filter("lowpass", 500, 1.4);
+    const intake = this.filter("bandpass", 900, 1.2);
+    const intakeGain = this.gain(0);
+    const level = this.gain(0);
+    pulse.connect(drive);
+    rumble.connect(rumbleGain).connect(drive);
+    drive.connect(shaper).connect(tone).connect(level);
+    this.loopNoise(white).connect(intake).connect(intakeGain).connect(level);
+    level.connect(out);
+    return { pulse, rumble, drive, tone, intake, intakeGain, level };
+  }
+
+  /** Steer an engine voice to `rpm` at `throttle` (0–1), at loudness `loud`. */
+  steerEngine(e, rpm, throttle, loud, now) {
+    const T = 0.08;
+    // Combustion is never perfectly even: a touch of wobble in the pitch.
+    const fire = firingRate(rpm) * (1 + (Math.random() - 0.5) * 0.012);
+    e.pulse.frequency.setTargetAtTime(fire, now, T);
+    e.rumble.frequency.setTargetAtTime(fire / 2, now, T);
+    e.drive.gain.setTargetAtTime(0.5 + throttle * 1.6, now, T);
+    e.tone.frequency.setTargetAtTime(240 + throttle * 1700 + fire * 4, now, T);
+    e.intake.frequency.setTargetAtTime(500 + fire * 6, now, T);
+    e.intakeGain.gain.setTargetAtTime(throttle * 0.25, now, T);
+    e.level.gain.setTargetAtTime(loud, now, 0.12);
+  }
+
   build() {
     const ac = this.ctx;
     const master = this.gain(this.settings.master);
@@ -132,12 +209,21 @@ class AudioEngine {
     Object.values(buses).forEach((b) => b.connect(master));
     const white = this.noise(2);
 
-    // Car engine: two detuned saws and a sub, through a throttle-opened lowpass.
-    const carFilter = this.filter("lowpass", 400, 4);
-    const carGain = this.gain(0);
-    const car = [this.osc("sawtooth", 40), this.osc("sawtooth", 40, 9), this.osc("sine", 20)];
-    car.forEach((o) => o.connect(carFilter));
-    carFilter.connect(carGain).connect(buses.engine);
+    // Your car's engine, and the tyres' roar on the road.
+    const car = this.engineVoice(white, buses.engine);
+    const roadFilter = this.filter("lowpass", 500, 0.7);
+    const roadGain = this.gain(0);
+    this.loopNoise(white).connect(roadFilter).connect(roadGain).connect(buses.engine);
+    // The nearest traffic: an engine and a tyre swish each, placed left or right.
+    const passers = Array.from({ length: PASSERS }, () => {
+      const pan = this.ctx.createStereoPanner ? this.ctx.createStereoPanner() : this.gain(1);
+      pan.connect(buses.engine);
+      const engine = this.engineVoice(white, pan);
+      const swishFilter = this.filter("bandpass", 700, 0.9);
+      const swishGain = this.gain(0);
+      this.loopNoise(white).connect(swishFilter).connect(swishGain).connect(pan);
+      return { pan, engine, swishFilter, swishGain };
+    });
     // Tyre squeal.
     const squealGain = this.gain(0);
     this.loopNoise(white).connect(this.filter("bandpass", 2600, 9)).connect(squealGain).connect(buses.engine);
@@ -189,7 +275,7 @@ class AudioEngine {
 
     this.voices = {
       master, buses, white,
-      car, carFilter, carGain, squealGain, gravelFilter, gravelGain,
+      car, roadFilter, roadGain, passers, squealGain, gravelFilter, gravelGain,
       motors, droneFilter, droneGain, rushFilter, rushGain,
       pad, padFilter, holeGain, windFilter, windGain, riverFilter, riverGain,
     };
@@ -211,32 +297,41 @@ class AudioEngine {
     const isCar = p.vehicle === "car" && !p.transforming;
     const isDrone = p.vehicle === "drone" && !p.transforming;
 
-    // Car: RPM sweeps up through each gear, drops at the shift.
-    const gear = Math.min(5, Math.floor(speed / GEAR_SPAN));
-    const inGear = Math.min(1.15, (speed - gear * GEAR_SPAN) / GEAR_SPAN);
-    const rpm = 850 + inGear * 3600 + gear * 250;
-    const fire = rpm / 30; // four-cylinder firing frequency
-    v.car[0].frequency.setTargetAtTime(fire, now, T);
-    v.car[1].frequency.setTargetAtTime(fire, now, T);
-    v.car[2].frequency.setTargetAtTime(fire / 2, now, T);
-    v.carFilter.frequency.setTargetAtTime(260 + p.throttle * 1500 + speed * 25, now, T);
-    v.carGain.gain.setTargetAtTime(isCar ? 0.09 + p.throttle * 0.07 + speed * 0.002 : 0, now, 0.12);
+    // Your vehicle, as loud as it is from where the camera is: inside or just
+    // behind it, fully; from orbit, not at all.
+    const near = p.audible ?? 1;
+    // Car: the revs sweep up through each gear and drop at the shift.
+    this.steerEngine(v.car, engineRpm(speed, GEAR_SPAN), p.throttle, isCar ? (0.1 + p.throttle * 0.06 + speed * 0.0015) * near : 0, now);
+    v.roadGain.gain.setTargetAtTime(isCar ? Math.min(0.09, speed * 0.0028) * near : 0, now, 0.15);
+    v.roadFilter.frequency.setTargetAtTime(280 + speed * 18, now, 0.2);
+    // The traffic you can hear: each its own engine and tyre swish, louder as
+    // it nears, higher-pitched coming and lower going (Doppler), on its side.
+    v.passers.forEach((voice, i) => {
+      const c = p.passers?.[i];
+      const loud = c ? c.gain * near : 0;
+      const pitch = c ? c.doppler : 1;
+      const rpm = c ? engineRpm(c.speed, GEAR_SPAN) : 850;
+      this.steerEngine(voice.engine, rpm * pitch, c ? 0.35 : 0, loud * (0.07 + Math.abs(c?.speed ?? 0) * 0.002), now);
+      voice.swishGain.gain.setTargetAtTime(loud * Math.min(0.12, Math.abs(c?.speed ?? 0) * 0.006), now, 0.08);
+      voice.swishFilter.frequency.setTargetAtTime(700 * pitch, now, 0.08);
+      voice.pan.pan?.setTargetAtTime(c ? c.pan * 0.85 : 0, now, 0.08);
+    });
     // Tyres squeal in a hard turn, and more in a slide (the sideways angle).
     const turning = Math.max(0, Math.abs(p.steer) * (speed / 24) - 0.35) * 0.35;
     const sliding = Math.abs(Math.sin(p.slip ?? 0)) * Math.min(1, speed / 12) * 0.5;
     const squeal = isCar && p.surface !== "grass" ? Math.max(turning, sliding) : 0;
-    v.squealGain.gain.setTargetAtTime(squeal, now, 0.06);
+    v.squealGain.gain.setTargetAtTime(squeal * near, now, 0.06);
     const gravel = isCar && p.surface === "grass" ? Math.min(0.16, speed * 0.016) : isCar && p.surface === "paved" ? Math.min(0.03, speed * 0.003) : 0;
-    v.gravelGain.gain.setTargetAtTime(gravel, now, 0.08);
+    v.gravelGain.gain.setTargetAtTime(gravel * near, now, 0.08);
     v.gravelFilter.frequency.setTargetAtTime(300 + speed * 25 + Math.random() * 120, now, 0.05);
 
     // Drone: motors rise with throttle and climb.
     const thrust = Math.min(1.4, speed / (p.maxSpeed || 40) + Math.max(0, p.climb ?? 0) / 18 + (p.alt > 0.1 ? 0.35 : 0));
     v.motors.forEach((o) => o.frequency.setTargetAtTime(150 + thrust * 170, now, T));
     v.droneFilter.frequency.setTargetAtTime(900 + thrust * 2400, now, T);
-    v.droneGain.gain.setTargetAtTime(isDrone && (p.alt > 0.05 || p.driving) ? 0.03 + thrust * 0.035 : 0, now, 0.12);
+    v.droneGain.gain.setTargetAtTime(isDrone && (p.alt > 0.05 || p.driving) ? (0.03 + thrust * 0.035) * near : 0, now, 0.12);
     v.rushFilter.frequency.setTargetAtTime(600 + speed * 40, now, T);
-    v.rushGain.gain.setTargetAtTime(isDrone ? Math.min(0.12, speed * 0.004) : 0, now, T);
+    v.rushGain.gain.setTargetAtTime(isDrone ? Math.min(0.12, speed * 0.004) * near : 0, now, T);
 
     // Ambience.
     v.pad.forEach((o, i) => o.frequency.setTargetAtTime(DAY_CHORD[i] + (NIGHT_CHORD[i] - DAY_CHORD[i]) * p.night, now, 1.5));

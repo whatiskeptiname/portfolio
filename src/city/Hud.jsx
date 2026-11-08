@@ -696,9 +696,42 @@ export function GraphicsPanel({
           aria-label="Volume"
         />
       </div>
+      {/* Music and the cars each have their own level and mute, so either can
+          be silenced while the other plays. */}
+      {[
+        ["music", "musicMuted", "Music"],
+        ["cars", "carsMuted", "Cars & engines"],
+      ].map(([key, muted, label]) => (
+        <div className="gfx-row" key={key}>
+          <span>{label}</span>
+          <span className="gfx-level">
+            <input
+              className="gfx-slider"
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={audioSettings[muted] ? 0 : audioSettings[key]}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                onAudioChange(v === 0 ? { [muted]: true } : { [key]: v, [muted]: false });
+              }}
+              aria-label={`${label} volume`}
+            />
+            <button
+              type="button"
+              className={`gfx-mute${audioSettings[muted] ? " is-muted" : ""}`}
+              aria-pressed={audioSettings[muted]}
+              aria-label={`${audioSettings[muted] ? "Unmute" : "Mute"} ${label.toLowerCase()}`}
+              onClick={() => onAudioChange({ [muted]: !audioSettings[muted] })}
+            >
+              <Icon name={audioSettings[muted] ? "mute" : "sound"} />
+            </button>
+          </span>
+        </div>
+      ))}
       <div className="gfx-switches">
         {[
-          ["engine", "Engines & transformation"],
           ["ambience", "Space, wind, river & chimes"],
           ["ui", "Interface clicks"],
         ].map(([key, label]) => (
