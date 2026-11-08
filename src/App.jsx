@@ -1,12 +1,15 @@
 // src/App.jsx
 import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
-import { CaseStudies, Contact, Experience, Footer, Header, Hero, OpenSource, Toolbox, WhyHireMe } from "./components/site/Sections";
+import { CaseStudies, Contact, Experience, Footer, Header, Hero, LearnSection, OpenSource, Toolbox, WhyHireMe } from "./components/site/Sections";
 import LifeBackground from "./components/site/LifeBackground";
 import { PLANET, canonicalHash, isPlanet, pageTitle } from "./lib/sections";
 import { profile } from "./content/profile";
+import { isLearn } from "./learn/route";
 
 // The 3D city (and three.js) only downloads when someone opens it.
 const CityExplorer = lazy(() => import("./city/CityExplorer"));
+// So do the lessons.
+const Learn = lazy(() => import("./learn/Learn"));
 
 // The address, with old links moved to where that page is now.
 function currentHash() {
@@ -29,13 +32,15 @@ function useHash() {
 export default function App() {
   const hash = useHash();
   const inCity = isPlanet(hash);
+  const inLearn = isLearn(hash);
+  const away = inCity || inLearn;
 
   // Arriving on the page (a direct link, or back from the planet) the browser's
   // own jump-to-anchor has already happened, before the sections existed: do it
   // now, at once, and again when the web fonts land and reflow the text above it.
   const arriving = useRef(true);
   useEffect(() => {
-    if (inCity) {
+    if (away) {
       arriving.current = true;
       return;
     }
@@ -50,12 +55,20 @@ export default function App() {
     } else {
       target?.scrollIntoView();
     }
-  }, [inCity, hash]);
+  }, [away, hash]);
 
   // The landing page's Header titles its own sections.
   useEffect(() => {
     if (inCity) document.title = pageTitle(profile.name, PLANET.label);
   }, [inCity]);
+
+  if (inLearn) {
+    return (
+      <Suspense fallback={<div className="learn-loading">Opening the lessons…</div>}>
+        <Learn hash={hash} />
+      </Suspense>
+    );
+  }
 
   if (inCity) {
     return (
@@ -81,6 +94,7 @@ export default function App() {
         <Experience />
         <Toolbox />
         <OpenSource />
+        <LearnSection />
         <Contact />
       </main>
       <Footer />

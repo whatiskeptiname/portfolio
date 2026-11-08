@@ -1393,6 +1393,71 @@ a.tile:hover {
   clip-path: circle(0 at var(--x) var(--y));
 }
 
+/* Into the lessons: the same opening, in the lessons' own dark. */
+.portal-learn {
+  background: radial-gradient(circle at var(--x) var(--y), #11332e, #0a0a0b 45vmax);
+}
+.portal-learn-light {
+  background: radial-gradient(circle at var(--x) var(--y), #d5f5ee, #f4f4f1 45vmax);
+}
+.learn-loading {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #0a0a0b;
+  color: #9b9ba3;
+}
+
+/* ---------- Learn ---------- */
+.learn-doors {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  display: grid;
+  gap: var(--gap);
+}
+@media (min-width: 720px) {
+  .learn-doors {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.learn-door {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 100%;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 200ms ease, transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.learn-door:hover {
+  border-color: var(--accent);
+}
+.learn-door .cover {
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.learn-door .cover svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.cover-placeholder {
+  aspect-ratio: 16 / 10;
+}
+.learn-door-text strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 560;
+  margin-bottom: 4px;
+}
+.learn-door-text span {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
 /* ---------- Shared bits ---------- */
 mark {
   background: var(--accent-soft);

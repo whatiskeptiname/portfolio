@@ -1,6 +1,6 @@
 # Portfolio — Susan Ghimire
 
-Personal site for Susan Ghimire, ML engineer. It has two parts:
+Personal site for Susan Ghimire, ML engineer. It has three parts:
 
 1. **A fast landing page** that says what you'd be hiring and proves it from the CV.
 2. **A 3D planet** near a black hole, an easter egg behind the tiny sphere in the
@@ -8,6 +8,8 @@ Personal site for Susan Ghimire, ML engineer. It has two parts:
    résumé is the northern hemisphere and GitHub the southern one. You can orbit
    it, drive it in a car or fly it with a drone — by hand or on a self-driving
    autopilot that shows what it sees and why it does what it does.
+3. **Interactive lessons** on machine learning, opened from the Learn section and
+   loaded only when someone goes in.
 
 **Live:** <https://susang.com.np/> · **Planet:** <https://susang.com.np/#/planet>
 
@@ -18,6 +20,7 @@ Personal site for Susan Ghimire, ML engineer. It has two parts:
 - [Quick start](#quick-start)
 - [Editing content](#editing-content)
 - [The landing page](#the-landing-page)
+- [The lessons](#the-lessons)
 - [The 3D planet](#the-3d-planet)
   - [Opening it](#opening-it)
   - [Controls](#controls)
@@ -66,6 +69,7 @@ The site is served from the root of the custom domain (`base: '/'` in
 | Which GitHub projects appear, and how | `projectConfig` in `src/content/resume.js`: featured repos, hidden repos, and per-repo overrides (title, description, demo link, image — images go in `public/`) |
 | GitHub repository data | `src/data/repos.json`, a snapshot of the public GitHub API. Refresh with `npm run fetch-repos` (set `GITHUB_TOKEN` to avoid rate limits). CI refreshes it on every deploy and once a day. |
 | Planet Radio playlists | `src/content/music.js` |
+| Lessons and chapters | `src/learn/catalog.js` and `src/learn/chapters/` (see [The lessons](#the-lessons)) |
 | Résumé PDF | `public/Susan_Ghimire_CV.pdf` |
 
 ---
@@ -122,7 +126,7 @@ out and fades the next one in. It rests while the tab is hidden or a simulation 
 open, and holds one still generation with reduced motion.
 
 Each page has one name, used by its header link, heading, URL and browser tab: Why
-hire me (`#why-hire-me`), Work (`#work`), Experience, Toolbox, Projects, Contact and 3D planet (`#/planet`), all
+hire me (`#why-hire-me`), Work (`#work`), Experience, Toolbox, Projects, Learn, Contact and 3D planet (`#/planet`), all
 defined in `src/lib/sections.js`. The older `#/city` and `#open-source` links still
 work. The URL and tab title follow you as you scroll. On screens under 880px the
 links fold into a menu, and the bar's left side shows the page you're on.
@@ -176,6 +180,43 @@ in `stages.js`, the shared 3D stage in `Scene3D.jsx`) and load only when one
 is opened; their models (coverage,
 optimisation trade-offs, the price ripple, schema matching) are in
 `src/lib/sims.js`, unit-tested to land on the CV's numbers.
+
+---
+
+## The lessons
+
+Hands-on machine learning lessons at `#/learn` (all chapters), `#/learn/<chapter>`
+and `#/learn/<chapter>/<lesson>`. The Learn section on the landing page has one
+tile per chapter, each with a small moving picture of the chapter's idea
+(`src/learn/Covers.jsx`); clicking one opens the lessons out of the tile, the same
+way the planet opens. They're dark unless the visitor has picked light.
+
+Every lesson follows the same order: **the idea** in a few plain sentences, **for
+example** (a concrete story), **try it** (one or more simulations), **how it works**
+(the formulas and details), **check yourself** (a few questions), **say it back**
+(pick the explanation you'd give a friend; each choice says what it gets right or
+wrong), and **go deeper** (links to well-known sources). Questions come in four
+kinds: `choice`, `multi` (pick all that apply), `number`, and `task`, which embeds a
+simulation and checks itself as the student plays. Finished lessons are remembered
+in the browser (`localStorage`), so chapters show what's done and where to pick up.
+
+**Adding a chapter:**
+
+1. Add an entry to `src/learn/catalog.js` (id, title, blurb, and a `cover` from
+   `Covers.jsx`; add a new cover there if none fits).
+2. Write `src/learn/chapters/<id>.jsx` exporting `{ lessons: [...] }`. Copy the shape
+   of an existing chapter; each lesson needs `id`, `title`, `lead`, `idea`,
+   `example`, `play`, `quiz`, `explain` and `readMore` (`how` is optional).
+3. Put its simulations in `src/learn/sims/<id>.jsx`, built from the pieces in
+   `src/learn/kit.jsx` (frame, sliders, toggles, readouts, axes) and
+   `src/learn/plot.js` (scales, paths, animation loop). Maths goes in
+   `src/learn/math.js`, with a test. A simulation that's used in a `task` question
+   reports its state with `useReport(onState, {...})`.
+4. Register it in `src/learn/chapters/index.js`.
+
+`src/learn/chapters.test.js` checks every lesson automatically: all parts present,
+exactly one right answer per choice question, exactly one "right" explanation, and
+links on https.
 
 ---
 

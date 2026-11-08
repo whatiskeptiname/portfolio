@@ -11,13 +11,17 @@ import { FIGURES } from "./figureMap";
 import { InferenceRace } from "./Figures";
 import "./figures.css";
 import PlanetD from "./PlanetD";
-import { enterPlanet, preloadPlanet } from "./portal";
+import { enterLearn, enterPlanet, preloadLearn, preloadPlanet } from "./portal";
+import { CATALOG } from "../../learn/catalog";
+import { learnHash } from "../../learn/route";
 import ThemeToggle from "./ThemeToggle";
 
 const asset = (path) => `${import.meta.env.BASE_URL}${path}`;
 
 // The case-study simulations only download when someone opens one.
 const SimPlayer = lazy(() => import("../sims/SimPlayer"));
+// The chapter pictures are small, but keep them off the first paint.
+const Cover = lazy(() => import("../../learn/Covers"));
 
 // Picks out numbers like 7x, 80.26%, 40k+ so results stand out in prose.
 function Emphasize({ children }) {
@@ -627,6 +631,51 @@ export function OpenSource() {
             </button>
           )}
         </div>
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Learn: the doors into the lessons, one per chapter, each with its idea playing.
+
+export function LearnSection() {
+  return (
+    <section id="learn">
+      <div className="container">
+        <SectionHead id="learn">
+          Hands-on machine learning lessons. Each takes one idea and gives you a simulation to play with until it clicks.
+        </SectionHead>
+        <ol className="learn-doors">
+          {CATALOG.map((c) => (
+            <li key={c.id}>
+              <a
+                className="tile learn-door"
+                href={learnHash(c.id)}
+                onPointerEnter={preloadLearn}
+                onFocus={preloadLearn}
+                onClick={(e) => enterLearn(e, learnHash(c.id))}
+              >
+                <Suspense fallback={<div className="cover cover-placeholder" />}>
+                  <Cover kind={c.cover} />
+                </Suspense>
+                <span className="learn-door-text">
+                  <strong>{c.title}</strong>
+                  <span>{c.blurb}</span>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ol>
+        <a
+          className="btn learn-all"
+          href={learnHash()}
+          onPointerEnter={preloadLearn}
+          onFocus={preloadLearn}
+          onClick={(e) => enterLearn(e, learnHash())}
+        >
+          All lessons <Icon name="arrowRight" />
+        </a>
       </div>
     </section>
   );
