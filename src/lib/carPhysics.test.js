@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HIT, collideCars, hitCar, settleShove, slideCar, velocityOf } from "./carPhysics";
+import { HIT, collideCars, hitCar, resistance, settleShove, slideCar, topSpeed, velocityOf } from "./carPhysics";
 
 const DT = 1 / 60;
 const STEER = 1.9;
@@ -158,5 +158,35 @@ describe("car meets car", () => {
     expect(moved).toBeLessThan(4);
     expect(c.spin).toBe(0);
     expect(Math.hypot(velocityOf(c).x, velocityOf(c).z)).toBe(0);
+  });
+});
+
+describe("engine and drag", () => {
+  const KMH = 4; // plane units per second → km/h
+  const ACCEL = 18; // the car's full push
+
+  it("settles each pedal position at its own speed", () => {
+    expect(topSpeed(ACCEL) * KMH).toBeGreaterThan(190);
+    expect(topSpeed(ACCEL) * KMH).toBeLessThan(210);
+    expect(topSpeed(ACCEL * 0.5) * KMH).toBeGreaterThan(125);
+    expect(topSpeed(ACCEL * 0.5) * KMH).toBeLessThan(155);
+    expect(topSpeed(ACCEL * 0.1) * KMH).toBeGreaterThan(50);
+    expect(topSpeed(ACCEL * 0.1) * KMH).toBeLessThan(70);
+  });
+
+  it("at a light 10% touch, climbs to that speed and no further", () => {
+    let v = 0;
+    let most = 0;
+    for (let t = 0; t < 120; t += 1 / 60) {
+      v = Math.max(0, v + (ACCEL * 0.1 - resistance(v)) / 60);
+      most = Math.max(most, v);
+    }
+    expect(v).toBeCloseTo(topSpeed(ACCEL * 0.1), 1);
+    expect(most).toBeLessThanOrEqual(topSpeed(ACCEL * 0.1) + 1e-6);
+  });
+
+  it("drags harder the faster you go", () => {
+    expect(resistance(30)).toBeGreaterThan(resistance(10) * 3);
+    expect(resistance(0)).toBe(0);
   });
 });

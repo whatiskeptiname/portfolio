@@ -21,6 +21,23 @@ export const HANDBRAKE = {
   oversteer: 0.9, // extra turn-in with no rear grip
 };
 
+// What holds a car back while it drives: rolling resistance (a constant drag
+// from the tyres) and air drag (growing with the square of speed). The engine's
+// push is the throttle's share of its full power; the car settles where the
+// two balance. Tuned so full throttle reaches about 200 km/h, half about 140,
+// and a tenth about 60 on the flat (in plane units: 1 unit/s = 4 km/h).
+export const RESISTANCE = { roll: 0.15, air: 0.00714 };
+
+/** The deceleration (m/s²) from the tyres and the air at `speed`. */
+export function resistance(speed) {
+  return Math.sign(speed) * (RESISTANCE.roll + RESISTANCE.air * speed * speed);
+}
+
+/** The speed a steady push (m/s² of drive) settles at, on the flat. */
+export function topSpeed(push) {
+  return Math.sqrt(Math.max(0, push - RESISTANCE.roll) / RESISTANCE.air);
+}
+
 const angleBetween = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 
 /**

@@ -22,7 +22,7 @@ import { laneAhead } from "../lib/lanes";
 import { carsOverlap, decideOvertake, noteWaiting, trafficCap, trafficTime } from "../lib/traffic";
 import { terrainAt } from "../lib/terrain";
 import { carLamps } from "../lib/carLights";
-import { CAR_BODY, HANDBRAKE, collideCars, hitCar, settleShove, slideCar } from "../lib/carPhysics";
+import { CAR_BODY, HANDBRAKE, collideCars, hitCar, resistance, settleShove, slideCar } from "../lib/carPhysics";
 import { cruiseThrottle } from "../lib/pedals";
 import { useDisposable } from "./gpu";
 import { AUTOPILOT, DRONE_ALT, CAR_GRIP, CAR_LIMITS, NO_INPUT, autopilotInput, hasInput, keysToInput, settleToLimit, unstickInput } from "../lib/autopilot";
@@ -61,7 +61,12 @@ function driveCar(layout, c, k, delta) {
     // Rolling backwards, the accelerator brings it to a stop first.
     // With the handbrake on, the locked rear holds some of the push back.
     const drive = k.handbrake && v > 4 ? HANDBRAKE.drive : 1;
-    c.speed += (v < 0 ? CAR.brake : CAR.accel * traction * (k.throttle ?? 1) * drive) * delta;
+    // The engine pushes with the throttle's share of its power; the tyres and
+    // the air push back, harder the faster you go — so the car gathers speed
+    // more slowly near the top, and part throttle (the autopilot, cruise
+    // control) settles at a speed rather than running on to the limit.
+    if (v < 0) c.speed += CAR.brake * delta;
+    else c.speed = Math.max(0, v + (CAR.accel * traction * (k.throttle ?? 1) * drive - resistance(v)) * delta);
     if (v < -0.3) c.pedal = "brake";
   } else if (k.down) {
     // S: the brake while rolling forward; once stopped, reverse.
