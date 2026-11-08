@@ -23,7 +23,7 @@ import { carsOverlap, decideOvertake, noteWaiting, trafficCap, trafficTime } fro
 import { terrainAt } from "../lib/terrain";
 import { carLamps } from "../lib/carLights";
 import { CAR_BODY, HANDBRAKE, collideCars, hitCar, settleShove, slideCar } from "../lib/carPhysics";
-import { NO_PEDALS, cruiseThrottle, pressPedals } from "../lib/pedals";
+import { cruiseThrottle } from "../lib/pedals";
 import { useDisposable } from "./gpu";
 import { AUTOPILOT, DRONE_ALT, CAR_GRIP, CAR_LIMITS, NO_INPUT, autopilotInput, hasInput, keysToInput, settleToLimit, unstickInput } from "../lib/autopilot";
 
@@ -66,7 +66,7 @@ function driveCar(layout, c, k, delta) {
   } else if (k.down) {
     // S: the brake while rolling forward; once stopped, reverse.
     if (v > 0.3) {
-      c.speed = Math.max(0, v - CAR.brake * (k.footBrake ?? 1) * delta);
+      c.speed = Math.max(0, v - CAR.brake * delta);
       c.pedal = "brake";
     } else {
       c.speed -= CAR.accel * traction * 0.6 * delta;
@@ -77,7 +77,7 @@ function driveCar(layout, c, k, delta) {
   // the accelerator pulling against it), and the back loses its grip.
   const handbrake = Boolean(k.handbrake);
   if (handbrake) {
-    const decel = HANDBRAKE.decel * (k.handbrakeLevel ?? 1) * (k.up ? HANDBRAKE.powered : 1);
+    const decel = HANDBRAKE.decel * (k.up ? HANDBRAKE.powered : 1);
     c.speed = Math.sign(c.speed) * Math.max(0, Math.abs(c.speed) - decel * delta);
     c.pedal = c.pedal === "reverse" ? "reverse" : "handbrake";
   }
@@ -522,17 +522,14 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
         // Your keys: S brakes, then reverses; Space is the handbrake. The
         // autopilot slows with the foot brake, and only reverses to get unstuck.
         if (manual || !(s.auto || s.route)) {
-          // Your feet: a held key holds its pedal (lightly, 10%, to start with),
-          // Shift presses it gradually deeper, and letting go lifts it off.
-          const feet = (s.feet = pressPedals(s.feet ?? NO_PEDALS, { throttle: user.up, brake: user.down, handbrake: user.ascend }, user.descend, delta));
-          input = { ...input, handbrake: user.ascend, handbrakeLevel: feet.handbrake, footBrake: feet.brake, throttle: feet.throttle };
+          input = { ...input, handbrake: user.ascend };
           // Cruise control holds the locked speed; the accelerator still
           // speeds you up past it, and the brake or handbrake cancels it.
           if (s.cruise != null) {
             if (user.down || user.ascend || s.speed < 0 || autopilotOn) s.cruise = null;
             else if (!user.up) input = { ...input, ...cruiseThrottle(s.speed, s.cruise) };
           }
-          s.throttle = input.up ? input.throttle : 0;
+          s.throttle = input.up ? (input.throttle ?? 1) : 0;
           if (s._pid?.car) pidReset(s._pid.car.speed) && pidReset(s._pid.car.steer); // fresh when the autopilot takes over again
         }
         // (Backing off to get unstuck: gently, no faster than 3 m/s.)
@@ -545,9 +542,7 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
           throttle: input.throttle,
           pedal: s.pedal,
           brakeLevel: input.brakeLevel,
-          footBrake: input.footBrake,
           handbrake: input.handbrake,
-          handbrakeLevel: input.handbrakeLevel,
           cruise: s.cruise,
         };
       } else if (!manual && (s.auto || s.route) && batteryRun(layout, s, delta, true)) {

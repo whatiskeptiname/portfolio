@@ -559,8 +559,6 @@ export function HelpOverlay({ onClose }) {
             <kbd>A</kbd>
             <kbd>S</kbd>
             <kbd>D</kbd> or arrow keys. Pull up to a building and press <kbd>E</kbd>.
-            The keys are your feet: hold <kbd>W</kbd>, <kbd>S</kbd> or <kbd>Space</kbd> and that pedal is pressed
-            10%; hold <kbd>Shift</kbd> too to press it gradually deeper; let go and it comes off.{" "}
             <kbd>L</kbd> locks your speed (cruise control); braking cancels it. Handbrake and accelerator together to
             drift — counter-steer to hold it.
           </dd>
@@ -1132,8 +1130,6 @@ export function InputsPanel({ vehicle, type }) {
   if (!c) return null;
   const steer = Math.max(-1, Math.min(1, c.steer ?? 0)); // + = left
   const climb = (c.ascend ? 1 : 0) - (c.descend ? 1 : 0);
-  const feet = type === "car" && c.by !== "autopilot"; // show how far each pedal is pressed
-  const pct = (v) => `${Math.round((v ?? 0) * 100)}%`;
   if (type === "drone" && c.sticks) {
     // The four sticks, as on a radio.
     const st = c.sticks;
@@ -1168,16 +1164,14 @@ export function InputsPanel({ vehicle, type }) {
       <div className="ip-row">
         <span>Throttle</span>
         <i className="ip-bar"><b style={{ width: `${Math.round((c.up ? (c.throttle ?? 1) : 0) * 100)}%` }} /></i>
-        {feet && <output title="Hold W to press it 10%; Shift with it presses deeper">{pct(c.up ? c.throttle : 0)}</output>}
       </div>
       {/* Each lights only when it's what's really happening: S brakes while
           rolling forward and only then reverses; Space is the handbrake. */}
       <div className="ip-row">
         <span>{c.pedal === "hold" ? "Hold" : "Brake"}</span>
         <i className="ip-bar brake">
-          <b style={{ width: `${c.pedal === "brake" || c.pedal === "hold" ? Math.round((c.brake ? (c.brakeLevel ?? 1) : (c.footBrake ?? 1)) * 100) : 0}%` }} />
+          <b style={{ width: `${c.pedal === "brake" || c.pedal === "hold" ? Math.round((c.brake ? (c.brakeLevel ?? 1) : 1) * 100) : 0}%` }} />
         </i>
-        {feet && <output title="Hold S to press it 10%; Shift with it presses deeper">{pct(c.pedal === "brake" ? c.footBrake : 0)}</output>}
       </div>
       {type === "car" && (
         <div className="ip-row">
@@ -1191,9 +1185,8 @@ export function InputsPanel({ vehicle, type }) {
       {type === "car" && (
         <div className="ip-row">
           <span>Handbrake</span>
-          <output className={c.handbrake ? "ip-on" : "ip-off"} title="Hold Space to pull it 10%; Shift with it pulls harder">
+          <output className={c.handbrake ? "ip-on" : "ip-off"}>
             {c.handbrake ? "ON" : "off"}
-            {feet && c.handbrake ? ` · ${pct(c.handbrakeLevel)}` : ""}
           </output>
         </div>
       )}

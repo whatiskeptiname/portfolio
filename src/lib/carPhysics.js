@@ -28,15 +28,14 @@ const angleBetween = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
  * yaw rate, yaw and travel direction; returns the slip angle (radians) —
  * how far it points from where it's going.
  * @param {object} c  the car: speed, yaw, and its own running state
- * @param {{ steer: number, handbrake?: boolean, handbrakeLevel?: number }} k  this frame's input
+ * @param {{ steer: number, handbrake?: boolean }} k  this frame's input
  * @param {number} delta  seconds
  * @param {number} steerRate  radians a second at full lock and speed
  */
 export function slideCar(c, k, delta, steerRate) {
   // Rear grip: lost quickly when the wheels lock, regained over half a second.
   const rolling = Math.abs(c.speed) > 4;
-  // (Pulled only part way, the handbrake takes only part of the grip.)
-  const wantGrip = k.handbrake && rolling ? 1 - (1 - HANDBRAKE.grip) * (k.handbrakeLevel ?? 1) : 1;
+  const wantGrip = k.handbrake && rolling ? HANDBRAKE.grip : 1;
   const g = c.rearGrip ?? 1;
   c.rearGrip = g + (wantGrip - g) * (1 - Math.exp(-(wantGrip < g ? HANDBRAKE.lose : HANDBRAKE.regain) * delta));
   const loose = 1 - c.rearGrip; // 0 gripping … 0.9 sliding
