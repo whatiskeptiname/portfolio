@@ -2,7 +2,7 @@
 // passes in a few minutes. Everyone sees the same planet time at the same
 // real moment, and it carries on across reloads.
 
-export const PLANET_DAY_SECONDS = 240; // one full day/night cycle, in real seconds
+export const PLANET_DAY_SECONDS = 720; // one full day/night cycle, in real seconds (12 minutes)
 export const SPEEDUP = 86400 / PLANET_DAY_SECONDS;
 export const SUN_DECLINATION = 0.29; // radians; the black hole sits a little north of the equator
 
@@ -43,9 +43,9 @@ export function formatHours(hours) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-// The local hour "day" holds: the black hole low on the eastern horizon. It's close
-// enough that it clears the horizon later than a far-off sun would, at about 07:36.
-export const DAY_HOUR = 7.6;
+// The local hour "day" holds: the black hole low on the eastern horizon, risen
+// just far enough to sit whole above the ground.
+export const DAY_HOUR = 6.15;
 
 /**
  * Planet time for a time-of-day mode: "cycle" runs the clock as usual; "day" and

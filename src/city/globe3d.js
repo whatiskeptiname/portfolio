@@ -7,7 +7,10 @@ export const RIVER_COLOR = "#6fb7dc";
 export const SEA_COLOR = "#3f8fc9"; // the river deepens to this at its mouth
 
 /** Black hole distance from the planet's centre, in planet radii. */
-export const BLACK_HOLE_DISTANCE = 2.48;
+// The black hole is far off, as a real sun would be, so it barely shifts as you
+// move about, and big enough to still fill the sky. Both in planet radii.
+export const BLACK_HOLE_DISTANCE = 2500;
+export const BLACK_HOLE_RADIUS = 90;
 
 /**
  * Unit vector from the planet's centre toward the black hole — the only sun.

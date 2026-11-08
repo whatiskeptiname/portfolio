@@ -16,6 +16,7 @@ export const SWELL_AMPLITUDE = 1.4; // the long undulations roads ride over
 const TOWN_MARGIN = 40; // distance over which swells ease out to a level town
 const CELL = 2; // grid spacing (plane units)
 const FLAT_MARGIN = 9; // distance over which the ground rises from flat features
+const PEAK = TERRAIN_AMPLITUDE * 1.9; // the highest any hill or hollow can go
 
 const smooth = (e0, e1, x) => {
   const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
@@ -109,7 +110,10 @@ export function buildTerrain(world, rng) {
       const i = r * cols + c;
       let swell = 0;
       for (const w of swells) swell += w.amp * Math.sin(w.kx * x + w.kz * z + w.phase);
-      data[i] = h * country * smooth(1, FLAT_MARGIN, flat[i]) + swell * swellPoles * smooth(0, TOWN_MARGIN, towns[i]);
+      const ground = h * country * smooth(1, FLAT_MARGIN, flat[i]) + swell * swellPoles * smooth(0, TOWN_MARGIN, towns[i]);
+      // Where several waves happen to peak together, round the top off softly
+      // (ordinary hills are unchanged).
+      data[i] = PEAK * Math.tanh(ground / PEAK);
     }
   }
   return { cell: CELL, cols, rows, z0, data };
@@ -128,5 +132,6 @@ export function terrainAt(world, x, z) {
   const u = fx - c0;
   const v = fz - r0;
   const at = (r, c) => t.data[r * t.cols + c];
-  return (at(r0, c0) * (1 - u) + at(r0, c1) * u) * (1 - v) + (at(r0 + 1, c0) * (1 - u) + at(r0 + 1, c1) * u) * v;
+  // (|| 0 turns a -0 on level ground into a plain 0.)
+  return (at(r0, c0) * (1 - u) + at(r0, c1) * u) * (1 - v) + (at(r0 + 1, c0) * (1 - u) + at(r0 + 1, c1) * u) * v || 0;
 }

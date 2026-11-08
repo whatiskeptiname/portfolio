@@ -464,7 +464,7 @@ export function HelpOverlay({ onClose }) {
           district per language and one building per repository (taller means more stars). A highway
           runs round the equator between them, a river winds from pole to pole, and billboards list
           my toolbox. The planet turns in front of a black hole — its only sun — on a time-lapse of
-          your clock (a day every 4 minutes), so watch it rise and set.
+          your clock (a day every 12 minutes), so watch it rise and set.
         </p>
         <dl>
           <dt className="touch-only">On a touch screen</dt>
@@ -554,6 +554,7 @@ export function TouchPad({ keys, flying }) {
 const SWITCHES = [
   ["atmosphere", "Atmosphere glow"],
   ["clouds", "Clouds"],
+  ["labels", "District labels"],
   ["trees", "Trees"],
   ["windows", "Night-time windows"],
   ["signs", "Rooftop name signs"],
@@ -649,7 +650,7 @@ export function GraphicsPanel({
         ]}
         onChange={onTimeMode}
       />
-      <p className="gfx-note">Cycle runs the planet's day — 4 minutes long, synced to your clock. Day and Night hold it wherever you are: the black hole low on the horizon, or midnight under the Milky Way.</p>
+      <p className="gfx-note">Cycle runs the planet's day — 12 minutes long, synced to your clock. Day and Night hold it wherever you are: the black hole low on the horizon, or midnight under the Milky Way.</p>
 
       <h3>Drone controls</h3>
       <Choice

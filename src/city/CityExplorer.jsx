@@ -12,9 +12,9 @@ import { buildRoadGraph, planRoute } from "../lib/routing";
 import { AUTOPILOT, DRONE_ALT, KMH_PER_UNIT, parseAutoSpeed, parsePilotRules } from "../lib/autopilot";
 import { freshBattery, swapBattery } from "../lib/battery";
 import { nextTourStop } from "../lib/routing";
-import { BLACK_HOLE_DISTANCE, SKY_ROTATION, SUN_DIRECTION, setGround, surfacePoint } from "./globe3d";
+import { BLACK_HOLE_DISTANCE, BLACK_HOLE_RADIUS, SKY_ROTATION, SUN_DIRECTION, setGround, surfacePoint } from "./globe3d";
 import { terrainAt } from "../lib/terrain";
-import { approachHours, formatHours, hoursForMode, localHours, planetHours, sunDirection, sunLongitude } from "../lib/clock";
+import { PLANET_DAY_SECONDS, approachHours, formatHours, hoursForMode, localHours, planetHours, sunDirection, sunLongitude } from "../lib/clock";
 import { Billboards, Districts, Lighting, Planet, River, Roads, Trees } from "./World";
 import { Mountains, Sea } from "./Poles";
 import { Lamps } from "./Lamps";
@@ -497,10 +497,10 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
     [layout]
   );
 
-  // Open with the planet and the black hole on screen together.
+  // Open with the planet and the black hole on screen together, as big as that allows.
   const [opening] = useState(() => {
     const sun = sunDirection(planetHours(new Date()), noonLongitude(layout));
-    return openingCamera(sun, BLACK_HOLE_DISTANCE, window.innerWidth / window.innerHeight).map((c) => c * R);
+    return openingCamera(sun, BLACK_HOLE_DISTANCE, window.innerWidth / window.innerHeight, BLACK_HOLE_RADIUS).map((c) => c * R);
   });
 
   if (!webgl) {
@@ -553,7 +553,7 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
           <Mountains layout={layout} />
           <Roads layout={layout} />
           {gfx.lamps && <Lamps layout={layout} />}
-          <Districts layout={layout} />
+          <Districts layout={layout} driving={driving} labels={gfx.labels} />
           <Buildings
             layout={layout}
             selectedId={selectedId}
@@ -926,7 +926,7 @@ function PlanetClock({ layout, vehicle, camera, driving, mode }) {
       <b>
         {text && <Icon name={text.day ? "sun" : "moon"} />} {text?.time}
       </b>
-      <span>{mode === "cycle" ? "local time · 1 day = 4 min" : mode === "day" ? "always day here" : "always night here"}</span>
+      <span>{mode === "cycle" ? `local time · 1 day = ${PLANET_DAY_SECONDS / 60} min` : mode === "day" ? "always day here" : "always night here"}</span>
     </div>
   );
 }

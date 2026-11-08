@@ -31,6 +31,9 @@ const ROAD_START = PLAZA_RADIUS - 2.5;
 const RING_GAP = 44; // between neighbouring districts along a ring
 const POLAR_MARGIN = 24; // drivable land beyond the outermost district
 const MAX_LATITUDE = 1.15; // radians; keeps districts away from the poles
+// The planet is this much bigger than it needs to be to fit everything: more open
+// country between the districts, and longer drives.
+export const WORLD_SCALE = 2;
 const POLE_CAP = 44; // the sea and mountain regions round each pole (plane units)
 // Longitude (radians) of each ring's first district. Slightly west of the
 // opening view so the first résumé district sits in the black hole's light.
@@ -180,6 +183,7 @@ export function createLayout(groups, seed = "portfolio", extras = {}) {
       if (r.list.length) radius = Math.max(radius, r.need / (2 * Math.PI * Math.cos(r.z / radius)));
     }
   }
+  radius *= WORLD_SCALE;
   const halfX = Math.PI * radius;
   const width = 2 * halfX;
   // Land runs up to a fixed distance short of each pole, where the sea and
@@ -551,6 +555,26 @@ function placeBillboards(world, items, rng) {
 
 function plantTrees(world, rng) {
   const trees = [];
+  // Trees already planted, bucketed in 3 m cells (wrapping round the planet), so
+  // each new one only checks its neighbours rather than every tree so far.
+  const CELL = 3;
+  const columns = Math.max(1, Math.floor(world.width / CELL));
+  const grid = new Map();
+  const cellOf = (x, z) => [Math.floor((((x % world.width) + world.width) % world.width) / CELL) % columns, Math.floor(z / CELL)];
+  const treeNear = (x, z) => {
+    const [cx, cz] = cellOf(x, z);
+    for (let i = -1; i <= 1; i++)
+      for (let j = -1; j <= 1; j++)
+        for (const t of grid.get(`${(cx + i + columns) % columns},${cz + j}`) ?? []) if (dist(t.x, t.z, x, z) <= 3) return true;
+    return false;
+  };
+  const addTree = (t) => {
+    const [cx, cz] = cellOf(t.x, t.z);
+    const key = `${cx},${cz}`;
+    if (!grid.has(key)) grid.set(key, []);
+    grid.get(key).push(t);
+    trees.push(t);
+  };
   const { halfX, halfZ } = world.bounds;
   const dist = (ax, az, bx, bz) => worldDistance(world, ax, az, bx, bz);
   const free = (x, z) =>
@@ -559,7 +583,7 @@ function plantTrees(world, rng) {
     !nearRiver(world, x, z, 1.5) &&
     world.buildings.every((b) => dist(b.x, b.z, x, z) > BUILDING_RADIUS + 2.5) &&
     world.billboards.every((b) => dist(b.x, b.z, x, z) > BILLBOARD_RADIUS + 2.5) &&
-    trees.every((t) => dist(t.x, t.z, x, z) > 3);
+    !treeNear(x, z);
 
   // A loose ring around each district…
   for (const city of world.cities) {
@@ -570,7 +594,7 @@ function plantTrees(world, rng) {
       const r = ringR + (rng() - 0.5) * 2;
       const x = wrapDelta(city.x + Math.cos(a) * r, world.width);
       const z = city.z + Math.sin(a) * r;
-      if (free(x, z)) trees.push({ x, z, scale: 0.8 + rng() * 0.5 });
+      if (free(x, z)) addTree({ x, z, scale: 0.8 + rng() * 0.5 });
     }
   }
   // …a riverside woodland…
@@ -579,7 +603,7 @@ function plantTrees(world, rng) {
     for (const side of [-1, 1]) {
       if (rng() < 0.45) continue;
       const x = wrapDelta(rx + side * (world.river.widths[i] + 2 + rng() * 5), world.width);
-      if (free(x, rz)) trees.push({ x, z: rz, scale: 0.9 + rng() * 0.6 });
+      if (free(x, rz)) addTree({ x, z: rz, scale: 0.9 + rng() * 0.6 });
     }
   }
   // …and some countryside, thinning toward the poles where the projection
@@ -590,7 +614,7 @@ function plantTrees(world, rng) {
     const z = (rng() * 2 - 1) * halfZ;
     if (rng() > Math.cos(z / world.radius)) continue;
     const inCity = world.cities.some((c) => dist(c.x, c.z, x, z) < c.radius + 4);
-    if (!inCity && free(x, z)) trees.push({ x, z, scale: 0.8 + rng() * 0.6 });
+    if (!inCity && free(x, z)) addTree({ x, z, scale: 0.8 + rng() * 0.6 });
   }
   return trees;
 }

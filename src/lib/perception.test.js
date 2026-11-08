@@ -102,4 +102,21 @@ describe("the drone's camera cone", () => {
     const seen = perceive(me, { others, width: W, cone: DRONE_VIEW }).others;
     expect(seen).toEqual([others[0], others[3]]);
   });
+
+  it("doesn't see what's below the cone when flying high, only what's further ahead inside it", () => {
+    const high = { ...me, alt: 30 };
+    const others = [
+      { x: 10, z: 0, yaw: 0 }, // just ahead, but far below the cone's lower edge
+      { x: 70, z: 0, yaw: 0 }, // further ahead: inside the cone
+    ];
+    expect(perceive(high, { others, width: W, cone: DRONE_VIEW }).others).toEqual([others[1]]);
+  });
+
+  it("tilts what it sees with the drone's pitch, as the drawn cone does", () => {
+    const others = [{ x: 12, z: 0, yaw: 0 }]; // ahead and well below
+    const level = { ...me, alt: 12 };
+    const noseDown = { ...level, qpitch: 1.4 };
+    expect(perceive(level, { others, width: W, cone: DRONE_VIEW }).others).toEqual([]);
+    expect(perceive(noseDown, { others, width: W, cone: DRONE_VIEW }).others).toEqual(others);
+  });
 });

@@ -76,18 +76,14 @@ function nearestDryNode(world, graph, from) {
   return order[0][1];
 }
 
+// The nearest road point (that passes `filter`, if given). The filter can be
+// costly (a line-of-sight check), so points are tried nearest first and the
+// first that passes wins, rather than testing every point on the planet.
 function nearestNode(world, graph, x, z, filter) {
-  let best = 0;
-  let bestD = Infinity;
-  graph.nodes.forEach((n, i) => {
-    if (filter && !filter(n)) return;
-    const d = worldDistance(world, n.x, n.z, x, z);
-    if (d < bestD) {
-      bestD = d;
-      best = i;
-    }
-  });
-  return best;
+  const order = graph.nodes.map((n, i) => [worldDistance(world, n.x, n.z, x, z), i]).sort((p, q) => p[0] - q[0]);
+  if (!filter) return order[0][1];
+  for (const [, i] of order) if (filter(graph.nodes[i])) return i;
+  return 0;
 }
 
 function dijkstra(graph, from, to) {
@@ -175,7 +171,7 @@ export function planRoute(world, graph, from, city, type, { through = false } = 
   const ahead = (n) => {
     const dx = wrapDelta(n.x - from.x, world.width);
     const dz = n.z - from.z;
-    return dx * fx + dz * fz > 1.5 && Math.hypot(dx, dz) < 10;
+    return dx * fx + dz * fz > 3 && Math.hypot(dx, dz) < 10; // far enough ahead to ease into the lane
   };
   // Never set off across the river: only start from road points it can
   // reach in a straight line without crossing water.
@@ -279,7 +275,7 @@ export function keepLeft(points, offset) {
  * radius ≈ 1.2·sigma. Past the ends the end points repeat, and the first and
  * last points themselves stay exactly where they are.
  */
-export function smoothPath(points, { spacing = 1, sigma = 2.6 } = {}) {
+export function smoothPath(points, { spacing = 1, sigma = 2.9 } = {}) {
   if (points.length < 3) return points.map((p) => [...p]);
   // 1. Even spacing.
   const even = [points[0]];

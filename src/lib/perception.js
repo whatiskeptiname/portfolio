@@ -76,26 +76,41 @@ export function perceive(
 ) {
   const dist = (o) => Math.hypot(wrapDelta(o.x - self.x, width), o.z - self.z);
   // With a `cone` ({ halfAngle, near }) — the drone's camera — it only sees
-  // ahead, within the cone, plus anything within `near` all round.
+  // what's inside the same 3D cone that's drawn for it: from the drone, along
+  // its heading, dipped with its pitch, allowing for the curve of the planet;
+  // plus anything within `near` all round. Something `top` tall counts if its
+  // base, middle or top is inside.
   const fx = -Math.sin(self.yaw);
   const fz = -Math.cos(self.yaw);
-  const inCone = (o) => {
+  const planetRadius = width / (2 * Math.PI);
+  const dip = (self.qpitch ?? 0) * 0.5; // as the drawn cone (DriverView)
+  const coneEye = (ground ? ground(self.x, self.z) : 0) + (self.alt ?? 0) + 0.3;
+  const cosHalf = cone ? Math.cos(cone.halfAngle) : 0;
+  const inCone = (o, top = 0) => {
     if (!cone) return true;
     const dx = wrapDelta(o.x - self.x, width);
     const dz = o.z - self.z;
-    const d = Math.hypot(dx, dz);
-    return d < cone.near || (dx * fx + dz * fz) / (d || 1) > Math.cos(cone.halfAngle);
+    const flat = Math.hypot(dx, dz);
+    // Its height relative to the drone, lower the further off it is round the curve.
+    const base = (ground ? ground(o.x, o.z) : 0) - (flat * flat) / (2 * planetRadius) - coneEye;
+    const along = (dx * fx + dz * fz) * Math.cos(dip);
+    for (const h of top ? [0, top / 2, top] : [0]) {
+      const dy = base + h;
+      const d = Math.hypot(flat, dy);
+      if (d < cone.near || (along - dy * Math.sin(dip)) / (d || 1) > cosHalf) return true;
+    }
+    return false;
   };
-  const near = (o, extra = 0) => dist(o) < range + extra && inCone(o);
+  const near = (o, extra = 0, top = 0) => dist(o) < range + extra && inCone(o, top);
   const eye = ground ? ground(self.x, self.z) + (self.alt ?? 0) + VIEW.eye : 0;
   const over = (x, z, height) => (ground ? { ground, eye, top: ground(x, z) + height } : null);
   // Only things that could be in the way.
-  const walls = buildings.filter((b) => near(b, 5)).map((b) => ({ x: b.x, z: b.z, r: BUILDING_RADIUS * 0.85 }));
-  const cars = others.filter((o) => o !== self && (o.alt ?? 0) <= 1.5 && near(o, 2));
+  const walls = buildings.filter((b) => near(b, 5, b.height)).map((b) => ({ x: b.x, z: b.z, r: BUILDING_RADIUS * 0.85 }));
+  const cars = others.filter((o) => o !== self && (o.alt ?? 0) <= 1.5 && near(o, 2, TOPS.car));
   const carWalls = (skip) => cars.filter((c) => c !== skip).map((c) => ({ x: c.x, z: c.z, r: CAR_SIZE }));
   return {
     others: others.filter((o) => {
-      if (o === self || !near(o)) return false;
+      if (o === self || !near(o, 0, (o.alt ?? 0) + TOPS.car)) return false;
       const d = dist(o);
       if (d < VIEW.aware) return true;
       const top = (o.alt ?? 0) + TOPS.car;
@@ -103,7 +118,7 @@ export function perceive(
     }),
     // Lights stand high on poles: cars don't hide them, buildings and hills do.
     signals: signals
-      .map((s) => ({ ...s, approaches: s.approaches.filter((ap) => inCone(ap) && canSee(self, ap.x, ap.z, width, range, walls, over(ap.x, ap.z, TOPS.light))) }))
+      .map((s) => ({ ...s, approaches: s.approaches.filter((ap) => inCone(ap, TOPS.light) && canSee(self, ap.x, ap.z, width, range, walls, over(ap.x, ap.z, TOPS.light))) }))
       .filter((s) => s.approaches.length),
     towns: towns.filter((c) => dist(c) < range + c.radius && inCone(c)),
     // Could it see a car-height thing at (x, z)? (For checking the road ahead is clear.)
@@ -117,7 +132,7 @@ export function perceive(
     ].filter(
       (o) =>
         dist(o) < Math.min(range, OBSTACLE_RANGE) &&
-        inCone(o) &&
+        inCone(o, o.h) &&
         canSee(
           self,
           o.x,

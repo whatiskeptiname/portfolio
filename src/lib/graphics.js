@@ -12,6 +12,7 @@ export const PRESETS = {
     blackHole: "simple", // "full" | "simple"
     atmosphere: true,
     clouds: true,
+    labels: true,
     trees: true,
     windows: true,
     signs: false,
@@ -31,6 +32,7 @@ export const PRESETS = {
     blackHole: "full",
     atmosphere: true,
     clouds: true,
+    labels: true,
     trees: true,
     windows: true,
     signs: true,
@@ -50,6 +52,7 @@ export const PRESETS = {
     blackHole: "full",
     atmosphere: true,
     clouds: true,
+    labels: true,
     trees: true,
     windows: true,
     signs: true,

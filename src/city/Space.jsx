@@ -12,7 +12,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { Billboard } from "@react-three/drei";
 import * as THREE from "three";
 import { createRng } from "../lib/layout";
-import { SKY_ROTATION, SPACE_COLOR, blackHolePosition } from "./globe3d";
+import { BLACK_HOLE_RADIUS, SKY_ROTATION, SPACE_COLOR, SUN_DIRECTION, blackHolePosition } from "./globe3d";
 import { NOISE_GLSL, useDisposable } from "./gpu";
 
 // Galactic plane (normal) and the direction of the galactic core.
@@ -44,6 +44,7 @@ export function Sky({ R, mode = "milkyway", stars = 6000 }) {
       {mode !== "off" && (
         <group ref={group}>
           {mode === "milkyway" && <MilkyWay radius={R * 40} />}
+          {mode === "milkyway" && <BandStars radius={R * 37} count={stars * 20} key={`band-${stars}`} />}
           <Stars radius={R * 38} count={stars} key={stars} />
         </group>
       )}
@@ -58,8 +59,23 @@ export function Sky({ R, mode = "milkyway", stars = 6000 }) {
 const BAKE_W = 2048;
 const BAKE_H = 1024;
 
+// How bright the Milky Way's soft glow gets on the night side (it's off on the
+// day side). Its sharp stars are drawn separately (BandStars), so this stays low.
+const MILKY_WAY_NIGHT = 1.2;
+const toCamera = new THREE.Vector3();
+
 function MilkyWay({ radius }) {
   const gl = useThree((s) => s.gl);
+  const material = useRef();
+  // Seen only from the night side: it fades out as the camera comes round into
+  // daylight, from the road and from space alike.
+  useFrame(({ camera }) => {
+    if (!material.current) return;
+    const sunUp = toCamera.copy(camera.position).normalize().dot(SUN_DIRECTION);
+    const night = THREE.MathUtils.smoothstep(-sunUp, -0.15, 0.25);
+    material.current.color.setScalar(MILKY_WAY_NIGHT * night);
+    NIGHT_SKY.value = night;
+  });
   const texture = useDisposable(() => {
     const rt = new THREE.WebGLRenderTarget(BAKE_W, BAKE_H, { depthBuffer: false });
     const scene = new THREE.Scene();
@@ -83,10 +99,11 @@ function MilkyWay({ radius }) {
           float towardCore = max(dot(d, core), 0.0);
           float width = 0.13 + 0.12 * towardCore;         // the band bulges at the core
           float band = exp(-pow(b / width, 2.0));
-          float clouds = fbm(d * 3.2) * 0.8 + fbm(d * 9.0) * 0.4;
-          // Dark dust lanes along the middle of the band.
+          // Star clouds: patchy, with real contrast, rather than an even glow.
+          float clouds = pow(fbm(d * 3.2) * 0.8 + fbm(d * 9.0) * 0.4, 2.0) * 1.6;
+          // Patches of dark dust along the middle of the band.
           float dust = smoothstep(0.42, 0.7, fbm(d * 6.0 + 4.1)) * exp(-pow(b / 0.05, 2.0));
-          float glow = band * (0.35 + clouds) * (1.0 - 0.75 * dust);
+          float glow = band * (0.15 + clouds) * (1.0 - 0.45 * dust);
           glow *= 0.55 + 1.3 * pow(towardCore, 3.0);
           vec3 col = mix(vec3(0.62, 0.68, 0.88), vec3(0.95, 0.9, 0.82), pow(towardCore, 2.0));
           // A faint, uneven background so the sky isn't flat black.
@@ -117,9 +134,88 @@ function MilkyWay({ radius }) {
   return (
     <mesh renderOrder={-20} frustumCulled={false}>
       <sphereGeometry args={[radius, 48, 24]} />
-      <meshBasicMaterial map={texture} side={THREE.BackSide} depthWrite={false} toneMapped={false} />
+      <meshBasicMaterial ref={material} map={texture} side={THREE.BackSide} depthWrite={false} toneMapped={false} />
     </mesh>
   );
+}
+
+// How far into the night side the camera is (0 by day, 1 at night), shared by
+// the Milky Way's glow and its stars.
+const NIGHT_SKY = { value: 0 };
+
+// The Milky Way's own stars: tens of thousands of tiny, sharp points packed
+// along the band, thickest toward the galactic core, clumped into star clouds
+// and split by dark dust lanes. Being points, they stay crisp at any screen size,
+// which a painted texture can't.
+function BandStars({ radius, count }) {
+  const { geometry, material } = useDisposable(() => {
+    const rng = createRng("milky-way-stars");
+    const gauss = () => Math.sqrt(-2 * Math.log(rng() + 1e-9)) * Math.cos(2 * Math.PI * rng());
+    const u = new THREE.Vector3().crossVectors(GALACTIC_NORMAL, new THREE.Vector3(0, 0, 1)).normalize();
+    const v = new THREE.Vector3().crossVectors(GALACTIC_NORMAL, u);
+    const coreAngle = Math.atan2(GALACTIC_CORE.dot(v), GALACTIC_CORE.dot(u));
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const sizes = new Float32Array(count);
+    const p = new THREE.Vector3();
+    const colour = new THREE.Color();
+    const cool = new THREE.Color("#c9d6ff");
+    const warm = new THREE.Color("#ffe2b8");
+    let placed = 0;
+    for (let tries = 0; placed < count && tries < count * 20; tries++) {
+      const a = rng() < 0.45 ? coreAngle + gauss() * 0.7 : rng() * Math.PI * 2;
+      const toward = Math.max(Math.cos(a - coreAngle), 0);
+      const lat = gauss() * (0.045 + 0.075 * toward);
+      // Star clouds: patches where the band is dense, gaps where it thins out.
+      const clump = 0.5 + 0.5 * Math.sin(a * 7 + 1.3) * Math.sin(lat * 38 + a * 3) * Math.sin(a * 13 + lat * 11);
+      if (rng() > 0.3 + 0.7 * clump) continue;
+      // Dust: dark patches along the middle of the band in places, thinning
+      // the stars out gradually rather than cutting a clean empty stripe.
+      const patch = Math.max(0, Math.sin(a * 2.3 + 0.4)) * (0.5 + 0.5 * Math.sin(a * 9.1 + lat * 40));
+      const middle = Math.exp(-(((lat - 0.012 * Math.sin(a * 5 + 0.7)) / (0.012 + 0.012 * toward)) ** 2));
+      if (rng() < 0.7 * patch * middle) continue;
+      p.copy(u)
+        .multiplyScalar(Math.cos(a) * Math.cos(lat))
+        .addScaledVector(v, Math.sin(a) * Math.cos(lat))
+        .addScaledVector(GALACTIC_NORMAL, Math.sin(lat))
+        .multiplyScalar(radius);
+      positions.set([p.x, p.y, p.z], placed * 3);
+      const m = rng();
+      sizes[placed] = 0.8 + 1.4 * Math.pow(m, 8);
+      colour.copy(cool).lerp(warm, Math.min(1, toward * toward + rng() * 0.3)).multiplyScalar(0.3 + 0.7 * Math.pow(m, 2));
+      colors.set([colour.r, colour.g, colour.b], placed * 3);
+      placed++;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(positions.subarray(0, placed * 3), 3));
+    g.setAttribute("color", new THREE.BufferAttribute(colors.subarray(0, placed * 3), 3));
+    g.setAttribute("size", new THREE.BufferAttribute(sizes.subarray(0, placed), 1));
+    const mat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      uniforms: { night: NIGHT_SKY, pixelRatio: { value: Math.min(window.devicePixelRatio, 1.5) } },
+      vertexShader: /* glsl */ `
+        attribute float size; attribute vec3 color;
+        uniform float pixelRatio;
+        varying vec3 vColor;
+        void main() {
+          vColor = color;
+          gl_PointSize = size * pixelRatio * 1.5;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }`,
+      fragmentShader: /* glsl */ `
+        uniform float night; varying vec3 vColor;
+        void main() {
+          vec2 q = gl_PointCoord - 0.5;
+          float a = exp(-dot(q, q) * 18.0) * night;
+          if (a < 0.01) discard;
+          gl_FragColor = vec4(vColor * a, a);
+        }`,
+    });
+    return { geometry: g, material: mat };
+  }, [radius, count]);
+  return <points geometry={geometry} material={material} renderOrder={-19} frustumCulled={false} />;
 }
 
 function Stars({ radius, count = 6000 }) {
@@ -284,8 +380,13 @@ function glowMaterial(rh, reach) {
 
 // `quality`: "full" (swirling disk, lensed halo, wide glow) | "simple"
 // (lighter disk, no lensed halo, tighter glow).
+// How far from the camera the black hole is drawn, in planet radii: past the
+// planet, inside the camera's range.
+const DRAWN_AT = 30;
+const toHole = new THREE.Vector3();
+
 export function BlackHole({ R, quality = "full" }) {
-  const rh = R * 0.2; // event horizon
+  const rh = R * BLACK_HOLE_RADIUS; // event horizon
   const full = quality === "full";
   const group = useRef();
   const disk = useDisposable(() => diskMaterial(rh * 1.5, rh * 5.5, 1.4), [rh]);
@@ -293,10 +394,17 @@ export function BlackHole({ R, quality = "full" }) {
   const glowSize = full ? 18 : 11; // across, in event-horizon radii
   const glow = useDisposable(() => glowMaterial(rh, glowSize / 2), [rh, glowSize]);
 
-  useFrame((_, delta) => {
+  // It's far beyond what the camera draws, so it's drawn as part of the sky: at a
+  // fixed distance from the camera, along its true direction and scaled to its true
+  // size there. It looks exactly as far off as it is, without stretching the
+  // camera's range (which would make the roads flicker).
+  useFrame(({ camera }, delta) => {
     disk.uniforms.time.value += delta;
     lensed.uniforms.time.value += delta * 1.3;
-    blackHolePosition(R, group.current.position);
+    blackHolePosition(R, toHole).sub(camera.position);
+    const shrink = (R * DRAWN_AT) / toHole.length();
+    group.current.position.copy(camera.position).addScaledVector(toHole, shrink);
+    group.current.scale.setScalar(shrink);
     group.current.rotation.y = SKY_ROTATION.y; // the disk keeps its tilt relative to the sky
   });
 
@@ -323,7 +431,7 @@ export function BlackHole({ R, quality = "full" }) {
         </Billboard>
       )}
       <mesh renderOrder={4}>
-        <sphereGeometry args={[rh, 32, 16]} />
+        <sphereGeometry args={[rh, 96, 48]} />
         <meshBasicMaterial color="#000" />
       </mesh>
     </group>

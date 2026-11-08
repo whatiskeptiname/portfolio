@@ -1,24 +1,31 @@
+import { PLANET_DAY_SECONDS } from "./clock";
+
 // Where the camera starts: with the planet and the black hole on screen together,
-// wherever the clock has put the black hole.
+// wherever the clock has put the black hole, and the planet as big as that allows.
 //
-// On a wide screen the camera stands off to one side of the black hole, so the
-// planet is about half lit and the black hole sits beside it. A tall screen has no
-// room beside the planet, so the camera looks up past the black hole from behind and
-// below it, which puts the black hole above a sunlit planet. Either way it starts as close
-// as it can with both still in frame.
+// The black hole is far away, so from near the planet it can only be on screen
+// when you look roughly towards it: the planet is seen against the light, as a
+// lit crescent with the city lights on its night side. Of the views that frame
+// both, this picks the one with the biggest planet, favouring more of it lit.
 
 /** The picture's shift (a lens shift, not a camera move), in fractions of the screen. */
-export const VIEW_SHIFT = { x: 0.17, y: -0.14 };
+export const VIEW_SHIFT = { x: 0.17, y: -0.22 };
 
 const FOV = 50;
 const TAN = Math.tan((FOV / 2) * (Math.PI / 180));
-const SIDE = { offset: (103 * Math.PI) / 180, elevation: (18 * Math.PI) / 180, from: 3.4, to: 9.5 };
-const BEHIND = { offset: (-6 * Math.PI) / 180, elevation: (-20 * Math.PI) / 180, to: 13 };
 const AIR = 1.13; // the planet's glow, in radii
-const HOLE_REACH = 0.5; // the black hole and most of its disc, in radii
-// Room left for the toolbar above and the controls below, as fractions of half the screen.
+const HOLE_REACH = 1.4; // the black hole and its bright inner ring, in hole radii
+// Room left for the toolbar above and the controls below, as fractions of half the
+// screen. A tall screen also keeps the minimap's corner clear.
 const TOP = 0.76;
+const TOP_TALL = 0.55;
 const BOTTOM = 0.84;
+// The black hole moves round the sky as the planet's clock runs (a day every
+// PLANET_DAY_SECONDS); the opening keeps it in frame for a few seconds after the page opens.
+// A tall screen has so little room across that it gets less, or the planet would
+// have to shrink a long way.
+export const staysFor = (aspect) => ((aspect >= 1 ? 6 : 2.5) / PLANET_DAY_SECONDS) * Math.PI * 2;
+const DEG = Math.PI / 180;
 
 const place = (azimuth, elevation, distance) => [
   distance * Math.cos(elevation) * Math.sin(azimuth),
@@ -42,30 +49,47 @@ function project(camera, point) {
 export const shiftFor = (aspect) => (aspect >= 1 ? { x: VIEW_SHIFT.x, y: 0 } : { x: 0, y: VIEW_SHIFT.y });
 
 /** Are the planet and the black hole both fully on screen, and not in front of each other? */
-export function bothInFrame(camera, sun, holeDistance, aspect) {
+export function bothInFrame(camera, sun, holeDistance, aspect, holeRadius) {
   const halfW = TAN * aspect;
   const shift = shiftFor(aspect);
   const centre = { x: shift.x * 2 * halfW, y: shift.y * 2 * TAN };
   const planet = Math.tan(Math.asin(Math.min(0.99, AIR / Math.hypot(...camera))));
-  const inside = (x, y, r) => Math.abs(x) + r <= halfW * 0.97 && y + r <= TAN * TOP && y - r >= -TAN * BOTTOM;
+  const top = aspect >= 1 ? TOP : TOP_TALL;
+  const inside = (x, y, r) => Math.abs(x) + r <= halfW * 0.97 && y + r <= TAN * top && y - r >= -TAN * BOTTOM;
   if (!inside(centre.x, centre.y, planet)) return false;
   const hole = project(camera, sun.map((s) => s * holeDistance));
   if (hole.z <= 0) return false;
-  const reach = HOLE_REACH / hole.z;
+  const reach = (HOLE_REACH * holeRadius) / hole.z;
   if (!inside(hole.x + centre.x, hole.y + centre.y, reach)) return false;
   return Math.hypot(hole.x, hole.y) > planet + reach;
 }
 
+/** The sun direction `angle` radians further on in the planet's day (it drifts west). */
+export function sunLater(sun, angle) {
+  const c = Math.cos(-angle);
+  const s = Math.sin(-angle);
+  return [sun[0] * c + sun[2] * s, sun[1], -sun[0] * s + sun[2] * c];
+}
+
 /** The opening camera position, in planet radii, for a sun direction and a screen shape. */
-export function openingCamera(sun, holeDistance, aspect) {
+export function openingCamera(sun, holeDistance, aspect, holeRadius) {
   const azimuth = Math.atan2(sun[0], sun[2]);
-  const search = ({ offset, elevation, from, to }) => {
-    for (let d = from; d <= to; d += 0.1) {
-      const camera = place(azimuth + offset, elevation, d);
-      if (bothInFrame(camera, sun, holeDistance, aspect)) return camera;
+  const later = sunLater(sun, staysFor(aspect));
+  let best = null;
+  for (let away = 40; away <= 180; away += 4) {
+    for (const side of [1, -1]) {
+      for (let elevation = -10; elevation <= 30; elevation += 5) {
+        for (let d = 2.2; d <= 14; d += 0.1) {
+          const camera = place(azimuth + side * away * DEG, elevation * DEG, d);
+          if (!bothInFrame(camera, sun, holeDistance, aspect, holeRadius)) continue;
+          if (!bothInFrame(camera, later, holeDistance, aspect, holeRadius)) continue;
+          const facing = camera.reduce((n, c, i) => n + c * sun[i], 0) / d;
+          const score = (1 / d) * (0.35 + (1 + facing) / 2);
+          if (!best || score > best.score) best = { score, camera };
+          break; // nearer is better: no need to look further out from here
+        }
+      }
     }
-    return null;
-  };
-  const behind = { ...BEHIND, from: holeDistance + 2.4 };
-  return (aspect >= 1 && search(SIDE)) || search(behind) || place(azimuth + BEHIND.offset, BEHIND.elevation, BEHIND.to);
+  }
+  return best ? best.camera : place(azimuth + Math.PI, 15 * DEG, 6);
 }

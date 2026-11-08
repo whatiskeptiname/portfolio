@@ -292,14 +292,18 @@ always gives the same planet. Distances are real: **1 unit = 1 m** (a car is
   highway, roads and river rise and dip, easing to level ground in towns;
   smaller rolling hills in open country only. Vehicles ride and tilt with it.
 - **The black hole is the sun.** The planet turns in front of it on a
-  time-lapse of your system clock: one planet day every 4 real minutes
+  time-lapse of your system clock: one planet day every 12 real minutes
   (`src/lib/clock.js`). City windows, plazas, beacons, lamps and headlights
   follow the day/night line, and the HUD shows local planet time. You can also
   hold it at Day, with the black hole low on the eastern horizon, or at Night
   under the Milky Way (see [Settings](#settings)).
-- **Space.** A baked Milky Way sky with stars, an atmosphere glow, thin wispy
+- **Space.** A baked Milky Way, seen from the night side only, with stars, an atmosphere glow, thin wispy
   cloud at 40 to 50 m (`Clouds.jsx`, with its own switch in the settings), and
-  the black hole with its accretion disc.
+  the black hole with its accretion disc, 2,500 planet radii away: far enough to
+  stay put in the sky as you move, drawn as part of the sky so the camera's range
+  stays short.
+- **Size.** The planet is twice the size it needs to fit everything
+  (`WORLD_SCALE` in `src/lib/layout.js`), for more open country between districts.
 - **Minimap.** A small globe showing the hemispheres, roads, river, sea,
   mountains, islands, districts, other cars and your planned route (coloured
   by speed).
@@ -489,7 +493,7 @@ rest on the highway.
 #### Settings (sliders icon)
 
 - **Audio:** volume; engines, ambience and interface sounds.
-- **World:** time of day — *Cycle* (the 4-minute day), *Day* or *Night*
+- **World:** time of day — *Cycle* (the 12-minute day), *Day* or *Night*
   (held with the black hole on the horizon, or at midnight, wherever you are; the sun eases across when you
   switch).
 - **Drone controls:** Arcade or Realistic.

@@ -15,14 +15,12 @@ import { terrainAt } from "../lib/terrain";
 import { highwayJunctions, openArcs, openRuns, roundaboutJunctions } from "../lib/junctions";
 import { useDisposable } from "./gpu";
 import {
-  BLACK_HOLE_DISTANCE,
   RIVER_COLOR,
   SEA_COLOR,
   SUN_DIRECTION,
   annulusGeometry,
   arcBandGeometry,
   outlineGeometry,
-  blackHolePosition,
   discGeometry,
   ribbonGeometry,
   sunlightAt,
@@ -44,12 +42,15 @@ const HEMISPHERES = {
 
 // The black hole is the sun. A little cool fill keeps the night side legible.
 // `shadows`: "off" | "low" (1024² map) | "high" (2048²).
+const LIGHT_DISTANCE = 3;
+
 export function Lighting({ R, shadows = "low" }) {
   const key = useRef();
   const fill = useRef();
-  // Follow the black hole as it moves round the planet.
+  // Follow the black hole as it moves round the planet. The light only needs its
+  // direction, so it sits a few radii out, where its shadow camera can see the planet.
   useFrame(() => {
-    blackHolePosition(R, key.current.position);
+    key.current.position.copy(SUN_DIRECTION).multiplyScalar(R * LIGHT_DISTANCE);
     fill.current.position.copy(key.current.position).multiplyScalar(-1);
   });
   return (
@@ -68,8 +69,8 @@ export function Lighting({ R, shadows = "low" }) {
         shadow-camera-right={R * 1.15}
         shadow-camera-top={R * 1.15}
         shadow-camera-bottom={-R * 1.15}
-        shadow-camera-near={R * (BLACK_HOLE_DISTANCE - 1.3)}
-        shadow-camera-far={R * (BLACK_HOLE_DISTANCE + 1.3)}
+        shadow-camera-near={R * (LIGHT_DISTANCE - 1.3)}
+        shadow-camera-far={R * (LIGHT_DISTANCE + 1.3)}
       />
       {/* Starlight from the far side. */}
       <directionalLight ref={fill} intensity={0.22} color="#7f9cff" />
@@ -450,7 +451,7 @@ function Bridges({ layout }) {
 
 // --- districts -----------------------------------------------------------------
 
-export function Districts({ layout }) {
+export function Districts({ layout, driving, labels = true }) {
   const R = layout.radius;
   // Shared parts of every town, merged: district paving (one mesh per
   // hemisphere colour), the roundabout's asphalt ring, its white lane
@@ -545,6 +546,7 @@ export function Districts({ layout }) {
               emissiveIntensity={0.15}
             />
           </mesh>
+          {labels && <DistrictSign city={city} R={R} driving={driving} />}
         </group>
       ))}
     </>
@@ -553,6 +555,48 @@ export function Districts({ layout }) {
 
 // Labels are DOM overlays, so they'd show through buildings and the planet.
 // Hide them on the far side, and while driving keep only nearby ones.
+// A small name tag over each district: its name and how many projects or
+// landmarks it holds. From space they all show; while driving, only the ones
+// nearby fade in.
+function DistrictSign({ city, R, driving }) {
+  const position = useMemo(() => surfacePoint(R, city.x, city.z, 6), [R, city.x, city.z]);
+  const fade = useMemo(
+    () => (driving ? (d) => THREE.MathUtils.clamp((city.radius + 45 - d) / 15, 0, 1) : null),
+    [driving, city.radius]
+  );
+  const count = city.projects.length;
+  return (
+    <SurfaceLabel R={R} position={position} fadeWhen={fade}>
+      <div
+        className={`city-sign ${city.kind}`}
+        style={{ "--hue": Math.round(city.hue * 360) }}
+        title={`${city.language}: ${count} ${city.unit}${count === 1 ? "" : "s"}`}
+      >
+        <strong>{city.language}</strong>
+        <span>{count}</span>
+      </div>
+    </SurfaceLabel>
+  );
+}
+
+// Hidden on the far side of the planet; `fadeWhen(distance)` can fade it further.
+function SurfaceLabel({ R, position, children, fadeWhen }) {
+  const el = useRef();
+  useFrame(({ camera }) => {
+    if (!el.current) return;
+    let opacity = visibleFrom(position, camera, R) ? 1 : 0;
+    if (opacity && fadeWhen) opacity = fadeWhen(camera.position.distanceTo(position));
+    const display = opacity > 0 ? "" : "none";
+    if (el.current.style.display !== display) el.current.style.display = display;
+    el.current.style.opacity = String(opacity);
+  });
+  return (
+    <Html position={position} center zIndexRange={[10, 0]} style={{ pointerEvents: "none" }}>
+      <div ref={el}>{children}</div>
+    </Html>
+  );
+}
+
 // --- trees -------------------------------------------------------------------
 
 export function Trees({ layout }) {
