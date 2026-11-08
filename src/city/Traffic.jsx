@@ -1,7 +1,9 @@
 // src/city/Traffic.jsx — the other cars and the traffic lights.
 // The cars are simulated by lib/trafficSim (they drive by the same rules as
-// your autopilot) and drawn as instanced meshes: bodies tinted per car, and
-// head/tail lights that glow brighter when they brake. The lights are a post
+// your autopilot) and drawn as instanced meshes: hatchbacks, saloons and SUVs,
+// one mesh per style, tinted per car; and
+// lamps that behave like real ones (lib/carLights): running lights by day,
+// headlights and tail lights at night, brake lights, indicators and hazards. The lights are a post
 // and a three-lamp head on the left of every stop line, plus the white stop
 // line itself; their lamps change with lib/traffic's signal timing.
 import React, { useEffect, useMemo, useRef } from "react";
@@ -11,42 +13,108 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { bridgeElevation, createRng } from "../lib/layout";
 import { signalColor, stepSignals, trafficTime } from "../lib/traffic";
 import { createTraffic, stepTraffic } from "../lib/trafficSim";
-import { surfaceMatrix } from "./globe3d";
+import { sunlightAt, surfaceMatrix } from "./globe3d";
+import { carLamps } from "../lib/carLights";
 import { useDisposable } from "./gpu";
 
-function box(w, h, d, x, y, z, color) {
-  const g = new THREE.BoxGeometry(w, h, d).translate(x, y, z);
+// A part painted one colour (white parts take each car's tint).
+function painted(geometry, color) {
+  const g = geometry.index ? geometry.toNonIndexed() : geometry;
+  if (g !== geometry) geometry.dispose();
   const c = new THREE.Color(color);
-  g.setAttribute("color", new THREE.Float32BufferAttribute(Array.from({ length: g.attributes.position.count }, () => [c.r, c.g, c.b]).flat(), 3));
+  const n = g.attributes.position.count;
+  const colors = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) colors.set([c.r, c.g, c.b], i * 3);
+  g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   return g;
 }
+const boxAt = (w, h, d, x, y, z, color) => painted(new THREE.BoxGeometry(w, h, d).translate(x, y, z), color);
 
-// A small hatchback, nose toward -z like the player's car. White body parts
-// take each car's tint; glass, tyres and trim stay dark.
-function carGeometry() {
+// A side profile (x along the car, nose at −x; y up), extruded across with
+// rounded edges and turned so the nose faces −z.
+function sideways(points, width, bevel, color) {
+  const shape = new THREE.Shape();
+  points.forEach(([x, y], i) => (i ? shape.lineTo(x, y) : shape.moveTo(x, y)));
+  shape.closePath();
+  const g = new THREE.ExtrudeGeometry(shape, { depth: width - bevel * 2, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 2, curveSegments: 4 });
+  g.translate(0, 0, -(width - bevel * 2) / 2);
+  g.rotateY(-Math.PI / 2);
+  g.computeVertexNormals();
+  return painted(g, color);
+}
+
+const GLASS = "#121a24";
+const TRIM = "#24272d";
+const TYRE = "#111316";
+const RIM = "#d5d8dc"; // light, so it stays silver-ish under each car's tint
+
+// The body styles the traffic is made of. All share a footprint (4.1 m long,
+// 1.8 m wide) so the lamps line up on every one.
+const STYLES = {
+  hatchback: {
+    body: [[-2.05, 0.3], [2.0, 0.3], [2.07, 0.56], [2.02, 0.96], [1.62, 1.03], [-0.7, 1.0], [-1.92, 0.87], [-2.08, 0.6]],
+    glass: [[-0.7, 0.98], [1.58, 0.98], [1.38, 1.58], [-0.04, 1.62]],
+    roof: [[0.0, 1.6], [1.34, 1.6], [1.3, 1.66], [0.04, 1.66]],
+    wheel: 0.34,
+  },
+  saloon: {
+    body: [[-2.05, 0.3], [2.04, 0.3], [2.08, 0.58], [2.05, 0.9], [1.3, 0.97], [-0.62, 0.97], [-1.94, 0.84], [-2.08, 0.6]],
+    glass: [[-0.62, 0.95], [1.28, 0.95], [0.78, 1.5], [-0.02, 1.53]],
+    roof: [[0.02, 1.51], [0.74, 1.51], [0.7, 1.57], [0.05, 1.57]],
+    wheel: 0.34,
+  },
+  suv: {
+    body: [[-2.05, 0.4], [2.04, 0.4], [2.08, 0.72], [2.05, 1.16], [1.86, 1.2], [-0.6, 1.2], [-1.94, 1.06], [-2.08, 0.76]],
+    glass: [[-0.6, 1.18], [1.86, 1.18], [1.8, 1.9], [-0.04, 1.94]],
+    roof: [[0.0, 1.92], [1.78, 1.92], [1.76, 1.98], [0.02, 1.98]],
+    wheel: 0.4,
+  },
+};
+const TRAFFIC_STYLES = Object.keys(STYLES);
+
+function carGeometry(style) {
+  const { body, glass, roof, wheel } = STYLES[style];
   const parts = [
-    box(1.8, 0.62, 4.1, 0, 0.62, 0, "#ffffff"), // body
-    box(1.62, 0.55, 2.1, 0, 1.2, 0.35, "#ffffff"), // cabin
-    box(1.66, 0.42, 1.95, 0, 1.2, 0.35, "#1b2129"), // windows (inset band)
-    box(1.86, 0.22, 4.16, 0, 0.36, 0, "#2a2d33"), // skirt / bumpers
-    ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => box(0.3, 0.62, 0.62, sx * 0.86, 0.31, sz * 1.35, "#111316"))), // tyres
+    sideways(body, 1.8, 0.1, "#ffffff"),
+    sideways(glass, 1.64, 0.06, GLASS),
+    sideways(roof, 1.66, 0.03, "#ffffff"),
+    // (The rounded body reaches about ±2.15 along; bumpers, grille and lamps sit on it.)
+    boxAt(1.84, 0.2, 0.24, 0, 0.38, -2.12, TRIM), // front bumper
+    boxAt(1.84, 0.2, 0.24, 0, 0.4, 2.12, TRIM), // rear bumper
+    boxAt(0.86, 0.14, 0.1, 0, 0.6, -2.16, TRIM), // grille
+    ...[-1, 1].flatMap((side) => [
+      boxAt(0.16, 0.1, 0.18, side * 0.98, style === "suv" ? 1.26 : 1.05, -0.62, TRIM), // mirror
+      boxAt(0.04, 0.08, 3.0, side * 0.91, 0.36, 0, TRIM), // side skirt
+      ...[-1.35, 1.35].flatMap((z) => [
+        painted(new THREE.CylinderGeometry(wheel, wheel, 0.26, 16).rotateZ(Math.PI / 2).translate(side * 0.84, wheel, z), TYRE),
+        painted(new THREE.CylinderGeometry(wheel * 0.62, wheel * 0.62, 0.04, 12).rotateZ(Math.PI / 2).translate(side * 0.98, wheel, z), RIM),
+      ]),
+    ]),
   ];
   const g = mergeGeometries(parts);
   parts.forEach((p) => p.dispose());
   return g;
 }
 
-function lightGeometry() {
-  const parts = [
-    box(0.42, 0.18, 0.06, -0.6, 0.72, -2.06, "#fff3cf"),
-    box(0.42, 0.18, 0.06, 0.6, 0.72, -2.06, "#fff3cf"),
-    box(0.46, 0.18, 0.06, -0.6, 0.74, 2.06, "#ff2a2a"),
-    box(0.46, 0.18, 0.06, 0.6, 0.74, 2.06, "#ff2a2a"),
-  ];
-  const g = mergeGeometries(parts);
-  parts.forEach((p) => p.dispose());
+// The lamps, in groups that light up separately (each car tints its own).
+function lampGeometry(parts) {
+  const g = mergeGeometries(parts.map(([w, h, d, x, y, z]) => new THREE.BoxGeometry(w, h, d).translate(x, y, z)));
   return g;
 }
+// Deep enough to show on every body style's rounded nose and tail.
+const LAMPS = {
+  head: [[0.42, 0.18, 0.16, -0.6, 0.76, -2.15], [0.42, 0.18, 0.16, 0.6, 0.76, -2.15]],
+  tail: [[0.46, 0.18, 0.16, -0.6, 0.78, 2.15], [0.46, 0.18, 0.16, 0.6, 0.78, 2.15]],
+  left: [[0.14, 0.1, 0.16, -0.78, 0.56, -2.17], [0.14, 0.1, 0.16, -0.78, 0.58, 2.17]], // left is −x: the nose faces −z
+  right: [[0.14, 0.1, 0.16, 0.78, 0.56, -2.17], [0.14, 0.1, 0.16, 0.78, 0.58, 2.17]],
+};
+// Each lamp's colour, unlit (its lens) and fully lit.
+const LAMP_COLOURS = {
+  head: [new THREE.Color(0.35, 0.34, 0.3), new THREE.Color(1.7, 1.6, 1.35)],
+  tail: [new THREE.Color(0.16, 0.02, 0.02), new THREE.Color(2.2, 0.15, 0.12)],
+  left: [new THREE.Color(0.18, 0.1, 0.0), new THREE.Color(2.0, 1.1, 0.0)],
+  right: [new THREE.Color(0.18, 0.1, 0.0), new THREE.Color(2.0, 1.1, 0.0)],
+};
 
 /**
  * @param {{ count: number, carsRef: { current: object[] }, player: { current: object } }} props
@@ -54,8 +122,8 @@ function lightGeometry() {
  */
 export function Traffic({ layout, graph, signals, count, carsRef, player, vehicleType }) {
   const R = layout.radius;
-  const bodies = useRef();
-  const lights = useRef();
+  const bodies = { hatchback: useRef(), saloon: useRef(), suv: useRef() };
+  const lamps = { head: useRef(), tail: useRef(), left: useRef(), right: useRef() };
   const cars = useMemo(() => createTraffic(layout, count, createRng(`traffic-${count}`)), [layout, count]);
   useEffect(() => {
     carsRef.current = cars;
@@ -63,26 +131,46 @@ export function Traffic({ layout, graph, signals, count, carsRef, player, vehicl
       carsRef.current = [];
     };
   }, [cars, carsRef]);
-  const geo = useDisposable(() => ({ body: carGeometry(), light: lightGeometry() }), []);
+  const geo = useDisposable(
+    () => ({
+      ...Object.fromEntries(TRAFFIC_STYLES.map((style) => [style, carGeometry(style)])),
+      ...Object.fromEntries(Object.entries(LAMPS).map(([k, parts]) => [k, lampGeometry(parts)])),
+    }),
+    []
+  );
   const materials = useDisposable(
     () => ({
       body: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0.25 }),
-      light: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }),
+      lamp: new THREE.MeshBasicMaterial({ toneMapped: false }),
     }),
     []
   );
 
+  // Each car's body style, and its slot among the cars of that style.
+  const fleet = useMemo(() => {
+    const counts = Object.fromEntries(TRAFFIC_STYLES.map((style) => [style, 0]));
+    const slots = cars.map((car, i) => {
+      const style = TRAFFIC_STYLES[i % TRAFFIC_STYLES.length];
+      return { style, slot: counts[style]++ };
+    });
+    return { counts, slots };
+  }, [cars]);
+
   // Body tints, set once.
   useEffect(() => {
     const c = new THREE.Color();
-    cars.forEach((car, i) => bodies.current.setColorAt(i, c.setHSL(car.hue, 0.55, 0.5)));
-    bodies.current.instanceColor.needsUpdate = true;
-  }, [cars]);
+    cars.forEach((car, i) => {
+      const { style, slot } = fleet.slots[i];
+      bodies[style].current?.setColorAt(slot, c.setHSL(car.hue, 0.55, 0.5));
+    });
+    for (const style of TRAFFIC_STYLES) if (bodies[style].current?.instanceColor) bodies[style].current.instanceColor.needsUpdate = true;
+    // (bodies holds refs; it's rebuilt each render but points at the same meshes)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cars, fleet]);
 
   const m = useMemo(() => new THREE.Matrix4(), []);
-  const dim = useMemo(() => new THREE.Color(0.55, 0.55, 0.55), []);
-  const bright = useMemo(() => new THREE.Color(1.6, 1.6, 1.6), []);
-  useFrame((_, rawDelta) => {
+  const colour = useMemo(() => new THREE.Color(), []);
+  useFrame(({ clock }, rawDelta) => {
     const dt = Math.min(rawDelta, 0.05);
     const p = player.current;
     // Your car is someone to keep a gap from (not the drone, unless it's landed).
@@ -90,20 +178,43 @@ export function Traffic({ layout, graph, signals, count, carsRef, player, vehicl
     stepTraffic(cars, { world: layout, graph, signals, t: trafficTime(), player: you }, dt);
     cars.forEach((car, i) => {
       surfaceMatrix(R, car.x, car.z, bridgeElevation(layout, car.x, car.z), car.yaw, m);
-      bodies.current.setMatrixAt(i, m);
-      lights.current.setMatrixAt(i, m);
-      lights.current.setColorAt(i, car.braking ? bright : dim);
+      const { style, slot } = fleet.slots[i];
+      bodies[style].current.setMatrixAt(slot, m);
+      const reversing = car.speed < -0.1;
+      const lit = carLamps(car, {
+        steer: car.steer,
+        speed: car.speed,
+        braking: car.braking,
+        reversing,
+        hazard: reversing, // they only back up to get unstuck
+        night: sunlightAt(R, car.x, car.z) < 0.06,
+        t: clock.elapsedTime,
+        dt,
+      });
+      for (const k in lamps) {
+        const [off, on] = LAMP_COLOURS[k];
+        // The tail lamp is the brake lamp too: brighter of the two.
+        const level = k === "tail" ? Math.max(lit.tail, lit.brake) : lit[k];
+        lamps[k].current.setMatrixAt(i, m);
+        lamps[k].current.setColorAt(i, colour.copy(off).lerp(on, level));
+      }
     });
-    bodies.current.instanceMatrix.needsUpdate = true;
-    lights.current.instanceMatrix.needsUpdate = true;
-    if (lights.current.instanceColor) lights.current.instanceColor.needsUpdate = true;
+    for (const style of TRAFFIC_STYLES) if (bodies[style].current) bodies[style].current.instanceMatrix.needsUpdate = true;
+    for (const k in lamps) {
+      lamps[k].current.instanceMatrix.needsUpdate = true;
+      if (lamps[k].current.instanceColor) lamps[k].current.instanceColor.needsUpdate = true;
+    }
   });
 
   if (!cars.length) return null;
   return (
     <>
-      <instancedMesh ref={bodies} args={[geo.body, materials.body, cars.length]} castShadow frustumCulled={false} />
-      <instancedMesh ref={lights} args={[geo.light, materials.light, cars.length]} frustumCulled={false} />
+      {TRAFFIC_STYLES.filter((style) => fleet.counts[style]).map((style) => (
+        <instancedMesh key={style} ref={bodies[style]} args={[geo[style], materials.body, fleet.counts[style]]} castShadow frustumCulled={false} />
+      ))}
+      {Object.keys(LAMPS).map((k) => (
+        <instancedMesh key={k} ref={lamps[k]} args={[geo[k], materials.lamp, cars.length]} frustumCulled={false} />
+      ))}
     </>
   );
 }
@@ -122,11 +233,11 @@ export function TrafficLights({ layout, signals, cars, player }) {
       const base = surfaceMatrix(R, ap.x, ap.z, bridgeElevation(layout, ap.x, ap.z), yaw);
       // Post on the left of the lane (traffic keeps left), housing facing oncoming drivers.
       const post = (g) => parts.push(g.applyMatrix4(base));
-      post(box(0.18, 4.4, 0.18, -(lane + 1.6), 2.2, 0, "#2b2e35"));
-      post(box(0.5, 1.5, 0.45, -(lane + 1.6), 4.0, 0.05, "#16181c"));
-      post(box(0.7, 1.75, 0.08, -(lane + 1.6), 4.0, -0.22, "#0d0e10")); // backplate
+      post(boxAt(0.18, 4.4, 0.18, -(lane + 1.6), 2.2, 0, "#2b2e35"));
+      post(boxAt(0.5, 1.5, 0.45, -(lane + 1.6), 4.0, 0.05, "#16181c"));
+      post(boxAt(0.7, 1.75, 0.08, -(lane + 1.6), 4.0, -0.22, "#0d0e10")); // backplate
       // Stop line across the lane.
-      post(box(3.6, 0.03, 0.4, 0, 0.27, 0, "#f4f4ee"));
+      post(boxAt(3.6, 0.03, 0.4, 0, 0.27, 0, "#f4f4ee"));
     }
     if (!parts.length) return null;
     const g = mergeGeometries(parts);

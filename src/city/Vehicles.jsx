@@ -4,6 +4,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { BILLBOARD_RADIUS, BUILDING_RADIUS, HIGHWAY_HALF_WIDTH, bridgeElevation, collides, surfaceAt, worldDistance, wrapDelta } from "../lib/layout";
 import { crossPole, eastStretch, frameAt } from "../lib/globe";
 import { sunlightAt, surfaceMatrix } from "./globe3d";
@@ -20,6 +21,8 @@ import { chooseAvoidance, clearanceAhead, localObstacles, shiftPoses } from "../
 import { laneAhead } from "../lib/lanes";
 import { carsOverlap, decideOvertake, noteWaiting, trafficCap, trafficTime } from "../lib/traffic";
 import { terrainAt } from "../lib/terrain";
+import { carLamps } from "../lib/carLights";
+import { useDisposable } from "./gpu";
 import { AUTOPILOT, DRONE_ALT, CAR_GRIP, CAR_LIMITS, NO_INPUT, autopilotInput, hasInput, keysToInput, settleToLimit, unstickInput } from "../lib/autopilot";
 
 export const CAR_RADIUS = 1.3;
@@ -263,6 +266,7 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
   const frontPivots = useRef([]);
   const rotors = useRef([]);
   const headlight = useRef();
+  const lamps = useDisposable(lampMaterials, []);
   const spin = useRef(0);
   const matrix = useMemo(() => new THREE.Matrix4(), []);
   const prevType = useRef(type);
@@ -596,8 +600,23 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
         spin.current -= (s.speed * delta) / 0.42;
         wheels.current.forEach((w) => w && (w.rotation.x = spin.current));
         frontPivots.current.forEach((p) => p && (p.rotation.y = s.steer * 0.45));
-        // Headlights come on by themselves on the night side.
-        if (headlight.current) headlight.current.intensity = sunlightAt(R, s.x, s.z) < 0.06 ? 80 : 0;
+        // Headlights come on by themselves on the night side; brake, reverse
+        // and indicator lamps follow what the car is doing.
+        const night = sunlightAt(R, s.x, s.z) < 0.06;
+        if (headlight.current) headlight.current.intensity = night ? 80 : 0;
+        const reversing = s.pedal === "reverse" && s.speed < -0.1;
+        const lit = carLamps(s, {
+          steer: s.steer,
+          speed: s.speed,
+          shift: (s.laneShift ?? 0) + (s.avoidShift ?? 0),
+          braking: s.pedal === "brake" || s.pedal === "hold",
+          reversing,
+          hazard: reversing && (s.auto || Boolean(s.route)), // backing off to get unstuck
+          night,
+          t,
+          dt: delta,
+        });
+        for (const k in LAMP_GLOW) lamps[k].emissiveIntensity = LAMP_GLOW[k] * lit[k];
       } else {
         if (headlight.current) headlight.current.intensity = 0; // the drone has no headlight
         if (s.realistic) {
@@ -646,7 +665,7 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
         <group ref={body} key="car">
           {/* From the driver's seat, the cockpit (with its own bonnet and wing
               mirrors) replaces the outside shell, which would cut through it. */}
-          {view !== "fpv" && <CarModel wheels={wheels} frontPivots={frontPivots} />}
+          {view !== "fpv" && <CarModel wheels={wheels} frontPivots={frontPivots} lamps={lamps} />}
           {view === "fpv" && <Cockpit state={state} mirror={mirror} />}
         </group>
       ) : (
@@ -727,14 +746,14 @@ function profile(points) {
   return shape;
 }
 
-function extrudeAcross(shape, width, bevel) {
+function extrudeAcross(shape, width, bevel, bevelSegments = 3, curveSegments = 8) {
   const g = new THREE.ExtrudeGeometry(shape, {
     depth: width - bevel * 2,
     bevelEnabled: true,
     bevelThickness: bevel,
     bevelSize: bevel,
-    bevelSegments: 3,
-    curveSegments: 8,
+    bevelSegments,
+    curveSegments,
   });
   g.translate(0, 0, -(width - bevel * 2) / 2);
   g.rotateY(-Math.PI / 2); // shape x → world z, so the front (-x) faces -z (forward)
@@ -742,140 +761,195 @@ function extrudeAcross(shape, width, bevel) {
   return g;
 }
 
-function CarModel({ wheels, frontPivots }) {
+// The car's lamps: each its own material, so they can light up separately.
+// Unlit, each shows its lens colour; lit, it glows.
+function lampMaterials() {
+  const lamp = (color, emissive, emissiveIntensity = 0) => new THREE.MeshStandardMaterial({ color, emissive, emissiveIntensity, roughness: 0.3 });
+  return {
+    head: lamp("#fff8e1", "#fff1b0", 1.4),
+    tail: lamp("#5a0b0b", "#ff1a1a", 0.4),
+    brake: lamp("#4a0808", "#ff1a1a"),
+    reverse: lamp("#d8d8d4", "#ffffff"),
+    left: lamp("#6b4300", "#ff9a00"),
+    right: lamp("#6b4300", "#ff9a00"),
+  };
+}
+// How brightly each lamp glows when fully lit. Red and amber are kept modest:
+// pushed harder, they wash out to orange and yellow-white on screen.
+const LAMP_GLOW = { head: 3, tail: 1.6, brake: 1.6, reverse: 2.4, left: 2.2, right: 2.2 };
+// For the hidden copy that warms up the shaders.
+const WARM_LAMPS = lampMaterials();
+
+// Your car: a small sports hatchback. Same footprint as ever (the collisions,
+// the transformation and the lamps all assume it): about 4.7 m long and 2.1 m
+// wide, wheels at ±1.02 across and −1.4 / +1.42 along.
+function CarModel({ wheels, frontPivots, lamps = WARM_LAMPS }) {
+  // Every fixed part is merged into one mesh per material (paint, glass, trim,
+  // chrome, each lamp…), so all this detail costs a handful of draw calls.
   const geo = useMemo(() => {
-    const body = profile([
-      [-2.25, 0.32],
-      [2.2, 0.32],
-      [2.32, 0.62],
-      [2.28, 0.98],
-      [1.9, 1.08],
-      [0.95, 1.1],
-      [-0.85, 1.08],
-      [-2.05, 0.92],
-      [-2.32, 0.7],
-    ]);
-    const cabin = profile([
-      [-0.85, 1.06],
-      [1.25, 1.06],
-      [1.05, 1.72],
-      [0.75, 1.8],
-      [-0.15, 1.8],
-    ]);
-    const spoiler = profile([
-      [1.95, 1.18],
-      [2.35, 1.22],
-      [2.4, 1.32],
-      [2.0, 1.3],
-    ]);
+    const at = (g, [x, y, z], [rx, ry, rz] = [0, 0, 0], parent) => {
+      const m = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(1, 1, 1));
+      if (parent) m.premultiply(parent);
+      return g.applyMatrix4(m);
+    };
+    const box = (w, h, d, pos, rot, parent) => at(new THREE.BoxGeometry(w, h, d), pos, rot, parent);
+    const merge = (list) => {
+      const flat = list.map((g) => (g.index ? g.toNonIndexed() : g));
+      const out = mergeGeometries(flat);
+      list.forEach((g) => g.dispose());
+      flat.forEach((g) => g.dispose());
+      return out;
+    };
+
+    // Side view: nose at −x (it becomes −z, forward), y up.
+    const shell = new THREE.Shape();
+    shell.moveTo(-2.28, 0.34);
+    shell.lineTo(2.22, 0.34);
+    shell.quadraticCurveTo(2.36, 0.36, 2.36, 0.58);
+    shell.lineTo(2.33, 0.94);
+    shell.quadraticCurveTo(2.3, 1.07, 2.08, 1.09);
+    shell.lineTo(1.22, 1.1);
+    shell.lineTo(-0.9, 1.08);
+    shell.quadraticCurveTo(-1.85, 1.01, -2.2, 0.88);
+    shell.quadraticCurveTo(-2.37, 0.81, -2.37, 0.62);
+    shell.quadraticCurveTo(-2.37, 0.38, -2.28, 0.34);
+
+    const paint = [
+      extrudeAcross(shell, 2.08, 0.14, 4, 14),
+      extrudeAcross(profile([[-0.14, 1.77], [0.76, 1.77], [0.72, 1.85], [-0.1, 1.85]]), 1.82, 0.04),
+    ];
+    const glass = [extrudeAcross(profile([[-0.88, 1.06], [1.22, 1.06], [1.02, 1.68], [0.72, 1.79], [-0.16, 1.79]]), 1.84, 0.08)];
+    const trim = [
+      extrudeAcross(profile([[1.95, 1.18], [2.35, 1.22], [2.4, 1.32], [2.0, 1.3]]), 1.9, 0.03), // spoiler
+      box(0.06, 0.07, 0.22, [0, 1.88, 0.62], [-0.25, 0, 0]), // roof fin
+      box(1.05, 0.2, 0.08, [0, 0.6, -2.4]), // grille
+      box(1.5, 0.12, 0.12, [0, 0.42, -2.34]), // lower intake
+      box(1.95, 0.03, 0.2, [0, 0.33, -2.3]), // splitter
+      box(1.7, 0.14, 0.12, [0, 0.4, 2.36]), // diffuser
+    ];
+    const chrome = [
+      ...[0.55, 0.62, 0.69].map((y) => box(0.98, 0.012, 0.02, [0, y, -2.45])), // grille slats
+      ...[-0.5, 0.5].map((x) => at(new THREE.CylinderGeometry(0.055, 0.06, 0.14, 14, 1, true), [x, 0.38, 2.42], [Math.PI / 2, 0, 0])), // exhausts
+    ];
+    const seams = [];
+    const lamp = { head: [], tail: [], left: [], right: [], reverse: [] };
+    for (const side of [-1, 1]) {
+      const x = side * 0.72;
+      const flank = side * 1.045;
+      const indicator = side < 0 ? lamp.left : lamp.right; // left is −x: the nose faces −z
+      lamp.head.push(box(0.5, 0.14, 0.12, [x, 0.8, -2.36], [-0.35, 0, 0]));
+      lamp.tail.push(box(0.52, 0.12, 0.08, [x, 0.85, 2.44]));
+      indicator.push(box(0.14, 0.08, 0.1, [side * 0.99, 0.74, -2.26]), box(0.16, 0.08, 0.06, [side * 0.88, 0.7, 2.45]));
+      lamp.reverse.push(box(0.22, 0.07, 0.04, [x * 0.62, 0.56, 2.44]));
+      // Flank: wheel-arch trims, door seams and handles, side skirt, beltline.
+      for (const z of [-1.4, 1.42]) trim.push(at(new THREE.TorusGeometry(0.5, 0.05, 6, 24, Math.PI), [flank + side * 0.02, 0.42, z], [0, Math.PI / 2, 0]));
+      for (const z of [-0.86, 0.44]) seams.push(box(0.01, 0.6, 0.012, [flank + side * 0.004, 0.75, z]));
+      for (const z of [-0.4, 0.6]) trim.push(box(0.03, 0.035, 0.16, [flank + side * 0.02, 0.96, z]));
+      trim.push(box(0.06, 0.1, 1.9, [flank, 0.38, 0]));
+      chrome.push(box(0.02, 0.025, 2.1, [side * 0.93, 1.085, 0.17]));
+      // Mirror: housing, glass and arm.
+      const mirror = new THREE.Matrix4().compose(new THREE.Vector3(side * 1.16, 1.14, -0.74), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, side * 0.18, 0)), new THREE.Vector3(1, 1, 1));
+      paint.push(box(0.2, 0.13, 0.26, [0, 0, 0], undefined, mirror));
+      glass.push(box(0.16, 0.09, 0.01, [0, 0, 0.135], undefined, mirror));
+      trim.push(box(0.08, 0.04, 0.08, [-side * 0.12, -0.02, -0.04], undefined, mirror));
+    }
+    // One wheel's turning parts (the outside faces +x; flipped for the left).
+    const wheelParts = (out) => ({
+      tyre: merge([at(new THREE.CylinderGeometry(0.42, 0.42, 0.3, 28), [0, 0, 0], [0, 0, Math.PI / 2])]),
+      disc: merge([at(new THREE.CylinderGeometry(0.24, 0.24, 0.04, 20), [-out * 0.02, 0, 0], [0, 0, Math.PI / 2])]),
+      rim: merge([
+        at(new THREE.TorusGeometry(0.28, 0.025, 6, 28), [out * 0.15, 0, 0], [0, Math.PI / 2, 0]),
+        ...[0, 1, 2, 3, 4].map((k) => {
+          const spoke = new THREE.BoxGeometry(0.04, 0.26, 0.07).translate(0, 0.14, 0);
+          return at(spoke, [out * 0.14, 0, 0], [(k * 2 * Math.PI) / 5, 0, 0]);
+        }),
+        at(new THREE.CylinderGeometry(0.06, 0.06, 0.03, 12), [out * 0.155, 0, 0], [0, 0, Math.PI / 2]),
+      ]),
+    });
     return {
-      body: extrudeAcross(body, 2.1, 0.12),
-      cabin: extrudeAcross(cabin, 1.8, 0.1),
-      roof: extrudeAcross(
-        profile([
-          [-0.12, 1.78],
-          [0.78, 1.78],
-          [0.74, 1.86],
-          [-0.08, 1.86],
-        ]),
-        1.82,
-        0.04
-      ),
-      spoiler: extrudeAcross(spoiler, 1.9, 0.03),
+      paint: merge(paint),
+      glass: merge(glass),
+      trim: merge(trim),
+      chrome: merge(chrome),
+      seams: merge(seams),
+      lamps: Object.fromEntries(Object.entries(lamp).map(([k, list]) => [k, merge(list)])),
+      brake: merge([box(1.5, 0.07, 0.05, [0, 0.98, 2.47])]),
+      plate: merge([box(0.6, 0.16, 0.02, [0, 0.66, 2.5])]),
+      caliper: merge([box(0.07, 0.12, 0.18, [0, 0, 0])]),
+      wheel: { left: wheelParts(-1), right: wheelParts(1) },
     };
   }, []);
+  const mat = useMemo(
+    () => ({
+      paint: new THREE.MeshPhysicalMaterial({ color: "#d61f3a", metalness: 0.3, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.08 }),
+      glass: new THREE.MeshPhysicalMaterial({ color: "#0f1a24", metalness: 0.4, roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.02 }),
+      trim: new THREE.MeshStandardMaterial({ color: "#16171a", roughness: 0.55, metalness: 0.2 }),
+      chrome: new THREE.MeshStandardMaterial({ color: "#c9ccd1", metalness: 0.95, roughness: 0.18 }),
+      seam: new THREE.MeshStandardMaterial({ color: "#3a0810", roughness: 0.6 }),
+      tyre: new THREE.MeshStandardMaterial({ color: "#151515", roughness: 0.95 }),
+      rim: new THREE.MeshStandardMaterial({ color: "#b9bdc5", metalness: 0.9, roughness: 0.22 }),
+      disc: new THREE.MeshStandardMaterial({ color: "#6d7076", metalness: 0.7, roughness: 0.45 }),
+      caliper: new THREE.MeshStandardMaterial({ color: "#e8b21c", roughness: 0.4 }),
+      plate: new THREE.MeshStandardMaterial({ color: "#f4f4f0", emissive: "#ffffff", emissiveIntensity: 0.3 }),
+    }),
+    []
+  );
+  useEffect(
+    () => () => {
+      const all = [geo.paint, geo.glass, geo.trim, geo.chrome, geo.seams, geo.brake, geo.plate, geo.caliper, ...Object.values(geo.lamps)];
+      for (const w of Object.values(geo.wheel)) all.push(...Object.values(w));
+      all.forEach((g) => g.dispose());
+      Object.values(mat).forEach((m) => m.dispose());
+    },
+    [geo, mat]
+  );
 
   return (
     <group>
-      <mesh geometry={geo.body} castShadow receiveShadow>
-        <meshPhysicalMaterial color="#e0283f" metalness={0.15} roughness={0.38} clearcoat={1} clearcoatRoughness={0.12} />
-      </mesh>
-      <mesh geometry={geo.cabin} castShadow>
-        <meshPhysicalMaterial color="#1c2d3c" metalness={0.1} roughness={0.08} clearcoat={1} />
-      </mesh>
-      <mesh geometry={geo.roof} castShadow>
-        <meshPhysicalMaterial color="#e0283f" metalness={0.15} roughness={0.38} clearcoat={1} />
-      </mesh>
-      <mesh geometry={geo.spoiler} castShadow>
-        <meshStandardMaterial color="#1b1b1f" roughness={0.5} />
-      </mesh>
-      {/* Grille, lights and mirrors */}
-      <mesh position={[0, 0.55, -2.46]}>
-        <boxGeometry args={[1.1, 0.22, 0.06]} />
-        <meshStandardMaterial color="#141414" metalness={0.6} roughness={0.4} />
-      </mesh>
-      {[-0.72, 0.72].map((x) => (
-        <group key={x}>
-          <mesh position={[x, 0.8, -2.43]} rotation-x={-0.35}>
-            <boxGeometry args={[0.5, 0.14, 0.12]} />
-            <meshStandardMaterial color="#fff8e1" emissive="#fff1b0" emissiveIntensity={1.4} />
-          </mesh>
-          <mesh position={[x, 0.85, 2.47]}>
-            <boxGeometry args={[0.5, 0.12, 0.06]} />
-            <meshStandardMaterial color="#ff2d2d" emissive="#ff1a1a" emissiveIntensity={1.2} />
-          </mesh>
-          <mesh position={[Math.sign(x) * 1.2, 1.15, -0.75]}>
-            <boxGeometry args={[0.18, 0.14, 0.26]} />
-            <meshStandardMaterial color="#e0283f" metalness={0.15} roughness={0.4} />
-          </mesh>
-        </group>
+      <mesh geometry={geo.paint} material={mat.paint} castShadow receiveShadow />
+      <mesh geometry={geo.glass} material={mat.glass} castShadow />
+      <mesh geometry={geo.trim} material={mat.trim} castShadow />
+      <mesh geometry={geo.chrome} material={mat.chrome} />
+      <mesh geometry={geo.seams} material={mat.seam} />
+      <mesh geometry={geo.plate} material={mat.plate} />
+      <mesh geometry={geo.brake} material={lamps.brake} />
+      {Object.entries(geo.lamps).map(([k, g]) => (
+        <mesh key={k} geometry={g} material={lamps[k]} />
       ))}
-      {/* Rear: full-width light bar, bumper and plate */}
-      <mesh position={[0, 0.98, 2.47]}>
-        <boxGeometry args={[1.5, 0.07, 0.05]} />
-        <meshStandardMaterial color="#ff3030" emissive="#ff1a1a" emissiveIntensity={1.4} />
-      </mesh>
-      <mesh position={[0, 0.42, 2.45]}>
-        <boxGeometry args={[2.05, 0.2, 0.12]} />
-        <meshStandardMaterial color="#1b1b1f" roughness={0.6} />
-      </mesh>
-      <mesh position={[0, 0.66, 2.5]}>
-        <boxGeometry args={[0.6, 0.16, 0.02]} />
-        <meshStandardMaterial color="#f4f4f0" emissive="#ffffff" emissiveIntensity={0.3} />
-      </mesh>
-      {/* Wheels: front pair in steering pivots */}
+      {/* Wheels: front pair in steering pivots. Tyre, rim and brake disc turn;
+          the calliper stays put. */}
       {[
         [-1.02, -1.4, true],
         [1.02, -1.4, true],
         [-1.02, 1.42, false],
         [1.02, 1.42, false],
-      ].map(([x, z, front], i) => (
-        <group
-          key={i}
-          position={[x, 0.42, z]}
-          ref={(el) => {
-            if (front) frontPivots.current[i] = el;
-          }}
-        >
+      ].map(([x, z, front], i) => {
+        const parts = geo.wheel[x < 0 ? "left" : "right"];
+        return (
           <group
+            key={i}
+            position={[x, 0.42, z]}
             ref={(el) => {
-              wheels.current[i] = el;
+              if (front) frontPivots.current[i] = el;
             }}
           >
-            <mesh rotation-z={Math.PI / 2} castShadow>
-              <cylinderGeometry args={[0.42, 0.42, 0.32, 20]} />
-              <meshStandardMaterial color="#181818" roughness={0.9} />
-            </mesh>
-            <mesh rotation-z={Math.PI / 2} position-x={Math.sign(x) * 0.12}>
-              <cylinderGeometry args={[0.27, 0.27, 0.1, 12]} />
-              <meshStandardMaterial color="#c9ccd1" metalness={0.9} roughness={0.25} />
-            </mesh>
-            {/* Spokes, so you can see the wheels turn */}
-            {[0, 1, 2].map((s) => (
-              <mesh key={s} position-x={Math.sign(x) * 0.17} rotation-x={(s * Math.PI) / 3}>
-                <boxGeometry args={[0.04, 0.48, 0.07]} />
-                <meshStandardMaterial color="#8d939b" metalness={0.8} roughness={0.3} />
-              </mesh>
-            ))}
+            <mesh geometry={geo.caliper} material={mat.caliper} position={[-Math.sign(x) * 0.04, 0.16, front ? -0.12 : 0.12]} />
+            <group
+              ref={(el) => {
+                wheels.current[i] = el;
+              }}
+            >
+              <mesh geometry={parts.tyre} material={mat.tyre} castShadow />
+              <mesh geometry={parts.disc} material={mat.disc} />
+              <mesh geometry={parts.rim} material={mat.rim} />
+            </group>
           </group>
-        </group>
-      ))}
+        );
+      })}
     </group>
   );
 }
 
-// Always mounted (so lights never change count and force shader rebuilds);
-// the vehicle sets its intensity depending on day or night.
 function Headlight({ light }) {
   const target = useRef();
   return (
