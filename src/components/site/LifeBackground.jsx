@@ -10,8 +10,16 @@
 // Click and drag on the empty background to paint new cells: the simulation
 // holds while the button is down, and the layer brightens so you can see them.
 // A plain click, or a tap on a touch screen, plants a random cluster of 1 to 5.
+//
+// Parallax: the board is a little taller than the screen. Scrolling from the
+// top of the page to the bottom slides it through an extra tenth of the screen,
+// no more. It follows on a spring (lib/parallax.js), so it trails the page and
+// settles with a small bounce; keep pulling at the top or bottom of the page and
+// it stretches like rubber, then springs back when you let go. Off for reduced
+// motion.
 import React, { useEffect, useRef } from "react";
 import { censusOf, glowMap, linePoints, plantCells, randomCluster, seedUniverse, stepUniverse, universeEnd, watchUniverse } from "../../lib/life";
+import { restingOffset, rubber, settled, springStep } from "../../lib/parallax";
 
 const TICK = 1400; // ms per generation
 const FADE = 500; // ms of each generation spent fading; the rest is idle
@@ -23,6 +31,9 @@ const WAVE = 2600; // ms for a wave to cross the screen
 const WAVE_WIDTH = 0.3; // how much of the screen it's resizing at once
 const CELL = 14; // CSS pixels
 const GAP = 2;
+const EXTRA = 0.1; // how far the board travels over the whole page, as a share of the screen's height
+const STRETCH = 0.06; // how far it can stretch past either end, as a share of the screen's height
+const LET_GO = 140; // ms without pulling before a stretch springs back
 
 const DRAW_AFTERGLOW = 300; // ms the layer stays bright after drawing
 // Where a press belongs to the page, not the background.
@@ -30,6 +41,8 @@ const NOT_BACKGROUND = [
   ".tile, .site-header, .site-footer, .section-head, .subheading, .sim-backdrop",
   // Plain sections: dragging over their words selects text.
   ".hero-grid > *, .results, .section-intro, .strengths, .ledger, .path, .path-alongside, .featured, .repos, .languages, .contact-email, .contact-links",
+  // The lessons' contents pages.
+  ".learn-bar, .library-head, .chapter-row, .chapter-hero, .lesson-list",
   "a, button, input, select, textarea, label",
 ].join(", ");
 
@@ -44,6 +57,16 @@ export default function LifeBackground() {
     const ctx = el.getContext("2d");
     if (!ctx) return;
     const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    // The board's rows run from a stretch margin above the screen to the travel
+    // plus a stretch margin below; `spring.pos` is how far down it's showing.
+    const travel = () => (still ? 0 : window.innerHeight * EXTRA);
+    const margin = () => (still ? 0 : window.innerHeight * STRETCH);
+    const scrollable = () => document.documentElement.scrollHeight - window.innerHeight;
+    let pull = 0; // pixels of pulling past the top (negative) or bottom (positive) of the page
+    let letGo = 0;
+    const target = () => margin() + restingOffset(window.scrollY, scrollable(), travel()) + rubber(pull, margin());
+    let spring = { pos: target(), vel: 0 };
+    const offset = () => spring.pos;
 
     let cols = 0;
     let rows = 0;
@@ -75,7 +98,7 @@ export default function LifeBackground() {
       el.width = Math.round(w * dpr);
       el.height = Math.round(h * dpr);
       cols = Math.ceil(w / CELL);
-      rows = Math.ceil(h / CELL);
+      rows = Math.ceil((h + travel() + 2 * margin()) / CELL);
       to = glowMap(now, cols, rows);
       from = to.slice();
       idle = false;
@@ -83,25 +106,31 @@ export default function LifeBackground() {
 
     const draw = (t) => {
       const w = el.clientWidth;
+      const h = el.clientHeight;
       const dpr = el.width / w;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, w, el.clientHeight);
+      ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = colour;
       const live = phase === "live";
       const ease = live ? smooth(t) : 1;
       const size = CELL - GAP;
-      for (let y = 0; y < rows; y++) {
+      // Only the rows on screen at this scroll position.
+      const off = offset();
+      const first = Math.max(0, Math.floor(off / CELL));
+      const last = Math.min(rows, Math.ceil((off + h) / CELL) + 1);
+      for (let y = first; y < last; y++) {
         for (let x = 0; x < cols; x++) {
           const i = y * cols + x;
           let alpha = from[i] + (to[i] - from[i]) * ease;
           if (alpha < 0.01) continue;
           if (!live) {
-            const passed = smooth(clamp((t * (1 + WAVE_WIDTH) - (x / cols + y / rows) / 2) / WAVE_WIDTH));
+            // The wave crosses the screen, wherever the board has scrolled to.
+            const passed = smooth(clamp((t * (1 + WAVE_WIDTH) - (x / cols + clamp((y * CELL - off) / h)) / 2) / WAVE_WIDTH));
             alpha *= phase === "wiping" ? 1 - passed : passed;
             if (alpha < 0.01) continue;
           }
           ctx.globalAlpha = alpha;
-          ctx.fillRect(x * CELL, y * CELL, size, size);
+          ctx.fillRect(x * CELL, y * CELL - off, size, size);
         }
       }
       ctx.globalAlpha = 1;
@@ -155,6 +184,12 @@ export default function LifeBackground() {
       const dt = lastFrame === null ? 0 : Math.min(100, time - lastFrame);
       lastFrame = time;
       if (document.hidden || !cols || document.querySelector(".sim-backdrop")) return;
+      // Move the board towards where the scroll says it should be.
+      const goal = target();
+      if (!settled(spring, goal)) {
+        spring = springStep(spring, goal, dt);
+        idle = false;
+      }
       const t = advance(dt);
       // Once the fades have finished nothing moves, so nothing needs drawing.
       if (phase === "live" && t >= 1 && idle) return;
@@ -169,6 +204,38 @@ export default function LifeBackground() {
       if (still) draw(1);
     });
     observer.observe(el);
+    // Scrolling moves the board, so it needs drawing again.
+    const onScroll = () => (idle = false);
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    // Pulling past either end of the page stretches the board; letting go springs it back.
+    const atTop = () => window.scrollY <= 0;
+    const atBottom = () => window.scrollY >= scrollable() - 1;
+    const stretch = (by) => {
+      if (still) return;
+      if ((by < 0 && !atTop()) || (by > 0 && !atBottom())) return;
+      pull = Math.max(-4 * margin(), Math.min(4 * margin(), pull + by));
+      idle = false;
+      clearTimeout(letGo);
+      letGo = setTimeout(() => {
+        pull = 0;
+        idle = false;
+      }, LET_GO);
+    };
+    const onWheel = (e) => stretch(e.deltaY * (e.deltaMode === 1 ? 16 : 1));
+    let touchY = null;
+    const onTouchStart = (e) => (touchY = e.touches[0]?.clientY ?? null);
+    const onTouchMove = (e) => {
+      const y = e.touches[0]?.clientY;
+      if (touchY === null || y === undefined) return;
+      stretch(touchY - y);
+      touchY = y;
+    };
+    const onTouchEnd = () => (touchY = null);
+    window.addEventListener("wheel", onWheel, { passive: true });
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: true });
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
     const reskin = () => {
       skin();
       if (still) draw(1);
@@ -178,7 +245,7 @@ export default function LifeBackground() {
     const system = window.matchMedia?.("(prefers-color-scheme: dark)");
     system?.addEventListener("change", reskin);
 
-    const cellAt = (e) => [Math.floor(e.clientX / CELL), Math.floor(e.clientY / CELL)];
+    const cellAt = (e) => [Math.floor(e.clientX / CELL), Math.floor((e.clientY + offset()) / CELL)];
 
     const plant = (points) => {
       plantCells(now, points);
@@ -277,6 +344,12 @@ export default function LifeBackground() {
       window.removeEventListener("blur", cancel);
       document.removeEventListener("selectstart", noSelect);
       observer.disconnect();
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+      clearTimeout(letGo);
       themes.disconnect();
       system?.removeEventListener("change", reskin);
     };
