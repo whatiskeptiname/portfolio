@@ -265,7 +265,7 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
   const wheels = useRef([]);
   const frontPivots = useRef([]);
   const rotors = useRef([]);
-  const headlight = useRef();
+  const headlight = useRef([]);
   const lamps = useDisposable(lampMaterials, []);
   const spin = useRef(0);
   const matrix = useMemo(() => new THREE.Matrix4(), []);
@@ -592,7 +592,7 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
     root.current.matrix.copy(matrix);
     root.current.matrixWorldNeedsUpdate = true;
 
-    if (m && headlight.current) headlight.current.intensity = 0; // mid-transformation
+    if (m) setHeadlights(headlight, 0); // mid-transformation
     if (!m && body.current) {
       if (type === "car") {
         // Off-road judder.
@@ -607,7 +607,7 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
         // Headlights come on by themselves on the night side; brake, reverse
         // and indicator lamps follow what the car is doing.
         const night = sunlightAt(R, s.x, s.z) < 0.06;
-        if (headlight.current) headlight.current.intensity = night ? 80 : 0;
+        setHeadlights(headlight, night ? 50 : 0);
         const reversing = s.pedal === "reverse" && s.speed < -0.1;
         const lit = carLamps(s, {
           steer: s.steer,
@@ -625,7 +625,7 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
         s.lamps = lit;
         s.night = night;
       } else {
-        if (headlight.current) headlight.current.intensity = 0; // the drone has no headlight
+        setHeadlights(headlight, 0); // the drone has no headlight
         if (s.realistic) {
           // The real attitude: nose down to fly forward, banked into the roll.
           body.current.rotation.x = -(s.qpitch ?? 0);
@@ -654,7 +654,7 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
 
   return (
     <group ref={root} matrixAutoUpdate={false}>
-      {/* The car's headlight: always in the scene (dimmed to nothing for the
+      {/* The car's headlights: always in the scene (dimmed to nothing for the
           drone) — adding or removing a light makes three.js recompile every
           material, which froze the transformation and switching views. */}
       <Headlight light={headlight} />
@@ -965,24 +965,35 @@ function CarModel({ wheels, frontPivots, lamps = WARM_LAMPS }) {
 }
 
 function Headlight({ light }) {
-  const target = useRef();
+  // Two lamps, one at each headlamp, each aimed a touch outward: two pools of
+  // light on the road that merge ahead, as from a real car.
+  const targets = useRef([]);
   return (
     <>
-      <object3D ref={target} position={[0, 0, -14]} />
-      <spotLight
-        ref={(el) => {
-          light.current = el;
-          if (el && target.current) el.target = target.current;
-        }}
-        position={[0, 1, -2.5]}
-        angle={0.55}
-        penumbra={0.6}
-        distance={40}
-        intensity={0}
-        color="#fff3c8"
-      />
+      {[-1, 1].map((side, i) => (
+        <React.Fragment key={side}>
+          <object3D ref={(el) => (targets.current[i] = el)} position={[side * 1.4, 0, -14]} />
+          <spotLight
+            ref={(el) => {
+              light.current[i] = el;
+              if (el && targets.current[i]) el.target = targets.current[i];
+            }}
+            position={[side * 0.68, 0.8, -2.4]}
+            angle={0.45}
+            penumbra={0.6}
+            distance={40}
+            intensity={0}
+            color="#fff3c8"
+          />
+        </React.Fragment>
+      ))}
     </>
   );
+}
+
+/** Both headlamps up to `intensity` (or off). */
+function setHeadlights(light, intensity) {
+  for (const l of light.current ?? []) if (l) l.intensity = intensity;
 }
 
 // --- drone -------------------------------------------------------------------
