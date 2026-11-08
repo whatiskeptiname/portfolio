@@ -22,12 +22,14 @@ import { laneAhead } from "../lib/lanes";
 import { carsOverlap, decideOvertake, noteWaiting, trafficCap, trafficTime } from "../lib/traffic";
 import { terrainAt } from "../lib/terrain";
 import { carLamps } from "../lib/carLights";
+import { CAR_BODY, HANDBRAKE, collideCars, hitCar, settleShove, slideCar } from "../lib/carPhysics";
 import { useDisposable } from "./gpu";
 import { AUTOPILOT, DRONE_ALT, CAR_GRIP, CAR_LIMITS, NO_INPUT, autopilotInput, hasInput, keysToInput, settleToLimit, unstickInput } from "../lib/autopilot";
 
 export const CAR_RADIUS = 1.3;
 export const DRONE_RADIUS = 1.4;
 export const DRONE_MAX_ALT = 60;
+const DRONE_MASS = 0.25; // against a car's 1, when it flies into one
 
 const TURN_SIGNAL_ANGLE = (20 * Math.PI) / 180;
 const forwardOf = (yaw) => [-Math.sin(yaw), -Math.cos(yaw)];
@@ -37,8 +39,6 @@ const tiltEuler = new THREE.Euler();
 // --- physics -----------------------------------------------------------------
 
 const CAR = { maxReverse: -9, accel: 18, brake: 30, drag: 1.4, steer: 1.9 };
-// The handbrake: rear wheels locked — moderate braking, and a slide.
-const HANDBRAKE = { decel: 9, yawBoost: 1.8, rejoin: 1.6 };
 
 // The surface sets the pace: flat out on the equator highway, brisk on roads,
 // a careful crawl across grass (with less grip and more drag).
@@ -58,7 +58,9 @@ function driveCar(layout, c, k, delta) {
     c.pedal = Math.abs(v) < 0.3 ? "hold" : "brake";
   } else if (k.up) {
     // Rolling backwards, the accelerator brings it to a stop first.
-    c.speed += (v < 0 ? CAR.brake : CAR.accel * traction * (k.throttle ?? 1)) * delta;
+    // With the handbrake on, the locked rear holds some of the push back.
+    const drive = k.handbrake && v > 4 ? HANDBRAKE.drive : 1;
+    c.speed += (v < 0 ? CAR.brake : CAR.accel * traction * (k.throttle ?? 1) * drive) * delta;
     if (v < -0.3) c.pedal = "brake";
   } else if (k.down) {
     // S: the brake while rolling forward; once stopped, reverse.
@@ -70,11 +72,12 @@ function driveCar(layout, c, k, delta) {
       c.pedal = "reverse";
     }
   } else c.speed *= Math.exp(-CAR.drag * (surface === "grass" ? 1.8 : 1) * delta);
-  // The handbrake (Space) locks the rear wheels: it slows the car, less
-  // sharply than the foot brake, and the back loses its grip.
+  // The handbrake (Space) locks the rear wheels: it slows the car (less with
+  // the accelerator pulling against it), and the back loses its grip.
   const handbrake = Boolean(k.handbrake);
   if (handbrake) {
-    c.speed = Math.sign(c.speed) * Math.max(0, Math.abs(c.speed) - HANDBRAKE.decel * delta);
+    const decel = HANDBRAKE.decel * (k.up ? HANDBRAKE.powered : 1);
+    c.speed = Math.sign(c.speed) * Math.max(0, Math.abs(c.speed) - decel * delta);
     c.pedal = c.pedal === "reverse" ? "reverse" : "handbrake";
   }
   // An autopilot told to ignore speed limits drives as fast as the car will go.
@@ -82,24 +85,11 @@ function driveCar(layout, c, k, delta) {
   c.speed = Math.max(CAR.maxReverse, settleToLimit(c.speed, reckless ? CAR_LIMITS.highway * 1.2 : CAR_LIMITS[surface], delta));
   if (Math.abs(c.speed) < 0.05) c.speed = 0;
 
-  // Steering scales with speed and flips in reverse, like a real car. With
-  // the rear wheels locked it turns harder (the back swings out).
-  c.steer = THREE.MathUtils.lerp(c.steer, k.steer, 1 - Math.exp(-10 * delta));
-  const grip = Math.min(1, Math.abs(c.speed) / 6) * Math.sign(c.speed);
-  const sliding = handbrake && Math.abs(c.speed) > 4;
-  c.yaw += c.steer * CAR.steer * grip * (sliding ? HANDBRAKE.yawBoost : 1) * delta;
-  // Where it's actually going lags where it points while the rear slides;
-  // the tyres pull it back into line once they grip again. The sideways
-  // scrub costs speed.
-  // (After a jump — "unstuck", a transformation — it simply points the way it goes.)
-  if (c.travelYaw == null || (!handbrake && Math.abs(Math.atan2(Math.sin(c.yaw - c.travelYaw), Math.cos(c.yaw - c.travelYaw))) > 1.2)) c.travelYaw = c.yaw;
-  const rejoin = sliding ? HANDBRAKE.rejoin : 14;
-  let slip = Math.atan2(Math.sin(c.yaw - c.travelYaw), Math.cos(c.yaw - c.travelYaw));
-  c.travelYaw += slip * (1 - Math.exp(-rejoin * delta));
-  slip = Math.atan2(Math.sin(c.yaw - c.travelYaw), Math.cos(c.yaw - c.travelYaw));
-  c.slip = slip;
+  // Grip, steering and the slide (see carPhysics.js).
+  const slip = slideCar(c, k, delta, CAR.steer);
   if (Math.abs(slip) > 0.05) c.speed *= Math.exp(-Math.abs(Math.sin(slip)) * 1.6 * delta);
-  moveWithSliding(layout, c, c.speed * delta, CAR_RADIUS, 0, true, c.speed >= 0 ? c.travelYaw : c.yaw);
+  c.impact = (c.impact ?? 0) * Math.exp(-5 * delta); // a knock dies away
+  moveWithSliding(layout, c, c.speed * delta, CAR_RADIUS, 0, true, c.speed >= 0 ? c.travelYaw : c.yaw, delta);
 }
 
 // A racing quad: quick, twitchy, and happiest going fast.
@@ -127,7 +117,7 @@ function flyDrone(layout, d, k, delta, altKeys = {}) {
   if (nextAlt > d.alt || !collides(layout, d.x, d.z, DRONE_RADIUS * 0.6, nextAlt)) d.alt = nextAlt;
   else d.climb = 0;
 
-  if (d.alt > 0.05 || d.speed !== 0) moveWithSliding(layout, d, d.speed * delta, DRONE_RADIUS, d.alt);
+  if (d.alt > 0.05 || d.speed !== 0 || d.pushX || d.pushZ) moveWithSliding(layout, d, d.speed * delta, DRONE_RADIUS, d.alt, false, d.yaw, delta);
   if (d.alt <= 0.05) d.speed *= Math.exp(-6 * delta); // landed: skids
   // Keep the realistic model's state in step, so switching modes is seamless.
   const [fx, fz] = forwardOf(d.yaw);
@@ -600,8 +590,10 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
         const rough = s.surface === "grass" ? Math.min(1, Math.abs(s.speed) / 8) : 0;
         const t = clock.elapsedTime;
         body.current.position.y = rough * (Math.sin(t * 38) * 0.025 + Math.sin(t * 61) * 0.012);
-        body.current.rotation.z = rough * Math.sin(t * 23) * 0.012;
-        body.current.rotation.x = rough * Math.sin(t * 17) * 0.01;
+        // It leans out of a slide, and shudders (nose dipping) after a knock.
+        const knock = s.impact ?? 0;
+        body.current.rotation.z = rough * Math.sin(t * 23) * 0.012 - THREE.MathUtils.clamp(s.slip ?? 0, -0.6, 0.6) * 0.06;
+        body.current.rotation.x = rough * Math.sin(t * 17) * 0.01 - knock * 0.04 * Math.cos(t * 26);
         spin.current -= (s.speed * delta) / 0.42;
         wheels.current.forEach((w) => w && (w.rotation.x = spin.current));
         frontPivots.current.forEach((p) => p && (p.rotation.y = s.steer * 0.45));
@@ -694,7 +686,7 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
 // bumps back. East–west plane motion is stretched by 1/cos(latitude) so the
 // speed on the sphere stays true all the way to the poles, which you can
 // drive straight over.
-function moveWithSliding(layout, s, distance, radius, height, isCar = false, heading = s.yaw) {
+function moveWithSliding(layout, s, distance, radius, height, isCar = false, heading = s.yaw, dt = 1 / 60) {
   const [fx, fz] = forwardOf(heading);
   const dx = fx * distance * eastStretch(layout.radius, s.z);
   const dz = fz * distance;
@@ -707,35 +699,28 @@ function moveWithSliding(layout, s, distance, radius, height, isCar = false, hea
   const [hx, hz] = forwardOf(s.yaw);
   const ends = isCar ? [1.25, -1.25] : [0];
   const hitsWorld = (x, z) => ends.some((o) => collides(layout, x + hx * o, z + hz * o, isCar ? 1.0 : radius, height));
-  const hitsCar = (x, z) =>
-    traffic.some((c) =>
+  const carAt = (x, z) =>
+    traffic.find((c) =>
       isCar
         ? carsOverlap({ x, z, yaw: s.yaw }, c, layout.width, 0.05) &&
           (!carsOverlap(s, c, layout.width, 0.05) || near(c, x, z) < near(c, s.x, s.z))
         : near(c, x, z) < radius + 1.7 && near(c, x, z) < near(c, s.x, s.z)
     );
-  const blocked = (x, z) => hitsWorld(x, z) || hitsCar(x, z);
-  // Glancing off something: try the move deflected a little either way, so
-  // the car slides round a tree or along a wall instead of jamming on it.
-  const deflected = () => {
-    const stretch = eastStretch(layout.radius, s.z);
-    for (const turn of [0.35, -0.35, 0.7, -0.7]) {
-      const a = s.yaw + turn;
-      const ddx = -Math.sin(a) * distance * Math.cos(turn) * stretch;
-      const ddz = -Math.cos(a) * distance * Math.cos(turn);
-      if (!blocked(s.x + ddx, s.z + ddz)) return [ddx, ddz];
-    }
-    return null;
+  const blocked = (x, z) => hitsWorld(x, z) || Boolean(carAt(x, z));
+  // Another car in the way: it moves too, so the two share momentum (the
+  // drone is light, so it bounces off and barely moves the car).
+  const shareWith = (x, z) => {
+    const other = !hitsWorld(x, z) && carAt(x, z);
+    if (other) collideCars(s, other, { width: layout.width, massA: isCar ? CAR_BODY.mass : DRONE_MASS });
+    return Boolean(other);
   };
-  let glance;
   if (!blocked(s.x + dx, s.z + dz)) {
     s.x += dx;
     s.z += dz;
-  } else if (isCar && (glance = deflected())) {
-    s.x += glance[0];
-    s.z += glance[1];
-    s.speed *= 0.92;
-  } else if (!blocked(s.x + dx, s.z)) {
+  } else if (shareWith(s.x + dx, s.z + dz)) {
+    // (Held where it is this step; the shared momentum separates them.)
+  } else if (isCar) hitCar(s, distance, heading, eastStretch(layout.radius, s.z), blocked);
+  else if (!blocked(s.x + dx, s.z)) {
     s.x += dx;
     s.speed *= 0.9;
   } else if (!blocked(s.x, s.z + dz)) {
@@ -746,6 +731,19 @@ function moveWithSliding(layout, s, distance, radius, height, isCar = false, hea
     s.bump = (s.bump ?? 0) + 1;
     s.bumpStrength = Math.abs(s.speed) / 12;
     s.speed *= -0.25;
+  }
+  // Still sliding from a shove (or spinning)? Carry on, unless something's in
+  // the way — another car takes its share, anything else stops it.
+  const shove = settleShove(s, dt);
+  if (shove.dx || shove.dz) {
+    const sx = shove.dx * eastStretch(layout.radius, s.z);
+    if (!blocked(s.x + sx, s.z + shove.dz)) {
+      s.x += sx;
+      s.z += shove.dz;
+    } else if (!shareWith(s.x + sx, s.z + shove.dz)) {
+      s.pushX = 0;
+      s.pushZ = 0;
+    }
   }
   crossPole(layout.radius, s);
 }
@@ -1201,6 +1199,16 @@ function firstPerson(camera, s, vehicle, o, f, delta, baseFov) {
   }
 }
 
+/** Shakes the camera after a knock, by up to `reach` metres, dying away with it. */
+function jolt(camera, s, reach) {
+  const k = s.impact ?? 0;
+  if (k < 0.01) return;
+  const r = reach * Math.min(1, k);
+  camera.position.x += (Math.random() - 0.5) * r;
+  camera.position.y += (Math.random() - 0.5) * r;
+  camera.position.z += (Math.random() - 0.5) * r;
+}
+
 // Chase distances (the first that a building doesn't block wins) and the Eye
 // view's starting distance, in metres.
 const CHASE = {
@@ -1336,6 +1344,7 @@ export function ChaseCamera({ layout, state, vehicle, view = "chase", snap = fal
     // First person: rigidly mounted on the vehicle.
     if (view === "fpv" && s.worldMatrix && tf == null) {
       firstPerson(camera, s, vehicle, o, fpv, delta, lens.current?.fov ?? 50);
+      jolt(camera, s, 0.05);
       return;
     }
 
@@ -1403,6 +1412,7 @@ export function ChaseCamera({ layout, state, vehicle, view = "chase", snap = fal
     camera.up.lerp(tmp.up, 1 - Math.exp(-6 * delta)).normalize();
     look.current.lerp(target, 1 - Math.exp(-8 * delta));
     camera.lookAt(look.current);
+    jolt(camera, s, 0.25);
   });
   return null;
 }

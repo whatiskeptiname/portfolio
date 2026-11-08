@@ -806,6 +806,7 @@ function AudioDriver({ layout, vehicle, type, driving, keys }) {
       surface: s.surface,
       throttle: s.throttle ?? (keys.current.has("up") ? 1 : 0),
       steer: s.steer,
+      slip: type === "car" ? s.slip : 0,
       alt: s.alt,
       climb: s.climb,
       transforming: s.transform != null,

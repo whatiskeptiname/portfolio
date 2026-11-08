@@ -221,7 +221,10 @@ class AudioEngine {
     v.car[2].frequency.setTargetAtTime(fire / 2, now, T);
     v.carFilter.frequency.setTargetAtTime(260 + p.throttle * 1500 + speed * 25, now, T);
     v.carGain.gain.setTargetAtTime(isCar ? 0.09 + p.throttle * 0.07 + speed * 0.002 : 0, now, 0.12);
-    const squeal = isCar && p.surface !== "grass" ? Math.max(0, Math.abs(p.steer) * (speed / 24) - 0.35) * 0.35 : 0;
+    // Tyres squeal in a hard turn, and more in a slide (the sideways angle).
+    const turning = Math.max(0, Math.abs(p.steer) * (speed / 24) - 0.35) * 0.35;
+    const sliding = Math.abs(Math.sin(p.slip ?? 0)) * Math.min(1, speed / 12) * 0.5;
+    const squeal = isCar && p.surface !== "grass" ? Math.max(turning, sliding) : 0;
     v.squealGain.gain.setTargetAtTime(squeal, now, 0.06);
     const gravel = isCar && p.surface === "grass" ? Math.min(0.16, speed * 0.016) : isCar && p.surface === "paved" ? Math.min(0.03, speed * 0.003) : 0;
     v.gravelGain.gain.setTargetAtTime(gravel, now, 0.08);

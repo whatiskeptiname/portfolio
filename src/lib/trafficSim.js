@@ -4,7 +4,8 @@
 // keeping a safe gap behind the car in front (lib/traffic) — then picks
 // another. Pure, so it's testable; src/city/Traffic.jsx draws them.
 
-import { PLAZA_RADIUS, wrapDelta, worldDistance } from "./layout";
+import { PLAZA_RADIUS, collides, wrapDelta, worldDistance } from "./layout";
+import { collideCars, settleShove } from "./carPhysics";
 import { AUTOPILOT } from "./autopilot";
 import { followRoute, nextTourStop, planRoute, posesAhead, routeStraight } from "./routing";
 import { carsOverlap, decideOvertake, hasPriority, noteWaiting, stepSignals, trafficCap } from "./traffic";
@@ -114,6 +115,18 @@ export function stepTraffic(cars, { world, graph, signals, t, player, random = M
     }
     const before = { x: car.x, z: car.z, yaw: car.yaw };
     drive(car, input, dt);
+    // Shoved by a collision: it slides on (and spins) until its tyres scrub
+    // the shove away — but not through a building, a tree or into the river.
+    const shove = settleShove(car, dt);
+    if (shove.dx || shove.dz) {
+      if (collides(world, car.x + shove.dx, car.z + shove.dz, 1.0, 0)) {
+        car.pushX = 0;
+        car.pushZ = 0;
+      } else {
+        car.x += shove.dx;
+        car.z += shove.dz;
+      }
+    }
     car.x = wrapDelta(car.x, world.width);
     // The safety net: never move (or turn) into another car. If two ever do
     // overlap, only moves that separate them are allowed.
@@ -126,7 +139,10 @@ export function stepTraffic(cars, { world, graph, signals, t, player, random = M
     );
     if (hit) {
       Object.assign(car, before);
-      car.speed = 0;
+      // Ran into it: the two share momentum (the faster they were closing,
+      // the harder the knock), so it may well be shoved on. Otherwise —
+      // only creeping into it — it simply stops.
+      if (collideCars(car, hit, { width: world.width }) < 0.5) car.speed = 0;
       car.blocked = (car.blocked ?? 0) + dt;
       car.waiting = (car.waiting ?? 0) + dt; // held up: it gets priority to clear
       car.blockedBy = hit;
