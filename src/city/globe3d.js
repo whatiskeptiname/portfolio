@@ -11,6 +11,8 @@ export const SEA_COLOR = "#3f8fc9"; // the river deepens to this at its mouth
 // move about, and big enough to still fill the sky. Both in planet radii.
 export const BLACK_HOLE_DISTANCE = 2500;
 export const BLACK_HOLE_RADIUS = 90;
+// How bright the black hole's disk and glow are drawn: 1 is the original look.
+export const BLACK_HOLE_BRIGHTNESS = 1;
 
 /**
  * Unit vector from the planet's centre toward the black hole — the only sun.

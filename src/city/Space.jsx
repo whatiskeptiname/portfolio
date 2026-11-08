@@ -12,7 +12,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { Billboard } from "@react-three/drei";
 import * as THREE from "three";
 import { createRng } from "../lib/layout";
-import { BLACK_HOLE_RADIUS, SKY_ROTATION, SPACE_COLOR, SUN_DIRECTION, blackHolePosition } from "./globe3d";
+import { BLACK_HOLE_BRIGHTNESS, BLACK_HOLE_RADIUS, SKY_ROTATION, SPACE_COLOR, SUN_DIRECTION, blackHolePosition } from "./globe3d";
 import { NOISE_GLSL, useDisposable } from "./gpu";
 
 // Galactic plane (normal) and the direction of the galactic core.
@@ -351,17 +351,17 @@ function diskMaterial(inner, outer, strength) {
   });
 }
 
-function glowMaterial(rh, reach) {
+function glowMaterial(rh, reach, gain) {
   return new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
-    uniforms: { rh: { value: rh }, reach: { value: reach } },
+    uniforms: { rh: { value: rh }, reach: { value: reach }, gain: { value: gain } },
     vertexShader: /* glsl */ `
       varying vec2 vPos;
       void main() { vPos = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
     fragmentShader: /* glsl */ `
-      uniform float rh; uniform float reach; varying vec2 vPos;
+      uniform float rh; uniform float reach; uniform float gain; varying vec2 vPos;
       void main() {
         float r = length(vPos) / rh;
         // Thin photon ring hugging the shadow…
@@ -372,8 +372,8 @@ function glowMaterial(rh, reach) {
         vec3 col = vec3(1.0, 0.82, 0.55) * ring + vec3(1.0, 0.62, 0.3) * halo + vec3(1.0, 0.55, 0.25) * bloom;
         // Gone before the edge of its square, so the square never shows.
         float fade = smoothstep(reach, reach * 0.45, r);
-        float a = clamp(ring + halo + bloom, 0.0, 1.0) * fade;
-        gl_FragColor = vec4(col * fade, a);
+        float a = clamp((ring + halo + bloom) * gain, 0.0, 1.0) * fade;
+        gl_FragColor = vec4(col * fade * gain, a);
       }`,
   });
 }
@@ -389,10 +389,10 @@ export function BlackHole({ R, quality = "full" }) {
   const rh = R * BLACK_HOLE_RADIUS; // event horizon
   const full = quality === "full";
   const group = useRef();
-  const disk = useDisposable(() => diskMaterial(rh * 1.5, rh * 5.5, 1.4), [rh]);
-  const lensed = useDisposable(() => diskMaterial(rh * 1.05, rh * 2.2, 1.0), [rh]);
+  const disk = useDisposable(() => diskMaterial(rh * 1.5, rh * 5.5, 1.4 * BLACK_HOLE_BRIGHTNESS), [rh]);
+  const lensed = useDisposable(() => diskMaterial(rh * 1.05, rh * 2.2, 1.0 * BLACK_HOLE_BRIGHTNESS), [rh]);
   const glowSize = full ? 18 : 11; // across, in event-horizon radii
-  const glow = useDisposable(() => glowMaterial(rh, glowSize / 2), [rh, glowSize]);
+  const glow = useDisposable(() => glowMaterial(rh, glowSize / 2, BLACK_HOLE_BRIGHTNESS), [rh, glowSize]);
 
   // It's far beyond what the camera draws, so it's drawn as part of the sky: at a
   // fixed distance from the camera, along its true direction and scaled to its true
