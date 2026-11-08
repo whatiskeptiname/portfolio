@@ -7,7 +7,7 @@ import React, { useState } from "react";
 import Icon from "../components/Icon";
 import { reducedMotion, useLoop } from "./plot";
 
-export default function Reel({ scenes, title }) {
+export default function Reel({ scenes, title, method }) {
   const still = reducedMotion();
   const total = scenes.reduce((s, x) => s + x.duration, 0);
   const [time, setTime] = useState(0); // ms into the whole reel
@@ -56,8 +56,14 @@ export default function Reel({ scenes, title }) {
 
   return (
     <figure className="reel" ref={ref} aria-label={`Walkthrough: ${title}`}>
+      {method && (
+        <p className="reel-method">
+          <strong>The method:</strong> {method}
+        </p>
+      )}
       <div className="reel-stage">
-        <Scene t={started ? t : 0} />
+        {/* Before it starts, the first scene's finished frame is the poster. */}
+        <Scene t={started ? t : 1} />
         {!started && (
           <button type="button" className="reel-start" onClick={play}>
             <span className="reel-start-icon">

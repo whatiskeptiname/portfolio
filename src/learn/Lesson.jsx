@@ -45,7 +45,7 @@ export default function Lesson({ lesson, record, onDone, where }) {
         <h2 id="h-idea">In 60 seconds</h2>
         {lesson.reel && (
           // Each scene's caption is one of the "what to remember" points below.
-          <Reel title={lesson.title} scenes={lesson.reel.map((scene, i) => ({ ...scene, caption: scene.caption ?? lesson.gist[i] }))} />
+          <Reel title={lesson.title} method={lesson.reel.method} scenes={lesson.reel.scenes.map((scene, i) => ({ ...scene, caption: scene.caption ?? lesson.gist[i] }))} />
         )}
         <div className="idea">{lesson.idea}</div>
         {lesson.gist && (

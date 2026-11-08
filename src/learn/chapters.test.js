@@ -34,6 +34,9 @@ describe("the lessons", () => {
           expect(lesson.title).toBeTruthy();
           expect(lesson.lead).toBeTruthy();
           expect(lesson.history).toBeTruthy();
+          // The walkthrough: the method in one line, and a scene for each point to remember.
+          expect(lesson.reel?.method).toBeTruthy();
+          expect(lesson.reel.scenes.length).toBe(lesson.gist.length);
           expect(lesson.idea).toBeTruthy();
           // The fast path: three things to remember, and what it's like in practice.
           expect(lesson.gist.length).toBeGreaterThanOrEqual(2);

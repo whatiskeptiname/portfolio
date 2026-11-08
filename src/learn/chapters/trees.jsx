@@ -1,7 +1,6 @@
 // Chapter: decision trees and the ensembles built from them.
 import React from "react";
 import { Eq, M, Table } from "../kit";
-import { FOREST_REEL } from "../reels";
 import { BoostSim, BootstrapSim, CrowdSim, DepthSim, LeakSim, SearchSim, ShapSim, SplitSim, ThresholdSim } from "../sims/trees";
 
 export default {
@@ -453,7 +452,6 @@ export default {
           "Does adding more trees still change the validation score?",
         ],
       },
-      reel: FOREST_REEL,
       idea: (
         <p>
           One tree is a nervous guesser. A forest is a crowd of nervous guessers who are wrong in <em>different</em> ways, so when they vote, their
