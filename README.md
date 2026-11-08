@@ -114,6 +114,13 @@ out, and leave a faint trace for one generation when they die. Each
 universe starts with units scattered at random (16% of the view) and evolves by the
 exact rules on an infinite plane, with nothing added and no wrap-around.
 
+The layer moves with a little parallax (`src/lib/parallax.js`). The board is a bit
+taller than the screen, and scrolling from the top of the page to the bottom slides
+it through an extra tenth of the screen's height, no more. It follows the scroll on a
+spring, so it trails slightly and settles with one soft bounce. Keep pulling at the
+top or bottom of the page (wheel or touch) and it stretches like rubber, up to 6% of
+the screen, then springs back when you let go. With reduced motion it stays still.
+
 You can draw on it: **click and drag on the empty background** to paint new cells.
 The simulation holds while the button is down and the layer brightens so you can
 see them. A plain click, or a tap on a touch screen, plants a random connected
@@ -185,28 +192,37 @@ optimisation trade-offs, the price ripple, schema matching) are in
 
 ## The lessons
 
-Hands-on machine learning lessons at `#/learn` (all chapters), `#/learn/<chapter>`
-and `#/learn/<chapter>/<lesson>`. The Learn section on the landing page has one
-tile per chapter, each with a small moving picture of the chapter's idea
-(`src/learn/Covers.jsx`); clicking one opens the lessons out of the tile, the same
-way the planet opens. They're dark unless the visitor has picked light.
+Quick, hands-on explainers of how machine learning systems work, for people who use
+them (often through AI tools) more than they build them. They live at `#/learn` (all
+chapters), `#/learn/<chapter>` and `#/learn/<chapter>/<lesson>`. The Learn section on
+the landing page has a small tile per chapter, each with a moving picture of the
+chapter's idea (`src/learn/Covers.jsx`) and a one-line hook; clicking one opens the
+lessons out of the tile, the same way the planet opens. They're dark unless the
+visitor has picked light.
 
-Every lesson follows the same order: **the idea** in a few plain sentences, **for
-example** (a concrete story), **try it** (one or more simulations), **how it works**
-(the formulas and details), **check yourself** (a few questions), **say it back**
-(pick the explanation you'd give a friend; each choice says what it gets right or
-wrong), and **go deeper** (links to well-known sources). Questions come in four
-kinds: `choice`, `multi` (pick all that apply), `number`, and `task`, which embeds a
-simulation and checks itself as the student plays. Finished lessons are remembered
-in the browser (`localStorage`), so chapters show what's done and where to pick up.
+Chapters and lessons have short, memorable titles (with a plain description under
+each), and each opens with **how it started**: a few dated sentences on where the idea
+came from and why. Then every lesson gives a fast path: **in 60 seconds** (the idea in a few plain
+sentences, plus three things to remember), **for example** (a concrete story), **try
+it** (one or more simulations), and **in practice** (what you'd adjust, what goes
+wrong, how you'd notice, and what to ask an AI or a teammate). **The details** (the
+formulas and finer points) fold away behind a button. Then **check yourself** (a few
+questions), **say it back** (pick the explanation you'd give a friend; each choice
+says what it gets right or wrong), and **go deeper** (links to well-known sources).
+Questions come in four kinds: `choice`, `multi` (pick all that apply), `number`, and
+`task`, which embeds a simulation and checks itself as the student plays. Finished
+lessons are remembered in the browser (`localStorage`), so chapters show what's done
+and where to pick up.
 
 **Adding a chapter:**
 
-1. Add an entry to `src/learn/catalog.js` (id, title, blurb, and a `cover` from
-   `Covers.jsx`; add a new cover there if none fits).
+1. Add an entry to `src/learn/catalog.js` (id, title, blurb, a short `hook` for the
+   landing page, and a `cover` from `Covers.jsx`; add a new cover there if none fits).
 2. Write `src/learn/chapters/<id>.jsx` exporting `{ lessons: [...] }`. Copy the shape
-   of an existing chapter; each lesson needs `id`, `title`, `lead`, `idea`,
-   `example`, `play`, `quiz`, `explain` and `readMore` (`how` is optional).
+   of an existing chapter (with an optional chapter-level `history`); each lesson needs
+   `id`, `title`, `lead`, `history`, `idea`, `gist`,
+   `example`, `play`, `practice` (`adjust`, `wrong`, `notice`, `ask`), `quiz`,
+   `explain` and `readMore` (`how` is optional).
 3. Put its simulations in `src/learn/sims/<id>.jsx`, built from the pieces in
    `src/learn/kit.jsx` (frame, sliders, toggles, readouts, axes) and
    `src/learn/plot.js` (scales, paths, animation loop). Maths goes in
@@ -214,7 +230,8 @@ in the browser (`localStorage`), so chapters show what's done and where to pick 
    reports its state with `useReport(onState, {...})`.
 4. Register it in `src/learn/chapters/index.js`.
 
-`src/learn/chapters.test.js` checks every lesson automatically: all parts present,
+`src/learn/chapters.test.js` checks every lesson automatically: all parts present
+(including the fast path),
 exactly one right answer per choice question, exactly one "right" explanation, and
 links on https.
 
@@ -295,9 +312,11 @@ settings, settings (sliders icon), ? help.
 
 **On arrival:** you land on the planet view, with the car cruising the
 equator on autopilot, the day–night cycle running, the Low graphics preset
-and sound muted. The
-autopilot's visuals (route, decisions, inputs) start off every visit; switch
-them on in the autopilot settings. One small hint bar at the bottom offers <kbd>C</kbd> *to drive*
+and sound muted. The autopilot's route planning and the inputs readout are on
+from the start (what it sees and decides is one key away, <kbd>I</kbd>), and the
+keys for your vehicle stay on screen while you drive or fly. On a device that
+reports at least 8 processor threads, the first visit suggests switching to the
+High preset; it asks once, ever. One small hint bar at the bottom offers <kbd>C</kbd> *to drive*
 (*Tap to drive* on touch) and *Sound off · turn on*; each chip leaves once
 used. The full guide is behind **?** /
 <kbd>H</kbd>.
@@ -443,8 +462,8 @@ On by default: the vehicle starts on the equator highway and drives itself.
 
 #### Autopilot settings
 
-- Route (Equator / All roads), cruise speed (20–150 km/h), and how far it
-  sees (10–500 m).
+- Route (Equator / All roads), cruise speed (20–150 km/h, 80 to start), and how far it
+  sees (10–500 m, 50 m to start).
 - What to show: route planning (G), what it sees and decides (I), and the
   controls it's sending (O).
 - **Every rule it follows as its own switch:** traffic lights, junction boxes,
@@ -576,6 +595,7 @@ src/
 | `career.js` | Résumé dates, timeline maths, the résumé districts |
 | `sims.js` | Models behind the case-study simulations |
 | `life.js` | Conway's Game of Life, for the page background |
+| `parallax.js` | The background's spring and rubber-band motion |
 | `layout.js` | The planet: districts, roads, river, sea, mountains, bridges, buildings, billboards, trees, collisions |
 | `globe.js` | Maps the flat layout onto the sphere |
 | `terrain.js` | Swells and hills |
