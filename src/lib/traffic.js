@@ -18,7 +18,7 @@
 // are rectangles, and none is ever allowed to move into another.
 
 import { AUTOPILOT } from "./autopilot";
-import { HIGHWAY_HALF_WIDTH, wrapDelta } from "./layout";
+import { HIGHWAY_HALF_WIDTH, HIGHWAY_LANE_WIDTH, ROAD_LANE, overtakeShiftAt, wrapDelta } from "./layout";
 import { highwayJunctions } from "./junctions";
 
 // Each approach gets its own green in turn — eastbound, westbound, then each
@@ -34,7 +34,9 @@ export const CAR_LENGTH = 4.3;
 export const CAR_WIDTH = 1.9;
 const HALF_L = CAR_LENGTH / 2;
 const HALF_W = CAR_WIDTH / 2;
-const LANE = Math.abs(AUTOPILOT.lane);
+// A stop line holds cars this far either side of its middle: both lanes of a
+// carriageway, or your lane and the one you'd overtake in.
+const STOP_REACH = HIGHWAY_LANE_WIDTH + 2;
 export const PROBE = 26; // how far ahead (units) a car checks its path is clear
 
 /**
@@ -68,7 +70,6 @@ const hash = (n) => {
  *   approaches it; `dir` the direction of travel there.
  */
 export function placeSignals(world) {
-  const lane = Math.abs(AUTOPILOT.lane);
   // Spurs meeting the highway close together (one from each side, say) form
   // one crossroads under one set of lights.
   const joins = highwayJunctions(world, { fillet: 4 }).sort((a, b) => a.x - b.x);
@@ -100,12 +101,13 @@ export function placeSignals(world) {
       cycle,
       offset: hash(id + 1) * cycle,
       approaches: [
-        // Eastbound keeps to the north lane, westbound to the south.
-        { x: wrapDelta(west, world.width), z: -lane, dir: [1, 0], group: "east" },
-        { x: wrapDelta(east, world.width), z: lane, dir: [-1, 0], group: "west" },
+        // Eastbound keeps to the north carriageway, westbound to the south;
+        // each stop line spans both its lanes (its middle is between them).
+        { x: wrapDelta(west, world.width), z: -HIGHWAY_LANE_WIDTH, dir: [1, 0], group: "east" },
+        { x: wrapDelta(east, world.width), z: HIGHWAY_LANE_WIDTH, dir: [-1, 0], group: "west" },
         // Down each spur toward the highway: travel (0, -s), whose left is (-s, 0).
         ...list.map((j, k) => ({
-          x: wrapDelta(j.x - j.side * lane, world.width),
+          x: wrapDelta(j.x - j.side * ROAD_LANE, world.width),
           z: j.side * (HIGHWAY_HALF_WIDTH + 4 + STOP_GAP),
           dir: [0, -j.side],
           group: `side${k}`,
@@ -187,7 +189,7 @@ export function trafficCap(self, { others = [], signals = [], t = 0, width, town
       const [ahead, side] = local(ap.x, ap.z);
       const toLine = ahead - HALF_L - 0.4; // from the front of the car, with a little room
       // Already over the line (or not in our lanes — the overtaking lane counts): carry on.
-      if (toLine < -0.6 || ahead > 80 || Math.abs(side) > LANE * 2 + 1) continue;
+      if (toLine < -0.6 || ahead > 80 || Math.abs(side) > STOP_REACH) continue;
       const color = signalColor(sig, ap.group, t);
       // Box junction: even on green, don't enter unless the junction is
       // clear — or the only cars in it are moving off ahead of us our way.
@@ -312,7 +314,6 @@ export function noteWaiting(self, cap, dt) {
   self.waiting = Math.abs(self.speed) < 0.6 && cap < 2 ? (self.waiting ?? 0) + dt : 0;
 }
 
-const OVERTAKE_SHIFT = LANE * 2; // from the middle of our lane to the middle of the other
 /** Overtaking needs this many metres of the other lane in clear view, with nothing coming. */
 export const OVERTAKE_CLEAR = 15;
 const JUNCTION_CLEAR = 20; // and no junction within this of where the pass ends
@@ -345,9 +346,12 @@ export function decideOvertake(self, { others = [], signals = [], towns = [], wi
     return [dx * fx + dz * fz, dx * fz - dz * fx];
   };
   const cruise = self.autoSpeed ?? 8;
+  // From the middle of our lane to the middle of the one we'd pass in: the
+  // next lane over on the highway, the oncoming lane on a side road.
+  const OVERTAKE_SHIFT = overtakeShiftAt(self.z);
   const ground = others.filter((o) => o !== self && (o.alt ?? 0) <= 1.5);
   const heading = (o) => -Math.sin(o.yaw) * fx + -Math.cos(o.yaw) * fz;
-  // The other lane is to our right (traffic keeps left): side ≈ −2·LANE.
+  // The lane we'd pass in is to our right (traffic keeps left): side ≈ −OVERTAKE_SHIFT.
   const inOtherLane = (side) => side < -1 && side > -OVERTAKE_SHIFT - 2.5;
   const oncomingWithin = (distance) =>
     ground.find((o) => {

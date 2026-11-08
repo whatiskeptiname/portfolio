@@ -12,7 +12,7 @@ describe("autopilot", () => {
   });
 
   it("speeds up from a standstill and steers back toward the lane", () => {
-    const north = autopilotInput({ x: 0, z: -4, yaw: EAST, speed: 0, alt: 0 }, "car");
+    const north = autopilotInput({ x: 0, z: AUTOPILOT.lane - 2, yaw: EAST, speed: 0, alt: 0 }, "car");
     expect(north.up).toBe(true);
     // North of the lane, heading east: turn right (south), i.e. negative steer.
     expect(north.steer).toBeLessThan(0);

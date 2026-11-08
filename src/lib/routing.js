@@ -5,7 +5,7 @@
 // across the roundabout — found with Dijkstra. The drone just flies straight.
 // Pure, so it's testable.
 
-import { PLAZA_RADIUS, ROUNDABOUT_ISLAND, inWater, worldDistance, wrapDelta } from "./layout";
+import { PLAZA_RADIUS, ROUNDABOUT_ISLAND, inWater, laneOffsetAt, worldDistance, wrapDelta } from "./layout";
 import { AUTOPILOT, wrapAngle, yawToward } from "./autopilot";
 import { pathClear } from "./avoid";
 import { pidDrive } from "./pid";
@@ -244,7 +244,7 @@ export function planRoute(world, graph, from, city, type, { through = false } = 
   // Keep left: the route runs down the middle of the left-hand lane, from
   // exactly where the vehicle is now.
   const centre = points.slice(1).filter((p, i, list) => !i || Math.hypot(p[0] - list[i - 1][0], p[1] - list[i - 1][1]) > 0.05);
-  const laned = [points[0], ...keepLeft(centre, Math.abs(AUTOPILOT.lane))];
+  const laned = [points[0], ...keepLeft(centre, (p) => laneOffsetAt(p[1]))];
   // Round off every corner (junctions, roundabout entries, the way onto the
   // route), so the path — and the car following it — turns in smooth curves.
   const smooth = smoothPath(laned);
@@ -259,14 +259,27 @@ export function planRoute(world, graph, from, city, type, { through = false } = 
 
 /** Shifts a polyline `offset` to the left of its direction of travel. */
 export function keepLeft(points, offset) {
-  return points.map((p, i) => {
+  // (`offset` may be a number, or a function of the point: the highway's
+  // cruising lane is further from its middle than a side road's.)
+  const at = typeof offset === "function" ? offset : () => offset;
+  const out = [];
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
     const a = points[Math.max(0, i - 1)];
     const b = points[Math.min(points.length - 1, i + 1)];
     const dx = b[0] - a[0];
     const dz = b[1] - a[1];
     const len = Math.hypot(dx, dz) || 1;
-    return [p[0] + (dz / len) * offset, p[1] - (dx / len) * offset]; // left of travel: (dz, -dx)
-  });
+    const lane = at(p);
+    const q = [p[0] + (dz / len) * lane, p[1] - (dx / len) * lane]; // left of travel: (dz, -dx)
+    // On the inside of a tight turn (a left turn off the wide highway, say)
+    // the shifted points can land behind ones already laid: drop those, or
+    // the lane would hook back on itself before the corner.
+    const last = out.at(-1);
+    if (last && ((q[0] - last[0]) * dx + (q[1] - last[1]) * dz) / len < 0.05) continue;
+    out.push(q);
+  }
+  return out;
 }
 
 /**
@@ -409,7 +422,7 @@ export function followRoute(s, route, type, world, limitAt, cap = Infinity) {
   const { p: aim, dir } = walk(look);
   // Routes are laid out in the lane already; overtaking shifts out to the right.
   // (and steering round an obstacle shifts it too).
-  const lane = (type === "car" && route.kind === "road" && !route.laned ? Math.abs(AUTOPILOT.lane) : 0) - (s.laneShift ?? 0) - (s.avoidShift ?? 0);
+  const lane = (type === "car" && route.kind === "road" && !route.laned ? laneOffsetAt(aim[1]) : 0) - (s.laneShift ?? 0) - (s.avoidShift ?? 0);
   const tx = aim[0] + dir[1] * lane; // keep left of the direction of travel
   const tz = aim[1] - dir[0] * lane;
   route.aim = [tx, tz]; // where it's steering for (shown by the route visualisation)
@@ -620,7 +633,7 @@ export function planToHighway(world, graph, from) {
   // A little way along the highway, heading east (the way the cruise goes).
   const [lx] = points.at(-1);
   for (let k = 1; k <= 6; k++) points.push([lx + k * 2.5, 0]);
-  const laned = [points[0], ...keepLeft(points.slice(1), Math.abs(AUTOPILOT.lane))];
+  const laned = [points[0], ...keepLeft(points.slice(1), (p) => laneOffsetAt(p[1]))];
   const smooth = smoothPath(laned);
   let length = 0;
   for (let i = 1; i < smooth.length; i++) length += Math.hypot(smooth[i][0] - smooth[i - 1][0], smooth[i][1] - smooth[i - 1][1]);

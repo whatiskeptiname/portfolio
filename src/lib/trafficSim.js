@@ -4,7 +4,7 @@
 // keeping a safe gap behind the car in front (lib/traffic) — then picks
 // another. Pure, so it's testable; src/city/Traffic.jsx draws them.
 
-import { PLAZA_RADIUS, collides, wrapDelta, worldDistance } from "./layout";
+import { PLAZA_RADIUS, collides, laneOffsetAt, wrapDelta, worldDistance } from "./layout";
 import { collideCars, settleShove } from "./carPhysics";
 import { AUTOPILOT } from "./autopilot";
 import { followRoute, nextTourStop, planRoute, posesAhead, routeStraight } from "./routing";
@@ -33,7 +33,7 @@ export function createTraffic(world, count, rng) {
     const dx = wrapDelta(bx - ax, world.width);
     const dz = bz - az;
     const len = Math.hypot(dx, dz) || 1;
-    const lane = Math.abs(AUTOPILOT.lane);
+    const lane = laneOffsetAt(bz);
     const x = wrapDelta(bx + (dz / len) * lane, world.width); // left of travel: (dz, -dx)
     const z = bz - (dx / len) * lane;
     if (world.cities.some((c) => worldDistance(world, c.x, c.z, x, z) < PLAZA_RADIUS + 4)) continue;

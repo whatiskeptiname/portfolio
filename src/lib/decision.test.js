@@ -1,3 +1,4 @@
+import { AUTOPILOT } from "./autopilot";
 import { describe, expect, it } from "vitest";
 import { cruisePoses, describeDecision, metres, planSpeeds } from "./decision";
 
@@ -52,7 +53,7 @@ describe("the real-time plan", () => {
   it("cruising the equator, eases into the lane ahead", () => {
     const p = cruisePoses({ x: 0, z: 3, laneShift: 0 }, 30);
     expect(p[0].z).toBeGreaterThan(p.at(-1).z);
-    expect(p.at(-1).z).toBeCloseTo(-1.9, 0);
+    expect(p.at(-1).z).toBeCloseTo(AUTOPILOT.lane, 0);
     expect(metres(150)).toBe("150 m");
     expect(metres(1500)).toBe("1.5 km");
   });

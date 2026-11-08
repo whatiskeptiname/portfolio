@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createLayout, HIGHWAY_HALF_WIDTH, PLAZA_RADIUS, worldDistance } from "./layout";
+import { createLayout, HIGHWAY_HALF_WIDTH, PLAZA_RADIUS, ROAD_HALF_WIDTH, worldDistance } from "./layout";
 import { highwayJunctions, openArcs, openRuns, roundaboutJunctions } from "./junctions";
 
 const group = (language, count, side = "south") => ({
@@ -75,7 +75,7 @@ describe("highway junctions", () => {
         const [sx, sz] = f.kerb[0];
         const [ex, ez] = f.kerb.at(-1);
         // Starts on the spur's edge, ends on the highway's edge.
-        expect(Math.abs(Math.abs(sx - j.x) - 3.5)).toBeLessThan(1e-6);
+        expect(Math.abs(Math.abs(sx - j.x) - ROAD_HALF_WIDTH)).toBeLessThan(1e-6);
         expect(Math.abs(ez)).toBeCloseTo(HIGHWAY_HALF_WIDTH);
         expect(Math.abs(sz)).toBeGreaterThan(HIGHWAY_HALF_WIDTH);
         expect(ex).toBeGreaterThanOrEqual(j.from - 1e-6);

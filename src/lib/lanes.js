@@ -4,7 +4,7 @@
 // hand edge; on a roundabout it's the ring between the island and the outer
 // kerb. Pure, so it's testable; the driver view draws it.
 
-import { PLAZA_RADIUS, ROUNDABOUT_ISLAND, wrapDelta } from "./layout";
+import { HIGHWAY_LANE_WIDTH, PLAZA_RADIUS, ROUNDABOUT_ISLAND, wrapDelta } from "./layout";
 
 const NAMES = { highway: "Equator highway", spur: "Side road", lane: "Country lane" };
 
@@ -72,6 +72,18 @@ export function laneAt(world, x, z, fx, fz) {
   const lz = -c.tx * sign;
   const w = road.halfWidth;
   const side = wrapDelta(x - c.x, world.width) * lx + (z - c.z) * lz; // + = left of the centre line
+  if (road.kind === "highway" && side > -0.3) {
+    // Two lanes our way: the left one (cruising) or the one beside it (overtaking).
+    const outer = side > HIGHWAY_LANE_WIDTH;
+    const [far, near] = outer ? [w, HIGHWAY_LANE_WIDTH] : [HIGHWAY_LANE_WIDTH, 0];
+    return {
+      kind: "road",
+      label: `${NAMES.highway}${outer ? "" : " · overtaking lane"}`,
+      left: [c.x + lx * far, c.z + lz * far],
+      right: [c.x + lx * near, c.z + lz * near],
+      wrongWay: false,
+    };
+  }
   return {
     kind: "road",
     label: NAMES[road.kind] ?? "Road",

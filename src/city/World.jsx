@@ -218,6 +218,15 @@ export function Roads({ layout }) {
     t.needsUpdate = true;
     return t;
   }, [base]);
+  // The highway is a dual carriageway: the two-lane road texture laid twice
+  // across it, which gives a double yellow line down the middle and a dashed
+  // line between the two lanes each way.
+  const highwayMap = useDisposable(() => {
+    const t = map.clone();
+    t.repeat.set(2, 1);
+    t.needsUpdate = true;
+    return t;
+  }, [map]);
 
   // One mesh for every minor road, one for the highway, one per glowing edge.
   // Minor roads sit a little lower than the highway, so where a spur runs into
@@ -239,7 +248,7 @@ export function Roads({ layout }) {
     minor.forEach((g) => g.dispose());
     if (highway) {
       const [pts, hs] = lift(highway.points, SURFACE_TOP.highway);
-      out.highway = ribbonGeometry(R, pts, highway.halfWidth, hs, 1 / (highway.halfWidth * 2));
+      out.highway = ribbonGeometry(R, pts, highway.halfWidth, hs, 1 / highway.halfWidth); // (each copy is half as wide)
 
       // Spurs flare into the highway with curved kerbs, like the roundabouts.
       const joins = highwayJunctions(layout, { fillet: 4 });
@@ -296,7 +305,7 @@ export function Roads({ layout }) {
       )}
       {geo.highway && (
         <mesh geometry={geo.highway} receiveShadow>
-          <meshStandardMaterial map={map} />
+          <meshStandardMaterial map={highwayMap} />
         </mesh>
       )}
       {geo.north && (

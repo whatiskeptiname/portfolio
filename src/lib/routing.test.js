@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createLayout, worldDistance } from "./layout";
+import { HIGHWAY_HALF_WIDTH, HIGHWAY_LANE as LANE, createLayout, worldDistance } from "./layout";
 import { buildRoadGraph, followRoute, nextTourStop, planRoute, smoothPath, speedProfile } from "./routing";
 
 const group = (language, count, side = "south") => ({
@@ -15,7 +15,7 @@ const graph = buildRoadGraph(layout);
 
 describe("go-to routing", () => {
   it("drives by road from the highway to any district's spur", () => {
-    const from = { x: 10, z: -1.9 };
+    const from = { x: 10, z: -LANE };
     for (const city of layout.cities) {
       const route = planRoute(layout, graph, from, city, "car");
       expect(route.kind).toBe("road");
@@ -38,7 +38,7 @@ describe("go-to routing", () => {
   });
 
   it("flies the drone along the roads, the same way the car would go", () => {
-    const from = { x: 10, z: -1.9, yaw: -Math.PI / 2 };
+    const from = { x: 10, z: -LANE, yaw: -Math.PI / 2 };
     const drone = planRoute(layout, graph, from, layout.cities[0], "drone");
     const car = planRoute(layout, graph, from, layout.cities[0], "car");
     expect(drone.kind).toBe("road");
@@ -111,7 +111,7 @@ describe("car Go-to", () => {
   it("drives the whole route by road and stops at the district", async () => {
     const { roadDistance } = await import("./layout");
     const city = layout.cities.at(-1);
-    const s = { x: 10, z: -1.9, yaw: -Math.PI / 2, speed: 0, steer: 0, alt: 0, autoSpeed: 15 };
+    const s = { x: 10, z: -LANE, yaw: -Math.PI / 2, speed: 0, steer: 0, alt: 0, autoSpeed: 15 };
     const route = planRoute(layout, graph, s, city, "car");
     let done = false;
     let worst = 0;
@@ -151,7 +151,7 @@ describe("autopilot tour of all roads", () => {
 
   it("drives through each town's roundabout without stopping", () => {
     const city = layout.cities[0];
-    const route = planRoute(layout, graph, { x: 10, z: -1.9 }, city, "car", { through: true });
+    const route = planRoute(layout, graph, { x: 10, z: -LANE }, city, "car", { through: true });
     const [ex, ez] = route.points.at(-1);
     expect(worldDistance(layout, ex, ez, city.x, city.z)).toBeLessThan(8);
     const near = followRoute({ x: ex, z: ez, yaw: 0, speed: 8, alt: 0 }, { ...route, i: route.points.length - 1 }, "car", layout);
@@ -199,7 +199,7 @@ describe("taking the turns", () => {
   for (const kmh of [30, 150]) {
     it(`reaches every district by road at ${kmh} km/h without missing turns or circling`, () => {
       for (const city of layout.cities) {
-        const s = { x: 10, z: -1.9, yaw: -Math.PI / 2, speed: 0, steer: 0, alt: 0, autoSpeed: kmh / 4 };
+        const s = { x: 10, z: -LANE, yaw: -Math.PI / 2, speed: 0, steer: 0, alt: 0, autoSpeed: kmh / 4 };
         const route = planRoute(layout, graph, s, city, "car");
         const r = runTrip(s, route);
         expect(r.done, `${city.language} at ${kmh}`).toBe(true);
@@ -217,7 +217,7 @@ describe("taking the turns", () => {
       let k = seed;
       const random = () => (k = (k * 9301 + 0.49297) % 1);
       const tour = { visited: new Set(), last: null };
-      const s = { x: 10, z: -1.9, yaw: -Math.PI / 2, speed: 0, steer: 0, alt: 0, autoSpeed: 25 };
+      const s = { x: 10, z: -LANE, yaw: -Math.PI / 2, speed: 0, steer: 0, alt: 0, autoSpeed: 25 };
       for (let leg = 0; leg < 6; leg++) {
         const city = nextTourStop(layout, s, tour, random);
         const r = runTrip(s, planRoute(layout, graph, s, city, "car", { through: true }));
@@ -229,7 +229,7 @@ describe("taking the turns", () => {
 
   it("chains tour legs through the roundabouts", () => {
     const tour = { visited: new Set(), last: null };
-    const s = { x: 10, z: -1.9, yaw: -Math.PI / 2, speed: 0, steer: 0, alt: 0, autoSpeed: 20 };
+    const s = { x: 10, z: -LANE, yaw: -Math.PI / 2, speed: 0, steer: 0, alt: 0, autoSpeed: 20 };
     for (let leg = 0; leg < 4; leg++) {
       const city = nextTourStop(layout, s, tour, () => [0.7, 0.2, 0.95, 0.4][leg]); // far and near legs
       const route = planRoute(layout, graph, s, city, "car", { through: true });
@@ -244,14 +244,14 @@ describe("taking the turns", () => {
 
 describe("route visualisation data", () => {
   it("records the junctions the search explored, starting where we are", () => {
-    const route = planRoute(layout, graph, { x: 10, z: -1.9 }, layout.cities.at(-1), "car");
+    const route = planRoute(layout, graph, { x: 10, z: -LANE }, layout.cities.at(-1), "car");
     expect(route.explored.length).toBeGreaterThan(route.points.length / 2);
     const [ex, ez] = route.explored[0];
     expect(worldDistance(layout, ex, ez, 10, -1.9)).toBeLessThan(5);
   });
 
   it("plans to slow for bends and towns and stop at the end, cruising on the straights", () => {
-    const route = planRoute(layout, graph, { x: 10, z: -1.9 }, layout.cities[0], "car");
+    const route = planRoute(layout, graph, { x: 10, z: -LANE }, layout.cities[0], "car");
     const v = speedProfile(route, "car", 30, (x, z) => LIMITS[surfaceAt(layout, x, z)]);
     expect(v).toHaveLength(route.points.length);
     expect(v.at(-1)).toBe(0);
@@ -286,7 +286,7 @@ describe("smooth turns", () => {
 
   it("gives every planned road route smooth turns", () => {
     for (const city of layout.cities) {
-      const route = planRoute(layout, graph, { x: 10, z: -1.9, yaw: -Math.PI / 2 }, city, "car");
+      const route = planRoute(layout, graph, { x: 10, z: -LANE, yaw: -Math.PI / 2 }, city, "car");
       const p = route.points;
       for (let i = 2; i < p.length; i++) {
         const a = Math.atan2(p[i - 1][1] - p[i - 2][1], p[i - 1][0] - p[i - 2][0]);
@@ -300,15 +300,15 @@ describe("smooth turns", () => {
 
 describe("routes in the lane", () => {
   it("start exactly where the car is and run down the left-hand lane", () => {
-    const from = { x: 10, z: -1.9, yaw: -Math.PI / 2 }; // eastbound, in the north (left) lane
+    const from = { x: 10, z: -LANE, yaw: -Math.PI / 2 }; // eastbound, in the north (left) lane
     const city = layout.cities.find((c) => c.x > 60) ?? layout.cities[0];
     const route = planRoute(layout, graph, from, city, "car");
-    expect(route.points[0]).toEqual([10, -1.9]);
+    expect(route.points[0]).toEqual([10, -LANE]);
     expect(route.laned).toBe(true);
     // A little way along the highway (still heading east), it's in the eastbound lane.
-    const onHighway = route.points.filter(([, z], i) => i > 8 && i < 30 && Math.abs(z) < 4.5);
+    const onHighway = route.points.filter(([, z], i) => i > 8 && i < 30 && Math.abs(z) < HIGHWAY_HALF_WIDTH);
     expect(onHighway.length).toBeGreaterThan(5);
-    for (const [, z] of onHighway) expect(z).toBeCloseTo(-1.9, 0);
+    for (const [, z] of onHighway) expect(z).toBeCloseTo(-LANE, 0);
   });
 });
 
@@ -350,7 +350,7 @@ describe("never into the river", () => {
     const route = planToHighway(layout, graph, bank);
     expect(route).not.toBeNull();
     expect(dryAllTheWay(route)).toBe(true);
-    expect(Math.abs(route.points.at(-1)[1])).toBeLessThan(3);
+    expect(Math.abs(route.points.at(-1)[1])).toBeLessThan(HIGHWAY_HALF_WIDTH); // in a highway lane
   });
 });
 
@@ -359,7 +359,7 @@ import { flightController, stepQuad } from "./quad";
 describe("the realistic drone on autopilot", () => {
   it("flies a road route through its flight controller, staying over the road", () => {
     const city = layout.cities[2];
-    const s = { x: 10, z: -1.9, yaw: -Math.PI / 2, speed: 0, alt: 0, vx: 0, vz: 0, vy: 0, autoSpeed: 10, droneAltTarget: 12 };
+    const s = { x: 10, z: -LANE, yaw: -Math.PI / 2, speed: 0, alt: 0, vx: 0, vz: 0, vy: 0, autoSpeed: 10, droneAltTarget: 12 };
     const route = planRoute(layout, graph, s, city, "drone");
     let done = false;
     let worst = 0;

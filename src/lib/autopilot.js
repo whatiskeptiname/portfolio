@@ -4,17 +4,18 @@
 // { up, down: boolean, steer: -1..1 (left +), ascend, descend: boolean }
 
 import { pidDrive } from "./pid";
+import { HIGHWAY_LANE } from "./layout";
 
 export const AUTOPILOT = {
   // Traffic keeps left, as in Nepal: heading east, the left-hand lane is the
-  // northern one (plane z < 0).
-  lane: -1.9,
+  // northern one (plane z < 0) — the outer of the two lanes going east.
+  lane: -HIGHWAY_LANE,
   carSpeed: 7,
   droneSpeed: 9,
   droneAlt: 10,
   lookAhead: 14,
   idleSeconds: 45, // hands back to the autopilot after this long without input
-  nearEquator: 8, // only re-engages by itself if the vehicle is this close to the highway
+  nearEquator: 14, // only re-engages by itself if the vehicle is this close to the highway
 };
 
 // Speed display and the car's surface-dependent top speeds (plane units/s).

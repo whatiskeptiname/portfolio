@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HIGHWAY_HALF_WIDTH, PLAZA_RADIUS, createLayout } from "./layout";
+import { HIGHWAY_HALF_WIDTH, HIGHWAY_LANE, HIGHWAY_LANE_WIDTH, PLAZA_RADIUS, createLayout } from "./layout";
 import { laneAhead, laneAt } from "./lanes";
 
 const group = (language, count, side = "south") => ({
@@ -11,11 +11,20 @@ const layout = createLayout([group("Work", 4, "north"), group("C++", 6)], "lanes
 const EAST = [1, 0];
 
 describe("lane recognition", () => {
-  it("finds the left-hand lane of the highway, centre line to kerb", () => {
-    const lane = laneAt(layout, 10, -1.9, ...EAST);
+  it("finds the left-hand (cruising) lane of the highway, lane line to kerb", () => {
+    const lane = laneAt(layout, 10, -HIGHWAY_LANE, ...EAST);
     expect(lane.label).toMatch(/highway/i);
-    expect(lane.right[1]).toBeCloseTo(0, 1); // the centre line
+    expect(lane.label).not.toMatch(/overtaking/);
+    expect(lane.right[1]).toBeCloseTo(-HIGHWAY_LANE_WIDTH, 1); // the dashed line between our two lanes
     expect(lane.left[1]).toBeCloseTo(-HIGHWAY_HALF_WIDTH, 1); // the north kerb: on our left heading east
+    expect(lane.wrongWay).toBe(false);
+  });
+
+  it("knows the highway's second lane each way is for overtaking", () => {
+    const lane = laneAt(layout, 10, -2, ...EAST);
+    expect(lane.label).toMatch(/overtaking/);
+    expect(lane.right[1]).toBeCloseTo(0, 1); // the centre line
+    expect(lane.left[1]).toBeCloseTo(-HIGHWAY_LANE_WIDTH, 1);
     expect(lane.wrongWay).toBe(false);
   });
 
@@ -34,8 +43,8 @@ describe("lane recognition", () => {
   });
 
   it("traces the lane's edges along the path ahead, until the path leaves the road", () => {
-    const poses = Array.from({ length: 40 }, (_, k) => ({ x: 10 + k + 1, z: -1.9, yaw: -Math.PI / 2, d: k + 1 }));
-    const ahead = laneAhead(layout, { x: 10, z: -1.9, yaw: -Math.PI / 2 }, poses);
+    const poses = Array.from({ length: 40 }, (_, k) => ({ x: 10 + k + 1, z: -HIGHWAY_LANE, yaw: -Math.PI / 2, d: k + 1 }));
+    const ahead = laneAhead(layout, { x: 10, z: -HIGHWAY_LANE, yaw: -Math.PI / 2 }, poses);
     expect(ahead.left.length).toBeGreaterThan(10);
     expect(ahead.left.every(([, z]) => Math.abs(z + HIGHWAY_HALF_WIDTH) < 0.2)).toBe(true);
     const offRoad = laneAhead(layout, { x: 10, z: 30, yaw: 0 }, []);

@@ -13,8 +13,29 @@
 
 import { buildTerrain } from "./terrain";
 
-export const ROAD_HALF_WIDTH = 3.5;
-export const HIGHWAY_HALF_WIDTH = 4.5;
+// Side roads: one lane each way, 5 m wide. The equator highway: a dual
+// carriageway, two lanes each way. Traffic keeps left (as in Nepal), so on
+// the highway you cruise in the left-hand lane and overtake in the one beside
+// it, going the same way; on side roads, overtaking means the oncoming lane.
+export const ROAD_HALF_WIDTH = 5;
+export const ROAD_LANE = ROAD_HALF_WIDTH / 2; // centre of your lane, from the middle of the road
+export const HIGHWAY_LANE_WIDTH = 4.25;
+export const HIGHWAY_HALF_WIDTH = 2 * HIGHWAY_LANE_WIDTH;
+export const HIGHWAY_LANE = 1.5 * HIGHWAY_LANE_WIDTH; // centre of the left (cruising) lane
+/** Is (plane) z on the highway's carriageways (with a little margin)? */
+export const onHighway = (z, margin = 1) => Math.abs(z) <= HIGHWAY_HALF_WIDTH + margin;
+/**
+ * Where to drive, left of a road's centre line, at plane z: the highway's
+ * cruising lane on it, a side road's lane away from it, blending smoothly over
+ * the last few metres of a side road as it meets the highway (so a route
+ * moves across without a kink).
+ */
+export function laneOffsetAt(z) {
+  const t = Math.min(1, Math.max(0, (HIGHWAY_HALF_WIDTH + 8 - Math.abs(z)) / 8));
+  return ROAD_LANE + (HIGHWAY_LANE - ROAD_LANE) * t * t * (3 - 2 * t);
+}
+/** How far over to pull out to overtake at plane z: the next lane on the highway, the oncoming one elsewhere. */
+export const overtakeShiftAt = (z) => (onHighway(z) ? HIGHWAY_LANE_WIDTH : 2 * ROAD_LANE);
 export const RIVER_HALF_WIDTH = 4.2; // average; it narrows and widens along its course
 export const BUILDING_SIZE = 4;
 export const BUILDING_RADIUS = Math.SQRT2 * (BUILDING_SIZE / 2); // circumscribed
