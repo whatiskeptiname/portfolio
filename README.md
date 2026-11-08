@@ -275,7 +275,6 @@ The last vehicle, camera and all settings are remembered in your browser.
 | <kbd>S</kbd> / <kbd>↓</kbd> | Brake; once stopped, reverse |
 | <kbd>A</kbd> <kbd>D</kbd> / <kbd>←</kbd> <kbd>→</kbd> | Steer |
 | <kbd>Space</kbd> | Handbrake (with <kbd>W</kbd>: drift) |
-| Hold <kbd>Shift</kbd> with <kbd>W</kbd> / <kbd>S</kbd> / <kbd>Space</kbd> | Press that pedal gradually deeper (the key alone holds it at 10%) |
 | <kbd>L</kbd> | Cruise control: lock the speed you're doing (again to release) |
 
 #### Drone — Arcade mode
@@ -376,25 +375,21 @@ always gives the same planet. Distances are real: **1 unit = 1 m** (a car is
   flips in reverse.
 - **Brake, then reverse:** <kbd>S</kbd> brakes while you're rolling forward
   and reverses only once stopped.
-- **Pedals are your feet:** holding <kbd>W</kbd> holds your foot on the
-  accelerator lightly, at 10%; hold <kbd>Shift</kbd> as well and you press it
-  gradually deeper (to the floor), let go of Shift and your foot stays there,
-  let go of <kbd>W</kbd> and it comes off. The brake (<kbd>S</kbd>) and
-  handbrake (<kbd>Space</kbd>) work the same way, each on its own, and the
-  inputs panel (<kbd>O</kbd>) shows how far each is pressed
-  (`src/lib/pedals.js`).
+- **Speed and drag:** the tyres and the air hold the car back harder the
+  faster it goes, so it gathers speed quickly from a standstill and more
+  slowly near the top; the road's limit still caps it.
 - **Cruise control:** <kbd>L</kbd> locks the speed you're doing and holds it
-  while you steer (if the autopilot was driving, you take over). The accelerator still speeds you up past it, and you come
-  back to it when you let go; the brake or handbrake cancels it.
+  while you steer (if the autopilot was driving, you take over). The
+  accelerator still speeds you up past it, and you come back to it when you
+  let go; the brake or handbrake cancels it (`src/lib/pedals.js`).
 - **Handbrake and drifting:** <kbd>Space</kbd> locks the rear wheels: they
   brake, and lose their sideways grip, so steer and the tail steps out. It's
   a front-wheel-drive car, so with the accelerator down too the front keeps
   pulling against the locked rear and you hold the slide — a handbrake drift,
   steered with the throttle and counter-steer (once the tail is loose it keeps
   rotating until you catch it). Let go and the rear grips again over about
-  half a second, straightening up. Pulled part way, the handbrake takes only
-  part of the grip. The tyres squeal with the slide angle, and the body leans
-  out of it (`src/lib/carPhysics.js`).
+  half a second, straightening up. The tyres squeal with the slide angle, and
+  the body leans out of it (`src/lib/carPhysics.js`).
 - **Indicators:** steering by hand, they come on once the car has actually
   turned about 20° with the wheel held over — the same at any speed — never
   for taps or small corrections.
@@ -571,12 +566,23 @@ rest on the highway.
 
 ### Sound and Planet Radio
 
-- **Sound** (all synthesized, `src/city/audio.js`): car engine with gears and
-  tyre squeal, the drone's motors and air rush, an ambient pad that changes
+- **Sound** (all synthesized, `src/city/audio.js`): the car's engine built
+  like a real one — a train of exhaust pulses at the firing rate (twice a
+  revolution for a four-cylinder), a half-rate rumble, a growl that hardens
+  under load and intake hiss — climbing through the gears; tyre roar that
+  grows with speed, squeal in hard turns and slides, gravel off-road; the
+  drone's motors and air rush, an ambient pad that changes
   chord between day and night, a rumble when you face the black hole, wind
   with altitude, the river, district chimes, interface clicks and the
   transformation. Every visit starts muted; turn it on with 🔊 or the hint
   chip. Volume and channels are in Settings.
+- **Traffic you can hear:** the three nearest cars each have their own engine
+  and tyre swish, louder as they near, heard from the side they're on, and
+  higher-pitched as they come and lower as they go (the Doppler effect).
+- **Sound follows the camera:** your vehicle is as loud as it is from where
+  the camera is — fully inside or behind it, fading as the camera pulls away,
+  and silent once you're looking at the planet from space
+  (`src/lib/carSound.js`).
 - **♫ Planet Radio** (`src/city/radio.js`): Nepali, Hindi and English stations
   streamed from official YouTube uploads through YouTube's embedded player
   (youtube-nocookie.com). Nothing is downloaded or hosted here, and the player
@@ -589,7 +595,9 @@ rest on the highway.
 
 #### Settings (sliders icon)
 
-- **Audio:** volume; engines, ambience and interface sounds.
+- **Audio:** overall volume; **Music** and **Cars & engines** each with
+  their own level and mute button, so either can be off while the other
+  plays; ambience and interface sounds.
 - **World:** time of day — *Cycle* (the 12-minute day), *Day* or *Night*
   (held with the black hole on the horizon, or at midnight, wherever you are; the sun eases across when you
   switch).
