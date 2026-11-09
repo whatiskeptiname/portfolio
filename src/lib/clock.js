@@ -43,9 +43,8 @@ export function formatHours(hours) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-// The local hour "day" holds: the black hole low on the eastern horizon, risen
-// just far enough to sit whole above the ground.
-export const DAY_HOUR = 6.15;
+// The local hour "day" holds: noon, the black hole high overhead in full light.
+export const DAY_HOUR = 12;
 
 /**
  * Planet time for a time-of-day mode: "cycle" runs the clock as usual; "day" and
