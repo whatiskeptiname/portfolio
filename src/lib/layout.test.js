@@ -5,7 +5,9 @@ import {
   PLAZA_RADIUS,
   ROUNDABOUT_ISLAND,
   BRIDGE_HEIGHT,
+  BRIDGE_RAIL,
   bridgeElevation,
+  railReach,
   collides,
   MOUNTAIN_HEIGHT,
   distanceToSegment,
@@ -186,6 +188,42 @@ describe("createLayout", () => {
       expect(bridgeElevation(layout, b.x, b.z)).toBeGreaterThan(BRIDGE_HEIGHT * 0.9);
     }
     expect(bridgeElevation(layout, layout.cities[0].x, layout.cities[0].z)).toBe(0);
+  });
+
+  it("keeps every bridge deck level from kerb to kerb, and dry for its whole length in every lane", () => {
+    for (const b of layout.bridges) {
+      const ux = Math.sin(b.angle);
+      const uz = Math.cos(b.angle);
+      const at = (along, across) => [b.x + ux * along - uz * across, b.z + uz * along + ux * across];
+      // Level across: the outer lanes sit as high as the middle.
+      for (const along of [0, b.span / 4]) {
+        const middle = bridgeElevation(layout, ...at(along, 0));
+        for (const across of [-b.halfWidth * 0.75, b.halfWidth * 0.75]) {
+          expect(bridgeElevation(layout, ...at(along, across))).toBeCloseTo(middle, 5);
+        }
+      }
+      // A car anywhere across the road can drive the length of the bridge.
+      for (const across of [-b.halfWidth * 0.75, 0, b.halfWidth * 0.75]) {
+        for (let along = -b.span / 2 - 6; along <= b.span / 2 + 6; along += 0.5) {
+          expect(collides(layout, ...at(along, across), 1.0)).toBe(false);
+        }
+      }
+    }
+  });
+
+  it("walls every raised bridge with solid parapets that only something flying can cross", () => {
+    for (const b of layout.bridges) {
+      const ux = Math.sin(b.angle);
+      const uz = Math.cos(b.angle);
+      const at = (along, across) => [b.x + ux * along - uz * across, b.z + uz * along + ux * across];
+      const wall = b.halfWidth + BRIDGE_RAIL.gap + BRIDGE_RAIL.thick / 2;
+      for (const side of [-1, 1]) {
+        for (const along of [0, railReach(b) * 0.8]) {
+          expect(collides(layout, ...at(along, side * wall), 0.5)).toBe(true); // into the wall
+          expect(collides(layout, ...at(along, side * wall), 0.5, BRIDGE_HEIGHT + 2)).toBe(false); // over it
+        }
+      }
+    }
   });
 
   it("knows the surface underfoot", () => {

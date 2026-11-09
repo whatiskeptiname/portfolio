@@ -10,7 +10,7 @@ import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { frameAt } from "../lib/globe";
-import { BRIDGE_HEIGHT, MOUNTAIN_HEIGHT, PLAZA_RADIUS, ROUNDABOUT_ISLAND, SURFACE_TOP, bridgeElevation, wrapDelta } from "../lib/layout";
+import { BRIDGE_HEIGHT, BRIDGE_RAIL, MOUNTAIN_HEIGHT, PLAZA_RADIUS, ROUNDABOUT_ISLAND, SURFACE_TOP, bridgeElevation, bridgeRamp, deckHeight, railReach, wrapDelta } from "../lib/layout";
 import { terrainAt } from "../lib/terrain";
 import { highwayJunctions, openArcs, openRuns, roundaboutJunctions } from "../lib/junctions";
 import { useDisposable } from "./gpu";
@@ -22,6 +22,7 @@ import {
   arcBandGeometry,
   outlineGeometry,
   discGeometry,
+  onGround,
   ribbonGeometry,
   sunlightAt,
   surfaceMatrix,
@@ -257,7 +258,8 @@ export function Roads({ layout }) {
       for (const j of joins) {
         for (const f of j.fillets) {
           flares.push(outlineGeometry(R, f.area, 0.2));
-          kerbs[j.side < 0 ? "north" : "south"].push(ribbonGeometry(R, f.kerb, 0.25, 0.26, 1));
+          // (Out to where the highway's edge line runs, so the two meet.)
+          kerbs[j.side < 0 ? "north" : "south"].push(ribbonGeometry(R, shiftKerb(f.kerb, f.area, EDGE_LINE_OUT), 0.25, 0.26, 1));
         }
       }
       out.flares = flares.length ? mergeGeometries(flares) : null;
@@ -274,7 +276,7 @@ export function Roads({ layout }) {
           if (j.from < -W / 2) gaps.push([j.from + W, j.to + W]);
           if (j.to > W / 2) gaps.push([j.from - W, j.to - W]);
         }
-        const dz = side * (highway.halfWidth + 0.35);
+        const dz = side * (highway.halfWidth + EDGE_LINE_OUT);
         const parts = openRuns(-W / 2, W / 2, gaps).map(([a, b]) => {
           const n = Math.max(1, Math.ceil((b - a) / 1.5));
           const run = densify(layout, Array.from({ length: n + 1 }, (_, i) => [a + ((b - a) * i) / n, dz]));
@@ -388,6 +390,35 @@ export function River({ layout, animate = true }) {
   );
 }
 
+// The highway's glowing edge line runs just outside the asphalt; a
+// roundabout's white edge line just inside its ring. The curved kerb lines at
+// junctions are moved over by the same amount, so they join those lines
+// without a step.
+const EDGE_LINE_OUT = 0.35;
+const RING_LINE_IN = 0.35;
+
+/**
+ * A kerb curve moved sideways by `d`: positive away from its fillet's asphalt,
+ * negative onto it. The fillet's `area` starts at the road's own corner, which
+ * is always on the asphalt side of the curve (the curve bulges toward it).
+ */
+function shiftKerb(points, area, d) {
+  const [cx, cz] = area[0];
+  const normal = (i) => {
+    const a = points[Math.max(0, i - 1)];
+    const b = points[Math.min(points.length - 1, i + 1)];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    return [(b[1] - a[1]) / len, -(b[0] - a[0]) / len];
+  };
+  const m = Math.floor(points.length / 2);
+  const [mx, mz] = normal(m);
+  const away = mx * (points[m][0] - cx) + mz * (points[m][1] - cz) >= 0 ? 1 : -1;
+  return points.map((p, i) => {
+    const [nx, nz] = normal(i);
+    return [p[0] + nx * away * d, p[1] + nz * away * d];
+  });
+}
+
 function paint(geometry, color) {
   const c = new THREE.Color(color);
   const n = geometry.attributes.position.count;
@@ -396,44 +427,74 @@ function paint(geometry, color) {
   geometry.setAttribute("color", new THREE.BufferAttribute(arr, 3));
 }
 
-// Every bridge in one mesh: the arched deck's stone underside and approach
-// embankments, piers in the water, and railings that follow the arch.
+// Every bridge in one mesh: the arched deck with its stone sides and approach
+// embankments, piers in the water, and parapets with a pale top rail. The
+// deck and parapets are continuous strips that follow the arch (short tilted
+// blocks left a sawtooth of corners sticking out of the ground).
 function Bridges({ layout }) {
   const R = layout.radius;
   const geometry = useDisposable(() => {
     const parts = [];
     const box = new THREE.BoxGeometry(1, 1, 1);
-    // A box centred `h` up at (x, z), `len` long along the bridge, tilted by `pitch`.
-    const place = (x, z, h, sx, sy, sz, angle, color, pitch = 0) => {
-      const m = surfaceMatrix(R, x, z, h, angle).multiply(new THREE.Matrix4().makeRotationX(pitch)).multiply(new THREE.Matrix4().makeScale(sx, sy, sz));
+    // A box centred `h` up at (x, z), along the bridge's `angle` (the piers).
+    const place = (x, z, h, sx, sy, sz, angle, color) => {
+      const m = surfaceMatrix(R, x, z, h, angle).multiply(new THREE.Matrix4().makeScale(sx, sy, sz));
       const g = box.clone().applyMatrix4(m);
+      g.deleteAttribute("uv"); // (the strips have none, and merged parts must match)
       paint(g, color);
       parts.push(g);
     };
     for (const bridge of layout.bridges) {
       const ux = Math.sin(bridge.angle);
       const uz = Math.cos(bridge.angle);
-      const ramp = bridge.span / 2 + 9;
-      const deckAt = (t) => BRIDGE_HEIGHT * (0.5 + 0.5 * Math.cos((Math.PI * Math.min(Math.abs(t), ramp)) / ramp));
       const at = (t, off = 0) => [bridge.x + ux * t - uz * off, bridge.z + uz * t + ux * off];
-      const step = 1.2;
-      const wide = bridge.halfWidth * 2 + 1;
-      for (let t = -ramp; t < ramp; t += step) {
-        const mid = t + step / 2;
-        const h = deckAt(mid);
-        const pitch = -Math.atan2(deckAt(t + step) - deckAt(t), step);
-        const [x, z] = at(mid);
-        const overWater = Math.abs(mid) < bridge.span / 2;
-        if (overWater) place(x, z, h - 0.35, wide, 0.7, step + 0.05, bridge.angle, "#8e877c", pitch);
-        else if (h > 0.08) place(x, z, (h - 0.02) / 2, wide, h, step + 0.05, bridge.angle, "#9d9483", pitch); // embankment
-        // Railings: a low parapet with a glowing-white top rail along the raised part.
-        if (h > 0.4) {
-          for (const side of [-1, 1]) {
-            const [px, pz] = at(mid, side * (bridge.halfWidth + 0.3));
-            place(px, pz, h + 0.35, 0.3, 0.7, step + 0.05, bridge.angle, "#b9b1a2", pitch);
-            place(px, pz, h + 0.75, 0.36, 0.12, step + 0.05, bridge.angle, "#efe9dc", pitch);
+      const deckAt = (t) => deckHeight(bridge, t);
+      // A solid strip along the bridge between `from` and `to` (along it),
+      // `left` to `right` across, `bottom(t)` to `top(t)` high: four faces,
+      // each with its own vertices so the edges stay crisp, and end caps.
+      const strip = (from, to, left, right, bottom, top, color) => {
+        const ts = [];
+        for (let t = from; t < to; t += 1) ts.push(t);
+        ts.push(to);
+        const pos = [];
+        const idx = [];
+        const face = (edge) => {
+          const base = pos.length / 3;
+          for (const t of ts) for (const [off, h] of edge(t)) pos.push(...onGround(R, ...at(t, off), h));
+          for (let i = 0; i < ts.length - 1; i++) {
+            const a = base + 2 * i;
+            idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
           }
+        };
+        face((t) => [[left, top(t)], [right, top(t)]]);
+        face((t) => [[right, top(t)], [right, bottom(t)]]);
+        face((t) => [[right, bottom(t)], [left, bottom(t)]]);
+        face((t) => [[left, bottom(t)], [left, top(t)]]);
+        for (const t of [from, to]) {
+          const base = pos.length / 3;
+          for (const [off, h] of [[left, top(t)], [right, top(t)], [right, bottom(t)], [left, bottom(t)]]) pos.push(...onGround(R, ...at(t, off), h));
+          idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
         }
+        const g = new THREE.BufferGeometry();
+        g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+        g.setIndex(idx);
+        g.computeVertexNormals();
+        paint(g, color);
+        parts.push(g);
+      };
+      const ramp = bridgeRamp(bridge);
+      const half = bridge.halfWidth + 0.5;
+      // The deck: stone under the road, a slab over the water and a solid
+      // embankment down to (and a little into) the ground either side.
+      const over = bridge.span / 2;
+      strip(-ramp, ramp, -half, half, (t) => (Math.abs(t) < over ? deckAt(t) - 0.7 : -0.4), (t) => deckAt(t) + 0.02, "#958d80");
+      // Parapets where the deck is raised, with a pale top rail.
+      const reach = railReach(bridge);
+      const wall = bridge.halfWidth + BRIDGE_RAIL.gap;
+      for (const side of [-1, 1]) {
+        const [a, b] = side < 0 ? [-wall - BRIDGE_RAIL.thick, -wall] : [wall, wall + BRIDGE_RAIL.thick];
+        strip(-reach, reach, a, b, (t) => deckAt(t) - 0.1, (t) => deckAt(t) + BRIDGE_RAIL.height - 0.12, "#b4ac9d");
+        strip(-reach, reach, a - 0.04, b + 0.04, (t) => deckAt(t) + BRIDGE_RAIL.height - 0.12, (t) => deckAt(t) + BRIDGE_RAIL.height, "#d6cfc1");
       }
       // Piers: one at each bank and, on wide crossings, one midstream.
       const piers = bridge.span > 16 ? [-0.5, 0, 0.5] : [-0.5, 0.5];
@@ -441,7 +502,7 @@ function Bridges({ layout }) {
         const t = f * (bridge.span - 2);
         const h = deckAt(t);
         const [x, z] = at(t);
-        place(x, z, h / 2 - 0.3, wide * 0.8, h + 0.6, 1.1, bridge.angle, "#7d766b");
+        place(x, z, h / 2 - 0.5, half * 2 * 0.8, h + 0.2, 1.1, bridge.angle, "#7d766b");
       }
     }
     box.dispose();
@@ -453,7 +514,7 @@ function Bridges({ layout }) {
   if (!geometry) return null;
   return (
     <mesh geometry={geometry} castShadow receiveShadow>
-      <meshStandardMaterial vertexColors roughness={0.85} />
+      <meshStandardMaterial vertexColors roughness={0.85} side={THREE.DoubleSide} />
     </mesh>
   );
 }
@@ -491,10 +552,11 @@ export function Districts({ layout, driving, labels = true }) {
     for (const j of roundaboutJunctions(layout, { ring, fillet: 3 })) {
       for (const f of j.fillets) {
         asphalt.push(outlineGeometry(R, f.area, 0.165));
-        markings.push(ribbonGeometry(R, f.kerb, 0.1, 0.18, 1));
+        // (In to where the ring's edge line runs, so the two meet.)
+        markings.push(ribbonGeometry(R, shiftKerb(f.kerb, f.area, -RING_LINE_IN), 0.1, 0.18, 1));
       }
       for (const [start, end] of openArcs(j.mouths)) {
-        markings.push(arcBandGeometry(R, j.x, j.z, ring - 0.45, ring - 0.25, 0.18, start, end, Math.max(4, Math.ceil((end - start) * 12))));
+        markings.push(arcBandGeometry(R, j.x, j.z, ring - RING_LINE_IN - 0.1, ring - RING_LINE_IN + 0.1, 0.18, start, end, Math.max(4, Math.ceil((end - start) * 12))));
       }
     }
     return {

@@ -259,6 +259,7 @@ export function createLayout(groups, seed = "portfolio", extras = {}) {
     billboards: [],
     trees: [],
   };
+  fitBridges(world);
   world.buildings = cities.flatMap((city) => placeBuildings(world, city, rng));
   world.billboards = placeBillboards(world, extras.billboards ?? [], rng);
   world.trees = plantTrees(world, rng);
@@ -296,6 +297,22 @@ export function pointAlong(road, t) {
 // straight out into the sea.
 export const MOUNTAIN_HEIGHT = 16; // flying higher than this clears the peaks
 export const BRIDGE_HEIGHT = 2.4; // how high bridge decks arch over the water
+// The parapets: a low wall each side of a bridge, wherever the deck is raised
+// more than RAIL_FROM above the ground, standing RAIL_HEIGHT above the deck
+// (the top rail included), RAIL_GAP out from the kerb, RAIL_THICK thick.
+export const BRIDGE_RAIL = { from: 0.4, height: 0.82, gap: 0.3, thick: 0.3 };
+
+/** How far the arch of a bridge runs, each way from its middle (m). */
+export const bridgeRamp = (b) => b.span / 2 + 9;
+/** The deck's height `along` a bridge from its middle. */
+export function deckHeight(b, along) {
+  const ramp = bridgeRamp(b);
+  return BRIDGE_HEIGHT * (0.5 + 0.5 * Math.cos((Math.PI * Math.min(Math.abs(along), ramp)) / ramp));
+}
+/** How far each way from a bridge's middle its parapets run (where the deck is raised enough). */
+export function railReach(b) {
+  return (bridgeRamp(b) * Math.acos((2 * BRIDGE_RAIL.from) / BRIDGE_HEIGHT - 1)) / Math.PI;
+}
 export const WATERFALL_HEIGHT = 9; // where the river leaps off the cliff
 
 /** Where the poles' scenery starts: the mountains' foot (south) and the shore (north), as plane |z|. */
@@ -474,6 +491,38 @@ function findBridges(roads, river, width) {
     }
   }
   return bridges;
+}
+
+/**
+ * Where (x, z) is relative to a bridge: `along` the road from the bridge's
+ * middle, and `across` it (both in metres). Bridges are straight.
+ */
+function bridgeFrame(world, b, x, z) {
+  const ux = Math.sin(b.angle);
+  const uz = Math.cos(b.angle);
+  const dx = wrapDelta(x - b.x, world.width);
+  const dz = z - b.z;
+  return { along: dx * ux + dz * uz, across: dz * ux - dx * uz };
+}
+
+// Makes each bridge long enough to cover the water across the road's whole
+// width. A river that crosses a wide road on the slant reaches further along
+// it at one kerb than at the middle, so measuring at the centre line alone
+// would leave the outer lanes ending in the river.
+function fitBridges(world) {
+  for (const b of world.bridges) {
+    const ux = Math.sin(b.angle);
+    const uz = Math.cos(b.angle);
+    let reach = 0;
+    for (let across = -b.halfWidth; across <= b.halfWidth + 1e-9; across += 1) {
+      for (let along = -40; along <= 40; along += 0.5) {
+        const x = b.x + ux * along - uz * across;
+        const z = b.z + uz * along + ux * across;
+        if (inRiver(world, x, z)) reach = Math.max(reach, Math.abs(along));
+      }
+    }
+    b.span = Math.max(b.span, 2 * reach + 4);
+  }
 }
 
 function nearAnyRoad(world, x, z, extra) {
@@ -675,17 +724,18 @@ export const SURFACE_TOP = { highway: 0.22, road: 0.15, roundabout: 0.17, paved:
 
 /**
  * Height of the road deck at (x, z): bridges arch up over the river, rising
- * smoothly from each bank. 0 away from bridges (and off their roads).
+ * smoothly from each bank. The arch runs along the road only, so the deck is
+ * level from kerb to kerb (a wide road would otherwise be domed, its outer
+ * lanes lower than the middle). 0 away from bridges (and off their roads).
  */
 export function bridgeElevation(world, x, z) {
   let h = 0;
   for (const b of world.bridges) {
-    const ramp = b.span / 2 + 9;
-    const d = worldDistance(world, b.x, b.z, x, z);
-    if (d >= ramp) continue;
+    const { along, across } = bridgeFrame(world, b, x, z);
+    if (Math.abs(along) >= bridgeRamp(b) || Math.abs(across) > b.halfWidth + 1.5) continue;
     const road = world.roads[b.roadId];
     if (roadDistance(world, x, z, road, road.halfWidth + 1.5) === Infinity) continue;
-    h = Math.max(h, BRIDGE_HEIGHT * (0.5 + 0.5 * Math.cos((Math.PI * d) / ramp)));
+    h = Math.max(h, deckHeight(b, along));
   }
   return h;
 }
@@ -726,14 +776,20 @@ export function inWater(world, x, z, margin = 0) {
   if (!inRiver(world, x, z, margin)) return false;
   return !world.bridges.some((b) => {
     const road = world.roads[b.roadId];
-    return worldDistance(world, b.x, b.z, x, z) < b.span && roadDistance(world, x, z, road, road.halfWidth - margin) !== Infinity;
+    const { along, across } = bridgeFrame(world, b, x, z);
+    return Math.abs(along) < b.span / 2 + 2 && Math.abs(across) < b.halfWidth && roadDistance(world, x, z, road, road.halfWidth - margin) !== Infinity;
   });
 }
 
 export function collides(world, x, z, radius, height = 0) {
-  // The southern mountains: only something flying over the peaks gets through.
   if (z > world.mountains.edge - radius && height < MOUNTAIN_HEIGHT) return true;
   if (height < 1 && inWater(world, x, z, radius * 0.5)) return true;
+  for (const b of world.bridges) {
+    const { along, across } = bridgeFrame(world, b, x, z);
+    if (Math.abs(along) > railReach(b) + radius) continue;
+    const wall = b.halfWidth + BRIDGE_RAIL.gap + BRIDGE_RAIL.thick / 2;
+    if (Math.abs(Math.abs(across) - wall) < BRIDGE_RAIL.thick / 2 + radius && height < deckHeight(b, along) + BRIDGE_RAIL.height) return true;
+  }
   for (const b of world.buildings) {
     if (height < b.height + 1 && worldDistance(world, b.x, b.z, x, z) < BUILDING_RADIUS + radius) return true;
   }
@@ -749,3 +805,4 @@ export function collides(world, x, z, radius, height = 0) {
   }
   return false;
 }
+
