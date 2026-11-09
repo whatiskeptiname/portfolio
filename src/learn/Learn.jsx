@@ -102,8 +102,8 @@ function Library({ progress }) {
         <p>
           Quick explainers for people who use these systems, often through AI tools, more than they build them. The first few minutes of each
           lesson give you the idea, a simulation to play with, and what working with it is really like: what you'd adjust, what goes wrong and how
-          you'd notice. The maths is folded away for when you want it. The lessons grew out of lectures I've taught and the hands-on tasks I designed
-          and worked through.
+          you'd notice. The maths is folded away for when you want it. Every lesson has a title to remember it by and, above it, the name you'd
+          find it under in a textbook. The lessons grew out of lectures I've taught and the hands-on tasks I designed and worked through.
         </p>
       </header>
       <ol className="chapters">
@@ -116,6 +116,7 @@ function Library({ progress }) {
                 <Cover kind={c.cover} />
               </a>
               <div className="chapter-text">
+                <p className="topic-tag">{c.topic}</p>
                 <h2>
                   <a href={learnHash(c.id)}>{c.title}</a>
                 </h2>
@@ -145,6 +146,7 @@ function ChapterPage({ chapter, progress }) {
           <Cover kind={chapter.cover} />
         </div>
         <div>
+          <p className="topic-tag">{chapter.topic}</p>
           <h1>{chapter.title}</h1>
           <p className="chapter-blurb">{chapter.blurb}</p>
           {chapter.history && (
@@ -170,6 +172,7 @@ function ChapterPage({ chapter, progress }) {
                   {rec?.done ? <Icon name="ascend" /> : i + 1}
                 </span>
                 <span>
+                  <span className="topic-tag">{l.topic}</span>
                   <strong>{l.title}</strong>
                   <span className="lesson-list-lead">{l.lead}</span>
                 </span>
@@ -245,7 +248,10 @@ function LessonPage({ chapter, lesson, progress, mark }) {
               <li key={l.id} className={`${here ? "is-here" : ""}${done ? " is-done" : ""}`}>
                 <a href={learnHash(chapter.id, l.id)} aria-current={here ? "page" : undefined}>
                   <span className="rail-dot" aria-hidden="true" />
-                  {l.title}
+                  <span>
+                    {l.title}
+                    <small className="rail-topic">{l.topic}</small>
+                  </span>
                   {done && <span className="sr-only"> (done)</span>}
                 </a>
                 {here && (

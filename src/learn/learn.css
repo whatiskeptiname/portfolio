@@ -1744,3 +1744,249 @@ a.chapter-cover:hover {
   padding: 6px 14px;
   height: calc(2 * 1.3 * var(--cap-size) + 12px);
 }
+
+/* ---------- Language sims: tokens, attention, prompts, retrieval ---------- */
+.token-box {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+.token-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}
+.token-input:focus {
+  outline: none;
+  border-color: var(--c-a);
+}
+.token-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.92rem;
+}
+.token {
+  padding: 3px 6px;
+  border-radius: 6px;
+  white-space: pre;
+}
+.token-0 { background: color-mix(in srgb, var(--c-a) 28%, transparent); }
+.token-1 { background: color-mix(in srgb, var(--c-b) 30%, transparent); }
+.token-2 { background: color-mix(in srgb, var(--c-a) 14%, transparent); }
+.token-3 { background: color-mix(in srgb, var(--c-b) 16%, transparent); }
+.attn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 6px;
+  padding: 22px 14px;
+  font-size: 1.05rem;
+}
+.attn-word {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--c-a) calc(var(--w) * 140%), transparent);
+}
+.attn-word small {
+  font-size: 0.7rem;
+  color: inherit;
+  opacity: 0.75;
+}
+.attn-word.is-focus {
+  outline: 2px solid var(--c-b);
+}
+.next-prompt {
+  margin: 14px 14px 0;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.95rem;
+}
+.next-cursor {
+  color: var(--c-a);
+}
+.rag-docs {
+  margin: 0;
+  padding: 12px 14px 12px 34px;
+  display: grid;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+.rag-docs li {
+  padding: 5px 8px;
+  border-radius: 8px;
+  color: var(--muted);
+}
+.rag-docs li.is-hit {
+  color: var(--text);
+  background: color-mix(in srgb, var(--c-a) 18%, transparent);
+}
+.rag-docs li.is-answer span {
+  text-decoration: underline;
+  text-decoration-color: var(--c-b);
+  text-underline-offset: 3px;
+}
+.rag-docs small {
+  margin-left: 8px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  color: var(--c-a);
+}
+
+/* ---------- "In the wild" sims: run log, ratings grid ---------- */
+.run-log {
+  list-style: none;
+  margin: 0;
+  padding: 14px;
+  display: grid;
+  gap: 6px;
+  font-size: 0.9rem;
+  min-height: 140px;
+}
+.run-log li {
+  display: grid;
+  grid-template-columns: 4.5em 5em 1fr;
+  gap: 10px;
+  align-items: baseline;
+}
+.run-log li.is-empty {
+  display: block;
+  color: var(--muted);
+}
+.run-log strong {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  color: var(--c-a);
+}
+.run-log small {
+  color: var(--muted);
+}
+.rec-grid {
+  margin: 14px auto;
+  border-collapse: separate;
+  border-spacing: 3px;
+  font-size: 0.82rem;
+  text-align: center;
+}
+.rec-grid th {
+  font-weight: 600;
+  padding: 4px 6px;
+  color: var(--muted);
+}
+.rec-grid td {
+  width: 3.4em;
+  height: 2.2em;
+  border-radius: 6px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--c-a) calc(var(--r) * 60%), var(--surface));
+}
+.rec-grid td.is-guess {
+  font-weight: 400;
+  font-style: italic;
+  opacity: 0.75;
+  outline: 1px dashed var(--line);
+}
+.rec-grid tr.is-who th {
+  color: var(--c-b);
+}
+/* On a phone the grid scrolls sideways inside its box rather than being cut off. */
+.rec-wrap {
+  overflow-x: auto;
+  padding: 0 8px;
+}
+@media (max-width: 560px) {
+  .rec-grid {
+    font-size: 0.66rem;
+    border-spacing: 2px;
+  }
+  .rec-grid td {
+    width: 2.4em;
+  }
+  .rec-grid th {
+    padding: 2px;
+    font-size: 0.6rem;
+  }
+}
+
+/* ---------- The plain topic name above each playful title ---------- */
+.topic-tag {
+  display: block;
+  margin: 0 0 4px;
+  font: 600 0.72rem/1.3 var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-a);
+}
+.lesson-head .topic-tag {
+  font-size: 0.78rem;
+  margin-bottom: 6px;
+}
+.lesson-list .topic-tag {
+  font-size: 0.68rem;
+  margin-bottom: 3px;
+}
+.rail-topic {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--muted);
+  margin-top: 1px;
+}
+@media (max-width: 1000px) {
+  /* The rail turns into a row of chips: titles only. */
+  .rail-topic {
+    display: none;
+  }
+}
+
+/* ---------- Backprop chain ---------- */
+.bp-chain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 26px 12px;
+}
+.bp-node {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 88px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.bp-node small {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.bp-node strong {
+  font: 700 1.2rem var(--font-mono);
+}
+.bp-edge {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  font: 0.8rem var(--font-mono);
+}
+.bp-edge::after {
+  content: "→";
+  order: -1;
+  color: var(--muted);
+}
+.bp-edge em {
+  font-style: normal;
+  color: var(--c-b);
+}
+.bp-edge.is-loss span {
+  color: var(--muted);
+}

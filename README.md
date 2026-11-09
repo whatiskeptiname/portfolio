@@ -200,8 +200,26 @@ chapter's idea (`src/learn/Covers.jsx`) and a one-line hook; clicking one opens 
 lessons out of the tile, the same way the planet opens. They're dark unless the
 visitor has picked light.
 
-Chapters and lessons have short, memorable titles (with a plain description under
-each), and each opens with **how it started**: a few dated sentences on where the idea
+There are eight chapters, 56 lessons, in reading order:
+
+| Chapter | What it covers |
+| --- | --- |
+| **Fitting in** | Linear and logistic regression, gradient descent, regularisation, features and scaling, k-means clustering, PCA, anomaly detection |
+| **Thinking in layers** | Neurons and the perceptron, hidden layers and activations, backpropagation, training deep networks (Adam, dropout, early stopping), recurrent networks and LSTMs |
+| **Forests for the trees** | Decision trees, overfitting, metrics, random forests, boosting, honest testing, explaining predictions |
+| **Certainly uncertain** | Kinds of uncertainty, estimation, Bayesian updating, Gaussians, Bayesian networks, Gaussian processes, MCMC |
+| **Tomorrow, roughly** | Time-series components, stationarity, autocorrelation, classical methods, ARIMA, ML forecasting, evaluation, hierarchies |
+| **Seeing is computing** | Convolution, deep networks, detection, segmentation, generative models, vision transformers, shipping models |
+| **Words, by numbers** | Embeddings, tokens, attention, text generation, hallucination, retrieval (RAG), prompting versus fine-tuning |
+| **Out in the wild** | Serving, versioning, data drift, A/B testing, retraining, fairness, recommender systems |
+
+The maths behind the newer chapters' simulations is in `src/learn/mlmath.js`, tested
+in `mlmath.test.js`; where a simulation uses illustrative numbers rather than a real
+model (the attention weights, the fine-tuning curves), it says so.
+
+Chapters and lessons have short, memorable titles, each with its plain textbook name
+shown above it (for example *Linear regression* over "Drawing the best straight line";
+the names live in `src/learn/topics.js`) and a plain description under it, and each opens with **how it started**: a few dated sentences on where the idea
 came from and why. Then every lesson gives a fast path: **in 60 seconds** (the idea in a few plain
 sentences, plus three things to remember), **for example** (a concrete story), **try
 it** (one or more simulations), and **in practice** (what you'd adjust, what goes
@@ -303,7 +321,8 @@ swing there.
 
 **Phones and tablets** get their own layout: a one-row toolbar with the camera
 views and tools behind **⋯**, the speedometer and minimap in the top corners so the
-road stays clear, and see-through steering and pedal buttons under the thumbs. The
+road stays clear, and see-through steering and pedal buttons under the thumbs,
+with a **Drift** button (the handbrake) above the pedals in the car. The
 picture renders at about the same pixel count as a laptop at the same setting, so
 it isn't blocky on a small screen.
 

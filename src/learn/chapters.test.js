@@ -8,6 +8,7 @@ describe("the lessons", () => {
   it("every catalogue entry has a title, a blurb and a short hook for the landing page", () => {
     for (const c of CATALOG) {
       expect(c.title).toBeTruthy();
+      expect(c.topic).toBeTruthy();
       expect(c.blurb).toBeTruthy();
       expect(c.hook).toBeTruthy();
       expect(c.hook.length).toBeLessThan(70);
@@ -32,6 +33,7 @@ describe("the lessons", () => {
       for (const lesson of chapter.lessons) {
         it(`${lesson.title} is complete`, () => {
           expect(lesson.title).toBeTruthy();
+          expect(lesson.topic).toBeTruthy(); // its plain textbook name
           expect(lesson.lead).toBeTruthy();
           expect(lesson.history).toBeTruthy();
           // The walkthrough: the method in one line, and a scene for each point to remember.

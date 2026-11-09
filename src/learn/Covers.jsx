@@ -154,10 +154,126 @@ function VisionCover({ t }) {
   );
 }
 
-const COVERS = { trees: TreesCover, bayes: BayesCover, time: TimeCover, vision: VisionCover };
+// A line settling into the points by gradient descent: each frame is one step.
+function FoundationsCover({ t }) {
+  const pts = useMemo(() => {
+    const rand = rng(21);
+    return range(26).map(() => {
+      const x = rand();
+      return { x, y: 0.15 + 0.7 * x + normal(rand) * 0.07 };
+    });
+  }, []);
+  const sx = (v) => 24 + v * (W - 48);
+  const sy = (v) => H - 20 - v * (H - 40);
+  // Gradient descent from a flat line, one step per tenth of a second, looping.
+  const steps = Math.floor((t % 7) * 10);
+  let a = 0.9;
+  let b = -0.6;
+  for (let i = 0; i < steps; i++) {
+    let ga = 0;
+    let gb = 0;
+    for (const p of pts) {
+      const e = a + b * p.x - p.y;
+      ga += e;
+      gb += e * p.x;
+    }
+    a -= (0.9 * ga) / pts.length;
+    b -= (0.9 * gb) / pts.length;
+  }
+  return (
+    <>
+      {pts.map((p, i) => (
+        <g key={i}>
+          <line className="line-bad thin" x1={sx(p.x)} x2={sx(p.x)} y1={sy(p.y)} y2={sy(Math.max(0, Math.min(1, a + b * p.x)))} opacity="0.6" />
+          <circle className="dot-b" cx={sx(p.x)} cy={sy(p.y)} r="4" />
+        </g>
+      ))}
+      <line className="line-a thick" x1={sx(0)} y1={sy(a)} x2={sx(1)} y2={sy(a + b)} />
+    </>
+  );
+}
+
+// The next word, picked one at a time: bars of probability, the top one highlighted.
+const PHRASE = ["The", "capital", "of", "Nepal", "is", "Kathmandu"];
+function LanguageCover({ t }) {
+  const n = Math.floor(t % 7) % PHRASE.length;
+  const rand = rng(n + 5);
+  const bars = range(6).map((i) => (i === 0 ? 0.55 : 0.35 * rand() * (1 - i / 7)));
+  const bw = (W - 60) / 6;
+  return (
+    <>
+      <text className="label" x={W / 2} y={26} textAnchor="middle" style={{ fontSize: 15 }}>
+        {PHRASE.slice(0, n + 1).join(" ")}▍
+      </text>
+      {bars.map((v, i) => (
+        <rect key={i} className={i === 0 ? "bar-a" : "bar-muted"} x={30 + i * bw + 4} y={H - 20 - v * 220} width={bw - 8} height={v * 220} rx="4" />
+      ))}
+    </>
+  );
+}
+
+// Live data drifting away from the training data, and the alarm going off.
+function WildCover({ t }) {
+  const shift = 4 * (0.5 - 0.5 * Math.cos(((t % 8) / 8) * Math.PI * 2));
+  const xs = range(14).map((i) => i);
+  const bump = (x, mu) => Math.exp(-((x - mu) ** 2) / 6);
+  const bw = (W - 40) / 14;
+  return (
+    <>
+      {xs.map((x) => (
+        <g key={x}>
+          <rect className="bar-muted" x={20 + x * bw + 2} y={H - 20 - bump(x, 5) * 140} width={bw / 2 - 2} height={bump(x, 5) * 140} />
+          <rect className={shift > 2.5 ? "bar-bad" : "bar-a"} x={20 + x * bw + bw / 2} y={H - 20 - bump(x, 5 + shift) * 140} width={bw / 2 - 2} height={bump(x, 5 + shift) * 140} />
+        </g>
+      ))}
+    </>
+  );
+}
+
+// A small network: signals flow forward along the edges, then the blame flows back.
+function NeuralCover({ t }) {
+  const layers = [3, 5, 5, 2];
+  const pos = layers.map((n, l) => range(n).map((i) => [40 + l * ((W - 80) / 3), H / 2 + (i - (n - 1) / 2) * 34]));
+  const p = (t % 6) / 6; // 0–0.5 forward, 0.5–1 backward
+  const front = p < 0.5 ? p * 2 * 3 : 3 - (p - 0.5) * 2 * 3; // which layer gap is lit
+  const back = p >= 0.5;
+  return (
+    <>
+      {pos.slice(0, -1).map((col, l) =>
+        col.map(([x1, y1], i) =>
+          pos[l + 1].map(([x2, y2], j) => {
+            const lit = Math.max(0, 1 - Math.abs(front - (l + 0.5)) * 1.6);
+            return <line key={`${l}-${i}-${j}`} className={back ? "line-b" : "line-a"} x1={x1} y1={y1} x2={x2} y2={y2} opacity={0.12 + lit * 0.7} strokeWidth="1.5" />;
+          })
+        )
+      )}
+      {pos.flat().map(([x, y], k) => (
+        <circle key={k} className="dot-a" cx={x} cy={y} r="7" />
+      ))}
+    </>
+  );
+}
+
+const COVERS = { foundations: FoundationsCover, neural: NeuralCover, trees: TreesCover, bayes: BayesCover, time: TimeCover, vision: VisionCover, language: LanguageCover, wild: WildCover };
 
 // What each cover is showing: the method, and the step it's on (by its clock).
 const CAPTIONS = {
+  neural: (t) => {
+    const p = (t % 6) / 6;
+    return { method: "Backpropagation", step: p < 0.5 ? "1 · Signals flow forward, layer by layer" : p < 0.8 ? "2 · The error flows back as blame" : "3 · Every weight takes a small step" };
+  },
+  foundations: (t) => {
+    const n = Math.floor((t % 7) * 10);
+    return { method: "Gradient descent", step: n < 8 ? "1 · Start with a guess" : n < 30 ? "2 · Step downhill to shrink the errors" : "3 · Settle on the best line" };
+  },
+  language: (t) => {
+    const n = Math.floor(t % 7) % 6;
+    return { method: "Next-token prediction", step: n < 2 ? "1 · Score every possible next word" : n < 4 ? "2 · Pick one and add it" : "3 · Repeat, one token at a time" };
+  },
+  wild: (t) => {
+    const shift = 4 * (0.5 - 0.5 * Math.cos(((t % 8) / 8) * Math.PI * 2));
+    return { method: "Drift monitoring", step: shift < 1 ? "1 · Live data matches training" : shift < 2.5 ? "2 · The world starts to move" : "3 · Drift: time to retrain" };
+  },
   trees: (t) => {
     const p = t % 7;
     return {

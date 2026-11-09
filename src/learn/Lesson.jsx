@@ -30,6 +30,7 @@ export default function Lesson({ lesson, record, onDone, where }) {
   return (
     <article className="lesson">
       <header className="lesson-head">
+        {lesson.topic && <p className="topic-tag">{lesson.topic}</p>}
         <h1>{lesson.title}</h1>
         <p className="lesson-lead">{lesson.lead}</p>
         {where && <p className="lesson-where">{where}</p>}

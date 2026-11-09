@@ -30,7 +30,10 @@ const members = (() => {
 const pct = (v) => `${Math.round(v * 100)}%`;
 const sales = (i) => 100 + 0.6 * i + 18 * Math.sin((2 * Math.PI * (i - 2)) / 12);
 
+import { MORE_REELS } from "./more";
+
 export const REELS = {
+  ...MORE_REELS,
   // ---------------------------------------------------------------- trees
   "trees/splits": {
     method: "Try every yes/no question, keep the one that leaves the purest groups, then repeat inside each group.",
