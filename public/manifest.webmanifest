@@ -1,6 +1,7 @@
 {
   "name": "Susan Ghimire · Portfolio",
   "short_name": "Susan Ghimire",
+  "description": "Machine learning engineer: computer vision, model optimization and MLOps. Work, projects and hands-on machine learning lessons.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0b14",
