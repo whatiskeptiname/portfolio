@@ -19,7 +19,7 @@ import { DRONE_VIEW, groundOf, perceive } from "../lib/perception";
 import { cruisePoses, describeDecision, planSpeeds } from "../lib/decision";
 import { chooseAvoidance, clearanceAhead, localObstacles, shiftPoses } from "../lib/avoid";
 import { laneAhead } from "../lib/lanes";
-import { carsOverlap, decideOvertake, noteWaiting, trafficCap, trafficTime } from "../lib/traffic";
+import { carsOverlap, decideOvertake, leavesHighway, noteWaiting, placeGiveWays, trafficCap, trafficTime } from "../lib/traffic";
 import { terrainAt } from "../lib/terrain";
 import { carLamps } from "../lib/carLights";
 import { CAR_BODY, HANDBRAKE, collideCars, hitCar, resistance, settleShove, slideCar } from "../lib/carPhysics";
@@ -430,6 +430,9 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
             width: layout.width,
             path,
             why,
+            giveWays: (layout._giveWays ??= placeGiveWays(layout)),
+            // Turning off the highway soon (on a trip)? Into the service lane first.
+            exitAhead: s.route ? leavesHighway(s, posesAhead(s.route, s, layout.width, 80)) : false,
           };
           if (p.overtaking !== false) decideOvertake(s, rules, delta);
           else Object.assign(s, { overtake: null, laneShift: 0, boost: 1, overtakeNote: null });

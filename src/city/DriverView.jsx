@@ -21,7 +21,7 @@ import * as THREE from "three";
 import { BUILDING_RADIUS, bridgeElevation } from "../lib/layout";
 import { TONES } from "../lib/decision";
 import { DRONE_VIEW, VIEW, groundOf, visibleArea } from "../lib/perception";
-import { signalColor, trafficTime } from "../lib/traffic";
+import { signalColor, signalPostOffset, trafficTime } from "../lib/traffic";
 import { groundAt, onGround, surfaceMatrix } from "./globe3d";
 
 const RAYS = 120;
@@ -241,8 +241,8 @@ export function DriverView({ layout, state, type = "car" }) {
       for (const ap of sig.approaches) {
         // The light head on its post, on the left of the stop line (see Traffic.jsx).
         const yaw = Math.atan2(-ap.dir[0], -ap.dir[1]);
-        const px = ap.x - Math.cos(yaw) * 3.5;
-        const pz = ap.z + Math.sin(yaw) * 3.5;
+        const px = ap.x - Math.cos(yaw) * signalPostOffset(ap);
+        const pz = ap.z + Math.sin(yaw) * signalPostOffset(ap);
         const cause = focus && (focus.kind === "red" || focus.kind === "amber" || focus.kind === "box") && Math.hypot(focus.x - ap.x, focus.z - ap.z) < 0.5;
         items.push({ x: px, z: pz, yaw, w: 1, h: 2.1, d: 1, base: bridgeElevation(layout, ap.x, ap.z) + 3, kind: signalColor(sig, ap.group, now), cause });
       }

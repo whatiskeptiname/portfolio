@@ -19,6 +19,7 @@ import { buildTerrain } from "./terrain";
 // it, going the same way; on side roads, overtaking means the oncoming lane.
 export const ROAD_HALF_WIDTH = 5;
 export const ROAD_LANE = ROAD_HALF_WIDTH / 2; // centre of your lane, from the middle of the road
+const JUNCTION_MOUTH = 4; // the flared mouth where a side road widens into the highway (m)
 export const HIGHWAY_LANE_WIDTH = 4.25;
 export const HIGHWAY_HALF_WIDTH = 2 * HIGHWAY_LANE_WIDTH;
 export const HIGHWAY_LANE = 1.5 * HIGHWAY_LANE_WIDTH; // centre of the left (cruising) lane
@@ -27,11 +28,14 @@ export const onHighway = (z, margin = 1) => Math.abs(z) <= HIGHWAY_HALF_WIDTH + 
 /**
  * Where to drive, left of a road's centre line, at plane z: the highway's
  * cruising lane on it, a side road's lane away from it, blending smoothly over
- * the last few metres of a side road as it meets the highway (so a route
- * moves across without a kink).
+ * the junction's mouth as a side road meets the highway (so a route moves
+ * across without a kink).
  */
 export function laneOffsetAt(z) {
-  const t = Math.min(1, Math.max(0, (HIGHWAY_HALF_WIDTH + 8 - Math.abs(z)) / 8));
+  // (The blend happens in the junction's flared mouth, the last few metres
+  // before the highway, so a car is in the middle of its own lane right up
+  // to the give-way line or the stop line.)
+  const t = Math.min(1, Math.max(0, (HIGHWAY_HALF_WIDTH + JUNCTION_MOUTH - Math.abs(z)) / JUNCTION_MOUTH));
   return ROAD_LANE + (HIGHWAY_LANE - ROAD_LANE) * t * t * (3 - 2 * t);
 }
 /** How far over to pull out to overtake at plane z: the next lane on the highway, the oncoming one elsewhere. */

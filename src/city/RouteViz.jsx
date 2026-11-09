@@ -282,7 +282,7 @@ export function RouteViz({ layout, state, inside = false }) {
       <mesh ref={plan} geometry={planGeo} material={materials.path} renderOrder={3} frustumCulled={false} />
       {/* The stop wall: where the plan ends when it means to stop. */}
       <mesh ref={wall} visible={false} matrixAutoUpdate={false} renderOrder={6}>
-        <planeGeometry args={[3.6, 1.5]} />
+        <planeGeometry args={[4.2, 1.5]} /> {/* about a lane wide */}
         <meshBasicMaterial color="#ff3b5c" transparent opacity={0.5} side={THREE.DoubleSide} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
       </mesh>
       <mesh ref={aim} visible={false} renderOrder={5}>

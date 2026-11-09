@@ -73,12 +73,12 @@ export function laneAt(world, x, z, fx, fz) {
   const w = road.halfWidth;
   const side = wrapDelta(x - c.x, world.width) * lx + (z - c.z) * lz; // + = left of the centre line
   if (road.kind === "highway" && side > -0.3) {
-    // Two lanes our way: the left one (cruising) or the one beside it (overtaking).
+    // Two lanes our way: the left (service) lane for slower traffic, the right (fast) lane at cruising speed.
     const outer = side > HIGHWAY_LANE_WIDTH;
     const [far, near] = outer ? [w, HIGHWAY_LANE_WIDTH] : [HIGHWAY_LANE_WIDTH, 0];
     return {
       kind: "road",
-      label: `${NAMES.highway}${outer ? "" : " · overtaking lane"}`,
+      label: `${NAMES.highway} · ${outer ? "service lane" : "fast lane"}`,
       left: [c.x + lx * far, c.z + lz * far],
       right: [c.x + lx * near, c.z + lz * near],
       wrongWay: false,

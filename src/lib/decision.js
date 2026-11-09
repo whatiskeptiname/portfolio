@@ -29,7 +29,7 @@ export function describeDecision(s, { target = Infinity, traffic = null, route =
   let action;
   let tone;
   if (speed < 0.5 && target < 0.6) {
-    action = cause?.kind === "red" || cause?.kind === "amber" ? "Waiting" : cause?.kind === "roundabout" || cause?.kind === "box" ? "Giving way" : "Stopped";
+    action = cause?.kind === "red" || cause?.kind === "amber" ? "Waiting" : cause?.kind === "roundabout" || cause?.kind === "box" || cause?.kind === "giveway" ? "Giving way" : "Stopped";
     tone = "stop";
   } else if (stopping || (target < speed - 1.5 && target < 1)) {
     action = "Stopping";

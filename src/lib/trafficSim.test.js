@@ -105,3 +105,19 @@ describe("traffic", () => {
     expect(stoppedTime / (cars.length * 150)).toBeLessThan(0.35); // traffic keeps flowing
   }, 60000);
 });
+
+import { HIGHWAY_PACE } from "./trafficSim";
+import { onHighway } from "./layout";
+
+describe("traffic speeds", () => {
+  it("drive faster on the highway than in town, each by the same factor", () => {
+    const cars = createTraffic(layout, 18, createRng("pace"));
+    stepTraffic(cars, { world: layout, graph, signals: placeSignals(layout), t: 0, player: null }, 0.2);
+    const highway = cars.filter((c) => onHighway(c.z, 0));
+    const town = cars.filter((c) => !onHighway(c.z, 0));
+    expect(highway.length).toBeGreaterThan(0);
+    expect(town.length).toBeGreaterThan(0);
+    for (const c of highway) expect(c.autoSpeed).toBeCloseTo(c.cruise * HIGHWAY_PACE, 5);
+    for (const c of town) expect(c.autoSpeed).toBe(c.cruise);
+  });
+});

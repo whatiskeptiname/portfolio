@@ -18,7 +18,7 @@
 // are rectangles, and none is ever allowed to move into another.
 
 import { AUTOPILOT } from "./autopilot";
-import { HIGHWAY_HALF_WIDTH, HIGHWAY_LANE_WIDTH, ROAD_LANE, overtakeShiftAt, wrapDelta } from "./layout";
+import { HIGHWAY_HALF_WIDTH, HIGHWAY_LANE_WIDTH, ROAD_LANE, onHighway, overtakeShiftAt, wrapDelta } from "./layout";
 import { highwayJunctions } from "./junctions";
 
 // Each approach gets its own green in turn — eastbound, westbound, then each
@@ -37,7 +37,12 @@ const HALF_W = CAR_WIDTH / 2;
 // A stop line holds cars this far either side of its middle: both lanes of a
 // carriageway, or your lane and the one you'd overtake in.
 const STOP_REACH = HIGHWAY_LANE_WIDTH + 2;
+/** How far beyond the kerb a traffic light's post stands (m). */
+export const SIGNAL_POST_OUT = 1;
+/** Where a light's post stands, sideways from the middle of its stop line: on the verge, left of the lanes it controls. */
+export const signalPostOffset = (ap) => ap.half + SIGNAL_POST_OUT;
 export const PROBE = 26; // how far ahead (units) a car checks its path is clear
+const GIVE_WAY_GAP = 4.5; // seconds of clear highway a side-road car waits for
 
 /**
  * True if two cars (rectangles CAR_LENGTH × CAR_WIDTH, plus `margin` all
@@ -65,13 +70,19 @@ const hash = (n) => {
 };
 
 /**
- * @returns {{ id, x, offset, approaches: { x, z, dir: [number, number], group: "main" | "side" }[] }[]}
- *   (x, z) of each approach is the stop line's middle, on the lane that
- *   approaches it; `dir` the direction of travel there.
+ * @returns {{ id, x, offset, approaches: { x, z, half, dir: [number, number], group: "main" | "side" }[] }[]}
+ *   (x, z) of each approach is the stop line's middle, across the lanes that
+ *   approach it (both lanes of a highway carriageway; the one lane of a side
+ *   road), `half` half the stop line's length, kerb to centre line; `dir` the
+ *   direction of travel there.
  */
-export function placeSignals(world) {
-  // Spurs meeting the highway close together (one from each side, say) form
-  // one crossroads under one set of lights.
+/**
+ * Spurs meeting the highway close together form one junction. Only a real
+ * crossroads — side roads coming in from both sides — gets traffic lights;
+ * where a side road just joins from one side (a T-junction) the highway has
+ * priority and the side road gives way (see placeGiveWays).
+ */
+function junctionClusters(world) {
   const joins = highwayJunctions(world, { fillet: 4 }).sort((a, b) => a.x - b.x);
   const clusters = [];
   for (const j of joins) {
@@ -83,7 +94,33 @@ export function placeSignals(world) {
   if (clusters.length > 1 && Math.abs(wrapDelta(clusters[0][0].x - clusters.at(-1).at(-1).x, world.width)) < 24) {
     clusters[0].unshift(...clusters.pop());
   }
-  return clusters.map((list, id) => {
+  return clusters;
+}
+const isCrossroads = (list) => list.some((j) => j.side < 0) && list.some((j) => j.side > 0);
+
+/**
+ * The give-way lines where a side road joins the highway from one side: the
+ * line across the side road's lane, just short of the highway, and the
+ * junction's middle (`jx`) to judge the gap in the highway traffic from.
+ * @returns {{ x, z, half, dir: [number, number], jx, side }[]}
+ */
+export function placeGiveWays(world) {
+  return junctionClusters(world)
+    .filter((list) => !isCrossroads(list))
+    .flatMap((list) =>
+      list.map((j) => ({
+        x: wrapDelta(j.x - j.side * ROAD_LANE, world.width),
+        z: j.side * (HIGHWAY_HALF_WIDTH + 4.5),
+        half: ROAD_LANE,
+        dir: [0, -j.side],
+        jx: j.x,
+        side: j.side,
+      }))
+    );
+}
+
+export function placeSignals(world) {
+  return junctionClusters(world).filter(isCrossroads).map((list, id) => {
     const xs = list.map((j) => list[0].x + wrapDelta(j.x - list[0].x, world.width));
     const reach = (j) => world.roads[j.roadId].halfWidth + 4 + STOP_GAP; // half the mouth, plus a gap
     const west = Math.min(...xs.map((x, i) => x - reach(list[i])));
@@ -103,12 +140,13 @@ export function placeSignals(world) {
       approaches: [
         // Eastbound keeps to the north carriageway, westbound to the south;
         // each stop line spans both its lanes (its middle is between them).
-        { x: wrapDelta(west, world.width), z: -HIGHWAY_LANE_WIDTH, dir: [1, 0], group: "east" },
-        { x: wrapDelta(east, world.width), z: HIGHWAY_LANE_WIDTH, dir: [-1, 0], group: "west" },
+        { x: wrapDelta(west, world.width), z: -HIGHWAY_LANE_WIDTH, half: HIGHWAY_LANE_WIDTH, dir: [1, 0], group: "east" },
+        { x: wrapDelta(east, world.width), z: HIGHWAY_LANE_WIDTH, half: HIGHWAY_LANE_WIDTH, dir: [-1, 0], group: "west" },
         // Down each spur toward the highway: travel (0, -s), whose left is (-s, 0).
         ...list.map((j, k) => ({
           x: wrapDelta(j.x - j.side * ROAD_LANE, world.width),
           z: j.side * (HIGHWAY_HALF_WIDTH + 4 + STOP_GAP),
+          half: ROAD_LANE,
           dir: [0, -j.side],
           group: `side${k}`,
         })),
@@ -151,7 +189,7 @@ export function signalColor(signal, group, t) {
  * label, x, z, distance, room (how far before it must be down to `theirs`),
  * other (the car, if one), cap }.
  */
-export function trafficCap(self, { others = [], signals = [], t = 0, width, towns = [], path, why, lights = true, box = true }) {
+export function trafficCap(self, { others = [], signals = [], giveWays = [], t = 0, width, towns = [], path, why, lights = true, box = true }) {
   // Cars already on a roundabout or inside a signalled junction have right
   // of way over cars outside it, so junctions always clear.
   const zoneOf = (c) => {
@@ -226,6 +264,9 @@ export function trafficCap(self, { others = [], signals = [], t = 0, width, town
   // the no-overlap safety net uses, so the two always agree. That one test
   // covers the car ahead, a car crossing our path, and one coming head-on.
   const poses = path ?? Array.from({ length: PROBE }, (_, k) => ({ x: self.x + fx * (k + 1), z: self.z + fz * (k + 1), yaw: self.yaw, d: k + 1 }));
+  // On the highway, in the left lane (not overtaking ourselves), we mustn't
+  // pass a slower car in the lane to our right on its inside.
+  const noUndertaking = onHighway(self.z, 0) && (self.laneShift ?? 0) < 0.5;
   for (const o of others) {
     if (o === self || (o.alt ?? 0) > 1.5) continue;
     const [ahead, side] = local(o.x, o.z);
@@ -268,6 +309,36 @@ export function trafficCap(self, { others = [], signals = [], t = 0, width, town
       const gap = ahead - CAR_LENGTH - 2.2;
       const theirs = Math.max(0, o.speed) * along;
       bind(gap <= 0 ? 0 : Math.sqrt(theirs * theirs + 2 * BRAKE * gap), { ...what, other: o, x: o.x, z: o.z, distance: ahead, room: gap, theirs });
+    } else if (noUndertaking && along > 0.7 && Math.abs(side + HIGHWAY_LANE_WIDTH) < 1.6 && ahead > -CAR_LENGTH && ahead < 30 && o.speed > 1) {
+      // In the overtaking lane, just to our right: you pass on the right,
+      // never on the left. Stay behind it — it'll move back over once past.
+      const gap = ahead - CAR_LENGTH - 1;
+      const theirs = Math.max(0, o.speed) * along;
+      bind(gap <= 0 ? theirs : Math.sqrt(theirs * theirs + 2 * BRAKE * gap), { kind: "car", label: "Not passing on the left", other: o, x: o.x, z: o.z, distance: ahead, room: gap, theirs });
+    }
+  }
+
+  // Joining the highway at a T-junction: the highway has priority. Wait at
+  // the give-way line until there's a safe gap — nobody on the highway
+  // closer than GIVE_WAY_GAP seconds (or a few metres) to the junction, and
+  // nobody in it. Having waited a long while, it settles for a smaller gap.
+  if (lights) {
+    for (const gw of giveWays) {
+      if (gw.dir[0] * fx + gw.dir[1] * fz < 0.7) continue; // not heading for the highway here
+      const [ahead, side] = local(gw.x, gw.z);
+      const toLine = ahead - HALF_L - 0.4;
+      if (toLine < -0.6 || ahead > 40 || Math.abs(side) > STOP_REACH) continue; // committed, or not this road
+      const patient = (self.waiting ?? 0) > 8;
+      const gap = patient ? GIVE_WAY_GAP * 0.6 : GIVE_WAY_GAP;
+      const busy = others.some((o) => {
+        if (o === self || (o.alt ?? 0) > 1.5 || !onHighway(o.z, 0.5)) return false;
+        const ox = -Math.sin(o.yaw);
+        const toward = wrapDelta(gw.jx - o.x, width) * Math.sign(ox || 1); // how far it has to come
+        if (Math.abs(ox) < 0.5) return Math.abs(wrapDelta(gw.jx - o.x, width)) < 12; // turning in the junction
+        if (toward < -6) return false; // already past
+        return toward < 12 || (o.speed > 0.5 && toward / o.speed < gap);
+      });
+      if (busy) bind(stopIn(toLine), { kind: "giveway", label: "Giving way to the highway", x: gw.x, z: gw.z, distance: ahead, room: toLine, theirs: 0 });
     }
   }
 
@@ -320,6 +391,22 @@ const JUNCTION_CLEAR = 20; // and no junction within this of where the pass ends
 const SHIFT_RATE = 2.4; // units per second, sideways
 const FAST_SHIFT_RATE = 4.5; // ducking back in when something's coming
 const PASS_BOOST = 1.45; // speed factor when committing to finish a pass
+/**
+ * Lanes by speed on the highway: a car at its cruising speed, when that's
+ * highway pace (FAST_LANE_SPEED, 60 km/h, or more), drives in the right-hand
+ * (fast) lane; slower than that — a slow driver, or one well below its
+ * cruise — it keeps to the left-hand (service) lane, which is also where you
+ * get into before turning off. In the fast lane, a car moves over to let a
+ * faster one by. Nobody changes lane in a queue, near a junction (unless
+ * it's about to turn off there), or into a lane that isn't clear.
+ */
+export const FAST_LANE_SPEED = 15;
+const LANE_HOLD = 3; // seconds between one lane change and the next
+
+/** Does the planned path ahead (poses) leave the highway? */
+export function leavesHighway(self, poses = []) {
+  return onHighway(self.z, 0) && poses.some((p) => !onHighway(p.z, 1));
+}
 
 /**
  * Overtaking, decided from what the driver can see (`others`, `signals`,
@@ -337,7 +424,7 @@ const PASS_BOOST = 1.45; // speed factor when committing to finish a pass
  * self.laneShift (sideways offset to the right), self.boost (speed factor) and
  * self.overtakeNote (what it's doing or why it's holding back). `dt` in seconds.
  */
-export function decideOvertake(self, { others = [], signals = [], towns = [], width, canSeePoint = null, range = Infinity }, dt) {
+export function decideOvertake(self, { others = [], signals = [], towns = [], width, canSeePoint = null, range = Infinity, exitAhead = false }, dt) {
   const fx = -Math.sin(self.yaw);
   const fz = -Math.cos(self.yaw);
   const local = (x, z) => {
@@ -393,17 +480,64 @@ export function decideOvertake(self, { others = [], signals = [], towns = [], wi
     return true;
   };
   // How far we travel to get past a car `gap` ahead doing `speed`.
+  // On the highway, the next slow car up the lane we'd pull back into, close
+  // enough that ducking in behind it would only mean pulling out again.
+  const nextInLine = () => {
+    if (!onHighway(self.z, 0)) return null;
+    const shift = self.laneShift ?? 0;
+    const reach = CAR_LENGTH + 8 + Math.max(0, self.speed) * 1.5;
+    return (
+      ground
+        .map((c) => ({ c, pos: local(c.x, c.z) }))
+        .filter(({ c, pos: [a, s] }) => c !== o?.target && heading(c) > 0.5 && Math.abs(s - shift) < 2.1 && a > 0 && a < reach && c.speed < cruise - 2.5)
+        .sort((a, b) => a.pos[0] - b.pos[0])[0]?.c ?? null
+    );
+  };
   const passDistance = (gap, speed) => {
     const passV = cruise * PASS_BOOST;
     return (passV * (Math.max(0, gap) + CAR_LENGTH + 4)) / Math.max(0.5, passV - speed);
   };
+  // Which lane we belong in (see FAST_LANE_SPEED): the shift right from the
+  // service lane, 0 or one lane's width.
+  const laneClear = (side) =>
+    !ground.some((c) => {
+      const [a, s] = local(c.x, c.z);
+      if (heading(c) < 0.5 || Math.abs(s - side) > 2.1) return false;
+      return (a > -CAR_LENGTH && a < CAR_LENGTH + 10) || (a <= -CAR_LENGTH && a > -30 && c.speed > self.speed + 1);
+    });
+  const fasterBehind = () =>
+    ground.some((c) => {
+      const [a, s] = local(c.x, c.z);
+      return heading(c) > 0.5 && Math.abs(s) < 2.1 && a < -CAR_LENGTH && a > -25 && c.speed > self.speed + 1;
+    });
+  let base = 0;
+  if (onHighway(self.z, 0)) {
+    const v = Math.max(0, self.speed);
+    const now = Boolean(self.fastLane);
+    let want = now;
+    if (cruise < FAST_LANE_SPEED || exitAhead) want = false;
+    else if (v >= cruise * 0.85) want = true;
+    else if (v < cruise * 0.6) want = false;
+    if (want && now && fasterBehind()) want = false; // let them by
+    // (Once it has changed lane it settles a moment before changing again.)
+    self.laneHold = Math.max(0, (self.laneHold ?? 0) - dt);
+    const settled = self.laneHold <= 0 || exitAhead;
+    if (want !== now && settled && v > 3 && (exitAhead || !junctionWithin(35)) && laneClear(want ? -HIGHWAY_LANE_WIDTH : HIGHWAY_LANE_WIDTH)) {
+      self.fastLane = want;
+      self.laneHold = LANE_HOLD;
+    }
+    base = self.fastLane ? HIGHWAY_LANE_WIDTH : 0;
+  } else self.fastLane = false;
+  // In the fast lane there's nobody to overtake: you follow, and slower cars move over.
+  if (base > 0) self.overtake = null;
+
   let o = self.overtake; // { target, since, aborting }
-  let shiftTo = 0;
+  let shiftTo = base;
   self.boost = 1;
   self.overtakeNote = null;
   self.overtakeWait = Math.max(0, (self.overtakeWait ?? 0) - dt);
   if (!o && self.overtakeWait > 0) self.overtakeNote = "Can't overtake: waiting for the road to clear";
-  else if (!o) {
+  else if (!o && base === 0) {
     // The car we're stuck behind, if it's slow and close.
     const leader = ground
       .map((c) => ({ c, pos: local(c.x, c.z) }))
@@ -458,6 +592,7 @@ export function decideOvertake(self, { others = [], signals = [], towns = [], wi
       const [a2, s2] = local(c.x, c.z);
       return heading(c) > 0.5 && Math.abs(s2) < 2.1 && a2 > -(clearOf - 1) && a2 < CAR_LENGTH + 6;
     });
+    const next = !o.aborting && ahead < -clearOf ? nextInLine() : null;
     if (o.aborting) {
       // Drop back behind the slow car, then pull in — or, if we're already past it, just pull in.
       self.overtakeNote = `Aborting overtake: ${o.aborting}`;
@@ -469,10 +604,18 @@ export function decideOvertake(self, { others = [], signals = [], towns = [], wi
         shiftTo = OVERTAKE_SHIFT;
         self.boost = 0.45;
       }
-    } else if (ahead < -clearOf && roomToPullIn) {
+    } else if (ahead < -clearOf && roomToPullIn && !next) {
       self.overtake = null;
       self.overtakeNote = "Pulling back in";
       if (urgent) rate = FAST_SHIFT_RATE;
+    } else if (next) {
+      // Another slow car just up the lane: on the highway you stay out and
+      // pass the whole line, rather than weaving in and out between them.
+      o.target = next;
+      o.since = 0;
+      shiftTo = OVERTAKE_SHIFT;
+      self.boost = 1.3;
+      self.overtakeNote = "Overtaking · passing the line";
     } else {
       shiftTo = OVERTAKE_SHIFT;
       self.boost = oncoming ? PASS_BOOST : 1.3;
@@ -482,7 +625,9 @@ export function decideOvertake(self, { others = [], signals = [], towns = [], wi
   const now = self.laneShift ?? 0;
   const step = rate * dt;
   self.laneShift = Math.abs(shiftTo - now) <= step ? shiftTo : now + Math.sign(shiftTo - now) * step;
-  if (!self.overtakeNote && self.laneShift > 0.05) self.overtakeNote = "Pulling back in";
+  if (!self.overtakeNote && Math.abs(self.laneShift - shiftTo) > 0.05) {
+    self.overtakeNote = shiftTo > self.laneShift ? "Moving to the fast lane" : base === 0 && self.fastLane === false && now > HIGHWAY_LANE_WIDTH * 0.9 ? "Moving to the service lane" : "Pulling back in";
+  }
   return self.laneShift;
 }
 
@@ -490,7 +635,7 @@ export function decideOvertake(self, { others = [], signals = [], towns = [], wi
 export const trafficTime = () => performance.now() / 1000;
 
 // Vehicle-actuated control: green goes where cars are waiting.
-const ACTUATED = { minGreen: 3, maxMain: 12, maxSide: 7, detect: 45, gap: 2.5 };
+const ACTUATED = { minGreen: 3, minMain: 10, maxMain: 20, maxSide: 7, detect: 45, gap: 2.5 };
 
 /** Is anyone inside `sig`'s junction box? */
 function boxOccupied(sig, cars, width) {
@@ -514,7 +659,7 @@ export function approachDemand(ap, cars, width) {
     const dz = ap.z - c.z;
     const upstream = dx * ap.dir[0] + dz * ap.dir[1]; // how far before the line
     const lateral = Math.abs(dx * ap.dir[1] - dz * ap.dir[0]);
-    if (upstream > -1 && upstream < ACTUATED.detect && lateral < 4.5) n++;
+    if (upstream > -1 && upstream < ACTUATED.detect && lateral < (ap.half ?? ROAD_LANE) + 1.5) n++; // across all its lanes
   }
   return n;
 }
@@ -538,7 +683,10 @@ export function stepSignals(signals, cars, dt, width) {
       const max = st.group.startsWith("side") ? ACTUATED.maxSide : ACTUATED.maxMain;
       st.idle = demand[st.group] > 0 ? 0 : st.idle + dt; // time since the last car came along
       const done = st.idle > ACTUATED.gap || st.time > max;
-      if (st.time > ACTUATED.minGreen && waitingElsewhere && done) Object.assign(st, { phase: "amber", time: 0 });
+      // The highway has priority: once green it stays green a good while
+      // before a side road can have its turn.
+      const min = st.group.startsWith("side") ? ACTUATED.minGreen : ACTUATED.minMain;
+      if (st.time > min && waitingElsewhere && done) Object.assign(st, { phase: "amber", time: 0 });
     } else if (st.phase === "amber") {
       if (st.time > TIMING.amber) Object.assign(st, { phase: "clear", time: 0 });
     } else if (st.time > (sig.clear ?? TIMING.clear) && (st.time > (sig.clear ?? TIMING.clear) + 6 || !boxOccupied(sig, cars, width))) {

@@ -4,15 +4,21 @@
 // keeping a safe gap behind the car in front (lib/traffic) — then picks
 // another. Pure, so it's testable; src/city/Traffic.jsx draws them.
 
-import { PLAZA_RADIUS, collides, laneOffsetAt, wrapDelta, worldDistance } from "./layout";
+import { PLAZA_RADIUS, collides, laneOffsetAt, onHighway, wrapDelta, worldDistance } from "./layout";
 import { collideCars, settleShove } from "./carPhysics";
 import { AUTOPILOT } from "./autopilot";
 import { followRoute, nextTourStop, planRoute, posesAhead, routeStraight } from "./routing";
-import { carsOverlap, decideOvertake, hasPriority, noteWaiting, stepSignals, trafficCap } from "./traffic";
+import { carsOverlap, decideOvertake, hasPriority, leavesHighway, noteWaiting, placeGiveWays, stepSignals, trafficCap } from "./traffic";
 import { groundOf, perceive } from "./perception";
 
 const CAR = { accel: 10, brake: 24, drag: 0.6, steerRate: 1.9 };
 const THINK_EVERY = 0.1; // seconds between a car's decisions
+// On the open highway each driver goes faster than in town, by the same
+// factor: someone who dawdles at 35 km/h on a side road does about 55 there,
+// a hurrier at 65 does over 100. So the highway has a spread of speeds, and
+// lane discipline does the rest: everyone keeps left, faster cars pass on the
+// right, nobody passes on the left, and a line of slow cars is passed in one go.
+export const HIGHWAY_PACE = 1.6;
 
 /**
  * Puts `count` cars on the roads, spread out, each in its left-hand lane.
@@ -84,11 +90,19 @@ export function stepTraffic(cars, { world, graph, signals, t, player, random = M
     if (car.sinceThought >= THINK_EVERY || !car.input) {
       const tdt = Math.min(car.sinceThought, 0.25);
       car.sinceThought = 0;
-      car.autoSpeed = car.cruise;
+      car.autoSpeed = onHighway(car.z, 0) ? car.cruise * HIGHWAY_PACE : car.cruise;
       car.dt = tdt; // for its PID controllers
       // Decide from what the driver can see.
       const seen = perceive(car, { others, signals, towns: world.cities, buildings: world.buildings, width: world.width, ground });
-      const rules = { ...seen, t, width: world.width, path: posesAhead(car.route, car, world.width) };
+      const rules = {
+        ...seen,
+        t,
+        width: world.width,
+        path: posesAhead(car.route, car, world.width),
+        giveWays: (world._giveWays ??= placeGiveWays(world)),
+        // Turning off the highway soon? Into the service lane first.
+        exitAhead: leavesHighway(car, posesAhead(car.route, car, world.width, 80)),
+      };
       decideOvertake(car, rules, tdt);
       const why = {};
       const cap = trafficCap(car, { ...rules, why });
@@ -101,7 +115,8 @@ export function stepTraffic(cars, { world, graph, signals, t, player, random = M
       if (!(car.blocked > 0)) noteWaiting(car, cap, tdt);
       // Held up by other cars (not by a light)?
       const byLights = trafficCap(car, { signals: seen.signals, t, width: world.width });
-      car.stuck = Math.abs(car.speed) < 0.3 && byLights > 1 ? (car.stuck ?? 0) + tdt : 0;
+      // (Waiting at a give-way line for a gap isn't being stuck either.)
+      car.stuck = Math.abs(car.speed) < 0.3 && byLights > 1 && why.kind !== "giveway" ? (car.stuck ?? 0) + tdt : 0;
       const trip = followRoute(car, car.route, "car", world, undefined, cap);
       car.input = trip.input;
       if (trip.done) car.route = null;

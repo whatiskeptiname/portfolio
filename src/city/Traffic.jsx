@@ -11,7 +11,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { HIGHWAY_HALF_WIDTH, SURFACE_TOP, bridgeElevation, createRng } from "../lib/layout";
-import { signalColor, stepSignals, trafficTime } from "../lib/traffic";
+import { placeGiveWays, signalColor, signalPostOffset, stepSignals, trafficTime } from "../lib/traffic";
 import { createTraffic, stepTraffic } from "../lib/trafficSim";
 import { sunlightAt, surfaceMatrix } from "./globe3d";
 import { carLamps } from "../lib/carLights";
@@ -229,17 +229,33 @@ export function TrafficLights({ layout, signals, cars, player }) {
   // Static parts: posts, arms, lamp housings and stop lines, merged.
   const statics = useDisposable(() => {
     const parts = [];
-    const lane = 1.9;
     for (const ap of approaches) {
       const yaw = Math.atan2(-ap.dir[0], -ap.dir[1]); // facing the traffic that comes to it: back toward it
       const base = surfaceMatrix(R, ap.x, ap.z, bridgeElevation(layout, ap.x, ap.z), yaw);
-      // Post on the left of the lane (traffic keeps left), housing facing oncoming drivers.
+      // Post on the verge to the left of the lanes (traffic keeps left),
+      // housing facing oncoming drivers.
       const post = (g) => parts.push(g.applyMatrix4(base));
-      post(boxAt(0.18, 4.4, 0.18, -(lane + 1.6), 2.2, 0, "#2b2e35"));
-      post(boxAt(0.5, 1.5, 0.45, -(lane + 1.6), 4.0, 0.05, "#16181c"));
-      post(boxAt(0.7, 1.75, 0.08, -(lane + 1.6), 4.0, -0.22, "#0d0e10")); // backplate
-      // Stop line across the lane.
-      post(boxAt(3.6, 0.03, 0.4, 0, 0.27, 0, "#f4f4ee"));
+      const out = -signalPostOffset(ap);
+      post(boxAt(0.18, 4.4, 0.18, out, 2.2, 0, "#2b2e35"));
+      post(boxAt(0.5, 1.5, 0.45, out, 4.0, 0.05, "#16181c"));
+      post(boxAt(0.7, 1.75, 0.08, out, 4.0, -0.22, "#0d0e10")); // backplate
+      // Stop line across every lane it controls (both, on the highway), kerb to centre line.
+      post(boxAt(ap.half * 2 - 0.3, 0.03, 0.4, 0, 0.27, 0, "#f4f4ee"));
+    }
+    // Where a side road joins the highway from one side there are no lights:
+    // a double broken give-way line across its lane, and the upside-down
+    // triangle sign on a post at the verge.
+    for (const gw of placeGiveWays(layout)) {
+      const yaw = Math.atan2(-gw.dir[0], -gw.dir[1]);
+      const base = surfaceMatrix(R, gw.x, gw.z, bridgeElevation(layout, gw.x, gw.z), yaw);
+      const put = (g) => parts.push(g.applyMatrix4(base));
+      for (let x = -gw.half + 0.3; x < gw.half - 0.2; x += 0.85) {
+        for (const z of [0, 0.5]) put(boxAt(0.5, 0.03, 0.2, x + 0.25, 0.2, z, "#f4f4ee"));
+      }
+      const out = -signalPostOffset(gw);
+      put(boxAt(0.1, 2.3, 0.1, out, 1.15, 0, "#8d939c"));
+      put(painted(new THREE.CylinderGeometry(0.55, 0.55, 0.05, 3).rotateX(Math.PI / 2).translate(out, 2.45, 0.06), "#d8262f"));
+      put(painted(new THREE.CylinderGeometry(0.34, 0.34, 0.05, 3).rotateX(Math.PI / 2).translate(out, 2.45, 0.1), "#f6f3ea"));
     }
     if (!parts.length) return null;
     const g = mergeGeometries(parts);
@@ -256,7 +272,7 @@ export function TrafficLights({ layout, signals, cars, player }) {
         const yaw = Math.atan2(-ap.dir[0], -ap.dir[1]);
         const base = surfaceMatrix(R, ap.x, ap.z, bridgeElevation(layout, ap.x, ap.z), yaw);
         // Red on top, amber, green — facing back down the lane (+z local).
-        return [4.45, 4.0, 3.55].map((y) => base.clone().multiply(new THREE.Matrix4().makeTranslation(-(1.9 + 1.6), y, 0.29)));
+        return [4.45, 4.0, 3.55].map((y) => base.clone().multiply(new THREE.Matrix4().makeTranslation(-signalPostOffset(ap), y, 0.29)));
       }),
     [approaches, R, layout]
   );

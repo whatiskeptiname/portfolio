@@ -11,18 +11,18 @@ const layout = createLayout([group("Work", 4, "north"), group("C++", 6)], "lanes
 const EAST = [1, 0];
 
 describe("lane recognition", () => {
-  it("finds the left-hand (cruising) lane of the highway, lane line to kerb", () => {
+  it("finds the left-hand (service) lane of the highway, lane line to kerb", () => {
     const lane = laneAt(layout, 10, -HIGHWAY_LANE, ...EAST);
     expect(lane.label).toMatch(/highway/i);
-    expect(lane.label).not.toMatch(/overtaking/);
+    expect(lane.label).toMatch(/service lane/);
     expect(lane.right[1]).toBeCloseTo(-HIGHWAY_LANE_WIDTH, 1); // the dashed line between our two lanes
     expect(lane.left[1]).toBeCloseTo(-HIGHWAY_HALF_WIDTH, 1); // the north kerb: on our left heading east
     expect(lane.wrongWay).toBe(false);
   });
 
-  it("knows the highway's second lane each way is for overtaking", () => {
+  it("knows the highway's second lane each way is the fast lane", () => {
     const lane = laneAt(layout, 10, -2, ...EAST);
-    expect(lane.label).toMatch(/overtaking/);
+    expect(lane.label).toMatch(/fast lane/);
     expect(lane.right[1]).toBeCloseTo(0, 1); // the centre line
     expect(lane.left[1]).toBeCloseTo(-HIGHWAY_LANE_WIDTH, 1);
     expect(lane.wrongWay).toBe(false);
