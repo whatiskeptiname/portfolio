@@ -637,7 +637,10 @@ export function OpenSource() {
 }
 
 // ---------------------------------------------------------------------------
-// Learn: the doors into the lessons, one per chapter, each with its idea playing.
+// Learn: doors into four of the chapters, each with its idea playing: the
+// starting point, and the three closest to my own work (vision, language
+// models, production). "All lessons" leads to the rest.
+const HOME_CHAPTERS = ["foundations", "vision", "language", "wild"];
 
 export function LearnSection() {
   return (
@@ -648,7 +651,7 @@ export function LearnSection() {
           out of lectures I've taught and the hands-on tasks I designed and worked through.
         </SectionHead>
         <ol className="learn-doors">
-          {CATALOG.map((c) => (
+          {HOME_CHAPTERS.map((id) => CATALOG.find((c) => c.id === id)).map((c) => (
             <li key={c.id}>
               <a
                 className="tile learn-door"
@@ -661,6 +664,7 @@ export function LearnSection() {
                   <Cover kind={c.cover} />
                 </Suspense>
                 <span className="learn-door-text">
+                  <small className="topic-tag">{c.topic}</small>
                   <strong>{c.title}</strong>
                   <span>{c.hook}</span>
                 </span>
@@ -675,7 +679,7 @@ export function LearnSection() {
           onFocus={preloadLearn}
           onClick={(e) => enterLearn(e, learnHash())}
         >
-          All lessons <Icon name="arrowRight" />
+          All {CATALOG.length} chapters <Icon name="arrowRight" />
         </a>
       </div>
     </section>
