@@ -112,12 +112,28 @@ export const MORE_REELS = {
       scene(Bars, { bars: [{ label: "no hidden layer", value: 65, cls: "bar-muted", text: "65%" }, { label: "2 hidden neurons", value: 84, cls: "bar-muted", text: "84%" }, { label: "4 hidden neurons", value: 100, cls: "bar-a", text: "100%" }], max: 115, note: "Right on the XOR points" }),
     ],
   },
+  "neural/activations": {
+    method: "Bend each layer's output with an activation whose slope keeps the learning signal alive, and match the output layer to the answer.",
+    scenes: [
+      scene(Curves, { x: [-4, 4], y: [-1.2, 3], xLabel: "input", yLabel: "output", lines: [{ f: (x) => 1 / (1 + Math.exp(-x)), cls: "line-b", label: "sigmoid" }, { f: (x) => Math.max(0, x), label: "ReLU" }] }),
+      scene(Bars, { bars: [{ label: "sigmoid", value: 0.5, cls: "bar-bad", text: "≈ 0%" }, { label: "tanh", value: 4, cls: "bar-muted", text: "2%" }, { label: "ReLU (He init)", value: 100, cls: "bar-a", text: "100%" }], max: 110, note: "Learning signal left after 10 layers" }),
+      scene(Flow, { steps: [["CNNs", "ReLU"], ["Transformers", "GELU"], ["RNN gates", "sigmoid + tanh"], ["Output", "sigmoid · softmax · none"]] }),
+    ],
+  },
   "neural/backprop": {
     method: "Compute the error at the output, pass it backwards with the chain rule so every weight gets its share, then step each weight downhill.",
     scenes: [
       scene(Lines, { lines: ["output −0.14, wanted 0.80", ["error −0.94: who's to blame?", "bad"]], big: true }),
       scene(Flow, { tone: "b", steps: [["Output", "error"], ["× weight 2", "its share"], ["× tanh's slope", "passed back"], ["× weight 1", "its share"]] }),
       scene(Flow, { steps: [["Forward", "make a prediction"], ["Backward", "blame every weight"], ["Step", "w ← w − η · blame"], ["Repeat", "millions of times"]] }),
+    ],
+  },
+  "neural/normalisation": {
+    method: "After each layer, re-centre and rescale the values (over the batch, or within each example) so every layer sees a healthy range.",
+    scenes: [
+      scene(Curves, { x: [1, 20], y: [-4, 4], xLabel: "layer", yLabel: "spread (log)", lines: [{ f: (l) => Math.min(4, 0.15 * l), cls: "line-bad", label: "weights a bit big" }, { f: (l) => Math.max(-4, -0.2 * l), cls: "line-muted", label: "a bit small", dy: 14 }] }),
+      scene(Lines, { lines: ["y = γ · (x − mean) / spread + β", ["back to a standard range, every layer", "accent"]], big: true }),
+      scene(Flow, { steps: [["Batch norm", "across the batch · CNNs"], ["Layer norm", "within each example · transformers, RNNs"], ["Group norm", "small batches"]] }),
     ],
   },
   "neural/training": {

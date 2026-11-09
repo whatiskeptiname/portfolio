@@ -24,8 +24,10 @@ export const LESSON_TOPICS = {
   "foundations/anomalies": "Anomaly detection",
 
   "neural/neurons": "Artificial neurons and the perceptron",
-  "neural/layers": "Multilayer perceptrons and activation functions",
+  "neural/layers": "Multilayer perceptrons (hidden layers)",
+  "neural/activations": "Activation functions (ReLU, GELU, sigmoid, softmax)",
   "neural/backprop": "Backpropagation",
+  "neural/normalisation": "Normalisation (batch, layer and group norm)",
   "neural/training": "Training deep networks (Adam, dropout, early stopping)",
   "neural/sequences": "Recurrent neural networks and LSTMs",
 

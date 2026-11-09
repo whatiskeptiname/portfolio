@@ -25,7 +25,7 @@ export const CATALOG = [
     id: "neural",
     topic: CHAPTER_TOPICS.neural,
     title: "Thinking in layers",
-    blurb: "Neural networks from the ground up: one neuron and what it can't do, hidden layers that bend the line, backpropagation, training deep networks without memorising, and remembering sequences.",
+    blurb: "Neural networks from the ground up: one neuron and what it can't do, hidden layers, activation functions, backpropagation, normalisation, training deep networks without memorising, and remembering sequences.",
     hook: "How neural networks learn, from one neuron up.",
     cover: "neural",
   },

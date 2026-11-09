@@ -3,7 +3,7 @@
 // into the vision and language chapters.
 import React from "react";
 import { Eq } from "../kit";
-import { BackpropSim, LayersSim, MemorySim, NeuronSim, TrainingSim } from "../sims/neural";
+import { ActivationSim, BackpropSim, LayersSim, MemorySim, NeuronSim, NormSim, TraceSim, TrainingSim } from "../sims/neural";
 
 export default {
   history: "The artificial neuron is from 1943 and the first learning machine, the perceptron, from 1958. The field nearly died twice, then backpropagation (1986), big datasets and graphics cards (2012) made deep networks the engine behind today's vision and language models.",
@@ -178,6 +178,197 @@ export default {
     },
 
     {
+      id: "activations",
+      title: "The bend in the wire",
+      lead: "Activation functions, and which one goes where.",
+      history: "Early networks used the sigmoid, modelled on a neuron's firing rate, and tanh. Vinod Nair and Geoffrey Hinton popularised the rectified linear unit (ReLU) in 2010, and its use in AlexNet (2012) made deep networks trainable. Transformers since 2018 mostly use GELU, a smooth cousin of ReLU.",
+      gist: [
+        "The activation is the bend after each layer; without it a deep network collapses into a single straight line.",
+        "Its slope decides how well the learning signal survives the trip backwards: sigmoid and tanh squash it, ReLU-like ones pass it through.",
+        "Each kind of network has its habits: ReLU in CNNs, GELU in transformers, tanh and sigmoid inside RNN gates, and the output layer matched to the answer.",
+      ],
+      practice: {
+        adjust: [
+          "Hidden layers: ReLU (or leaky ReLU) for CNNs and MLPs, GELU for transformers.",
+          "Output layer, by the answer: sigmoid for yes/no, softmax for one of several classes, nothing (linear) for a number.",
+          "The weight initialisation that goes with it: He for the ReLU family, Xavier for tanh and sigmoid.",
+        ],
+        wrong: [
+          "Sigmoid or tanh in the hidden layers of a deep network: the gradient vanishes and early layers stop learning.",
+          "Dead ReLUs: neurons stuck below zero output nothing and get no gradient, so they never recover (a big learning rate makes it worse).",
+          "A sigmoid output on a regression target, which can never predict outside 0–1.",
+        ],
+        notice: ["Count neurons that output zero for every input (dead ReLUs).", "Gradients near zero in the first layers while the last ones still learn."],
+        ask: ["What activation is in each layer, and does the output layer match the kind of answer?", "How many neurons are dead after training?"],
+      },
+      idea: (
+        <>
+          <p>
+            After each layer adds up its inputs, the activation function bends the result: squashing it, cutting off the negatives, or curving it
+            slightly. That bend is what lets layers build shapes. But the same function sits on the path back too, when backpropagation passes the
+            blame: wherever its slope is small, the learning signal shrinks. Choosing an activation is choosing a trade-off between the two.
+          </p>
+          <p>
+            Where exactly does it happen? Each connection into a neuron carries one input times one weight. The neuron adds those up with its bias to
+            get a single number, z. The activation is applied to that z, inside the neuron, one neuron at a time, and only its result travels out
+            along the next layer's weights. The activation has no weights of its own: every number the network learns sits on the connections and
+            biases, and the activation is the one step between them that isn't a straight line.
+          </p>
+        </>
+      ),
+      example: (
+        <>
+          <p>
+            A team builds a 20-layer network with sigmoid activations, the textbook choice of the 1990s. The loss barely moves: the last layers learn,
+            but by the time the blame reaches the first ones it has been multiplied by numbers under a quarter twenty times, and it's all but zero.
+          </p>
+          <p>Switching the hidden layers to ReLU, with matching initialisation, and keeping a single sigmoid only at the output for the yes/no answer, it trains in an afternoon.</p>
+          <p>
+            Now the bend itself, with numbers you can check in the first simulation below. A small network has three inputs, three hidden neurons and
+            two outputs. Feed it the input (1, −2, 0.5). The first hidden neuron's weights are 0.8, −0.5 and 0.3, and its bias is 0.1, so
+          </p>
+          <Eq says="each input times the weight on its connection, plus the bias">z = 0.8·1 + (−0.5)·(−2) + 0.3·0.5 + 0.1 = 2.05</Eq>
+          <p>
+            The other two neurons get −1.15 and −1.1. Without an activation those three numbers go straight on, and output 1 comes to 2.31. Do the
+            algebra and the two layers fold into one: output 1 is always 1.47·x₁ − 0.43·x₂ − 0.53·x₃ + 0.24, for every input. Six hidden weights
+            bought nothing a single layer couldn't do.
+          </p>
+          <p>
+            With ReLU, the hidden layer passes on 2.05, 0 and 0: the two negative neurons are switched off for this input, and output 1 drops to
+            2.05. Feed it (2, 0.5, 1.5) instead and all three sums are positive, so ReLU changes nothing. That's the whole trick. Each input switches
+            on its own set of neurons, so each region of inputs gets its own straight line, and the network is a patchwork of them: a bent shape no
+            single layer can make.
+          </p>
+          <p>
+            The same switch works backwards. For the first input, neurons 2 and 3 have slope 0, so their incoming weights get no blame and don't
+            change from this example. With a sigmoid instead, neuron 1 sits at 0.89 and its slope is 0.89 × 0.11 ≈ 0.10, so only a tenth of the
+            blame gets through. Stack twenty of those and you have the team's problem.
+          </p>
+        </>
+      ),
+      play: [
+        { Sim: TraceSim, try: "Start with no activation and note both outputs for input #1. Switch to ReLU and watch which hidden neurons go to 0. Then try input #3." },
+        { Sim: ActivationSim, try: "Compare sigmoid, tanh and ReLU at 10 and 30 layers. Which keeps the learning signal alive?" },
+      ],
+      how: (
+        <>
+          <p>The usual suspects, with what they're for:</p>
+          <ul>
+            <li>
+              <strong>Sigmoid</strong> σ(z) = 1/(1+e<sup>−z</sup>): output 0–1, slope at most 0.25. For yes/no outputs and gates, not deep hidden layers.
+            </li>
+            <li>
+              <strong>Tanh</strong>: output −1 to 1, centred on zero, slope at most 1. Inside RNNs and LSTMs, alongside sigmoid gates.
+            </li>
+            <li>
+              <strong>ReLU</strong> max(0, z): slope exactly 1 for positive inputs, so the signal passes unshrunk; cheap. The default for CNNs and MLPs.{" "}
+              <strong>Leaky ReLU</strong> gives negatives a small slope so neurons can't die.
+            </li>
+            <li>
+              <strong>GELU</strong> z·Φ(z): a smooth ReLU that lets a little negative through; standard in BERT, GPT and vision transformers.
+            </li>
+            <li>
+              <strong>Softmax</strong>: turns the output layer's scores into probabilities over classes (or over next tokens, in the language chapter).
+            </li>
+          </ul>
+          <p>Going back through a layer multiplies the gradient by the weights and by the activation's slope. In a wide network its size changes per layer by roughly</p>
+          <Eq says="gain² comes from the weight initialisation; the slope is averaged over typical inputs">
+            factor ≈ gain² · E[ slope² ]
+          </Eq>
+          <p>
+            For sigmoid this is about 0.04 per layer (so 20 layers leave almost nothing); ReLU with He initialisation gives exactly 1. That's why
+            initialisation and activation are chosen together.
+          </p>
+          <p>Why each kind of network ends up with its own:</p>
+          <ul>
+            <li>
+              <strong>CNNs</strong> stack convolution, normalisation and ReLU, often 50 to 150 times. They need a slope that doesn't shrink over that
+              many layers, and something cheap, because each layer applies it at every pixel position of every feature map. ReLU is both. It also
+              leaves many outputs at exactly zero, so each filter answers only where its pattern appears.
+            </li>
+            <li>
+              <strong>Transformers</strong> use the activation only in the feed-forward part of each block (attention has its own softmax). Layer
+              norm sits just before it, so the sums arrive centred on zero, which is exactly where ReLU has its sharp corner and its dead side. GELU
+              rounds the corner and lets a little negative through, so neurons don't die and the gradient changes smoothly. In big models that trains
+              slightly better, and many recent ones go further with SwiGLU, a gated version.
+            </li>
+            <li>
+              <strong>RNNs and LSTMs</strong> reuse the same weights at every time step, so the hidden state is multiplied by the same matrix a
+              hundred times over. An unbounded ReLU there can blow up; tanh keeps the state between −1 and 1. The gates (forget, input, output) use
+              sigmoid because a gate is a fraction: 0 means block, 1 means let through, and only a 0–1 output can be read that way.
+            </li>
+            <li>
+              <strong>Output layers</strong> are chosen by the answer and the loss together: sigmoid with binary cross-entropy for yes/no, softmax
+              with cross-entropy for one class out of many, no activation with squared error for a number.
+            </li>
+          </ul>
+        </>
+      ),
+      quiz: [
+        {
+          kind: "number",
+          q: "A sigmoid's slope is at most 0.25. If the gradient were multiplied by 0.25 at each of 5 layers, what share would be left? (four decimals)",
+          answer: 0.001,
+          tolerance: 0.00005,
+          why: "0.25⁵ ≈ 0.00098: about a thousandth, after only five layers.",
+        },
+        {
+          kind: "choice",
+          q: "A network must pick one of 10 classes. What goes on its output layer?",
+          options: [
+            { t: "Softmax: probabilities over the 10 classes that add up to 1.", ok: true, why: "One-of-many answers need softmax." },
+            { t: "ReLU", why: "ReLU outputs aren't probabilities and don't add up to 1." },
+            { t: "Sigmoid on each class", why: "That's for independent yes/no labels (multi-label), where several can be true at once." },
+            { t: "No activation", why: "Raw scores need softmax to become probabilities." },
+          ],
+        },
+        {
+          kind: "choice",
+          q: "Which activation do most transformers use in their hidden layers?",
+          options: [
+            { t: "GELU", ok: true, why: "BERT, GPT and vision transformers use GELU (or close relatives like SwiGLU)." },
+            { t: "Sigmoid", why: "It would vanish the gradient in such deep models." },
+            { t: "Step function", why: "It has no useful slope, so it can't be trained with gradients." },
+            { t: "Tanh", why: "Used in RNNs, rarely in transformer layers." },
+          ],
+        },
+        {
+          kind: "number",
+          q: "A neuron's weights are 0.8, −0.5 and 0.3, its bias is 0.1, and the input is (1, −2, 0.5). After ReLU, what does it pass on?",
+          answer: 2.05,
+          tolerance: 0.01,
+          why: "z = 0.8 + 1 + 0.15 + 0.1 = 2.05. It's positive, so ReLU passes it through unchanged.",
+        },
+        {
+          kind: "choice",
+          q: "Why do LSTM gates use the sigmoid rather than ReLU?",
+          options: [
+            { t: "A gate is a fraction of the signal to let through, and only the sigmoid gives a value between 0 and 1.", ok: true, why: "0 blocks, 1 passes, and anything in between is a dial." },
+            { t: "Sigmoid has a bigger slope.", why: "It's smaller (at most 0.25); gates use it for its range, not its slope." },
+            { t: "ReLU can't be used in recurrent networks at all.", why: "It can, carefully, but a gate still needs a 0–1 value." },
+            { t: "It's cheaper to compute.", why: "ReLU is cheaper; the range is the reason." },
+          ],
+        },
+        { kind: "task", q: "Find the input in the traced layer where ReLU changes nothing at all, and show it with ReLU on.", Sim: TraceSim, check: (s) => s.act === "relu" && s.norm === "none" && s.ex === 2, done: "All three sums are positive for input #3, so ReLU is a straight line there. The bends come from the inputs that switch neurons off." },
+        { kind: "task", q: "Find an activation that keeps at least 90% of the gradient through 30 layers.", Sim: ActivationSim, check: (s) => s.depth >= 30 && s.left >= 0.9, done: "ReLU with He initialisation keeps the signal's size. That's much of why deep networks became trainable." },
+      ],
+      explain: {
+        q: "Why did ReLU replace the sigmoid in deep networks?",
+        options: [
+          { t: "Its slope is 1 for positive inputs, so the learning signal doesn't shrink as it passes back through many layers, while sigmoid's small slope makes it vanish.", verdict: "right", why: "Vanishing gradients were the obstacle; ReLU's slope removes most of it." },
+          { t: "It's more like a real neuron.", verdict: "wrong", why: "The sigmoid is closer to a firing rate. ReLU won on trainability." },
+          { t: "It's faster to compute.", verdict: "partly", why: "True, and it helps, but the main reason is the gradient." },
+          { t: "Its outputs are probabilities.", verdict: "wrong", why: "ReLU outputs any non-negative number; that's the sigmoid's job." },
+        ],
+      },
+      readMore: [
+        { title: "Deep Learning, section 6.3: hidden units", by: "Goodfellow, Bengio and Courville (free book)", url: "https://www.deeplearningbook.org/contents/mlp.html" },
+        { title: "Gaussian error linear units (GELUs)", by: "Hendrycks and Gimpel (2016)", url: "https://arxiv.org/abs/1606.08415" },
+        { title: "Delving deep into rectifiers (He initialisation)", by: "He et al. (2015)", url: "https://arxiv.org/abs/1502.01852" },
+      ],
+    },
+
+    {
       id: "backprop",
       title: "Passing the blame backwards",
       lead: "Backpropagation: how a network works out which weights to change.",
@@ -259,6 +450,187 @@ export default {
         { title: "What is backpropagation really doing?", by: "3Blue1Brown (video)", url: "https://www.youtube.com/watch?v=Ilg3gGewQ5U" },
         { title: "Calculus on computational graphs: backpropagation", by: "Christopher Olah", url: "https://colah.github.io/posts/2015-08-Backprop/" },
         { title: "The spelled-out intro to neural networks and backpropagation", by: "Andrej Karpathy (video)", url: "https://www.youtube.com/watch?v=VMj-3S1tku0" },
+      ],
+    },
+
+    {
+      id: "normalisation",
+      title: "Keeping the numbers in range",
+      lead: "Normalisation: batch norm, layer norm, and which network uses which.",
+      history: "Standardising inputs is as old as statistics. Sergey Ioffe and Christian Szegedy introduced batch normalisation in 2015, letting very deep CNNs train fast; layer normalisation (Jimmy Ba and colleagues, 2016) followed for RNNs and became part of every transformer; group normalisation (2018) covered small batches.",
+      gist: [
+        "Through many layers, values drift: slightly too-big weights make them explode, too-small ones make them vanish.",
+        "Normalisation re-centres and rescales the values after each layer, so every layer sees numbers in a healthy range.",
+        "Batch norm (CNNs) averages across the batch; layer norm (transformers, RNNs) averages within each example; group norm suits small batches.",
+      ],
+      practice: {
+        adjust: [
+          "Inputs: always standardise them (the features lesson).",
+          "CNNs with decent batches: batch norm. Transformers and RNNs: layer norm (or RMSNorm). Small batches, e.g. big images: group norm.",
+          "Where it sits: transformers today put layer norm before each block ('pre-norm'), which trains more stably.",
+        ],
+        wrong: [
+          "Batch norm with tiny batches: the batch statistics are noisy and training suffers.",
+          "Forgetting to switch batch norm to its saved statistics at prediction time (model.eval() in PyTorch), so predictions depend on the batch.",
+          "Batch norm in a sequence model, where examples differ in length.",
+        ],
+        notice: ["Predictions that change with the batch they're in: batch norm left in training mode.", "Activations or losses that grow layer by layer early in training."],
+        ask: ["Is the model in evaluation mode when we predict?", "What batch size per device, and is batch norm sensible at that size?"],
+      },
+      idea: (
+        <>
+          <p>
+            Push numbers through twenty layers and small effects compound: weights a little too big make values double and double again; a little too
+            small and they fade to nothing. Normalisation steps in after a layer and resets the values to a mean of zero and a spread of one, then lets
+            the network learn its own preferred scale. Every layer gets inputs in a range it can work with.
+          </p>
+          <p>
+            It sits between the weighted sum and the activation. A neuron adds up its weighted connections into z; normalisation adjusts that z;
+            the activation bends it; the result travels on along the next weights. So a CNN layer reads convolution, then batch norm, then ReLU. A
+            transformer block normalises its input first, runs attention or the feed-forward part on it, and adds the result back onto the
+            unnormalised input (the skip connection).
+          </p>
+          <p>
+            It changes no weights. It adds two learned numbers per neuron or channel, γ and β, not one per connection. And it cancels the weights'
+            overall size: double every weight going into a layer and every z doubles, but so do their mean and spread, so the normalised values come
+            out the same. That's how it rescues weights that would otherwise explode.
+          </p>
+        </>
+      ),
+      example: (
+        <>
+          <p>
+            A 50-layer image classifier won't train: the loss jumps about, and lowering the learning rate only makes it crawl. Adding batch
+            normalisation after each convolution lets it train at a learning rate ten times higher, in a fraction of the epochs.
+          </p>
+          <p>
+            The same team later fine-tunes it with batches of 2 images (they're huge medical scans), and batch norm becomes unstable. Swapping to group
+            norm, which doesn't depend on the batch, fixes it.
+          </p>
+          <p>
+            In numbers, with the traced layer from the activations lesson and a batch of four inputs. The first hidden neuron's sums for the four are
+            2.05, −0.3, 1.9 and −0.39.
+          </p>
+          <p>
+            Batch norm works down that column, one neuron across the batch: mean 0.82, spread 1.16, so input #1's 2.05 becomes (2.05 − 0.82) / 1.16
+            = 1.06. Layer norm works across the row instead, one input across its own neurons: input #1's three sums are 2.05, −1.15 and −1.1, with
+            mean −0.07 and spread 1.50, so they become 1.41, −0.72 and −0.69.
+          </p>
+          <p>
+            Both pull the numbers into the same range, but look at what each depends on. Under batch norm, input #1's value depends on the other
+            three inputs: put it in a different batch and its answer moves. Under layer norm it depends only on itself. Re-centring also changes
+            which neurons fire after ReLU. Input #3's second neuron goes from a faint 0.15 to 0.82 under batch norm, because 0.15 is above that
+            neuron's average across the batch.
+          </p>
+        </>
+      ),
+      play: [
+        { Sim: TraceSim, try: "Pick ReLU, then compare None, Batch norm and Layer norm for input #1 and input #3. Which hidden neurons switch on or off?" },
+        { Sim: NormSim, try: "With no normalisation, move the weight size from 1.0 to 2.0. Then try batch norm and layer norm, and shrink the batch to 2 with batch norm." },
+      ],
+      how: (
+        <>
+          <p>Every normalisation does the same two steps, differing only in which numbers the mean and spread are taken over:</p>
+          <Eq says="μ and σ are a mean and spread; γ and β are learned">
+            y = γ · (x − μ) / √(σ² + ε) + β
+          </Eq>
+          <ul>
+            <li>
+              <strong>Batch norm</strong>: μ and σ per channel, across the examples in the batch (and the image positions). Great for CNNs; needs a
+              reasonable batch; at prediction time uses running averages saved during training.
+            </li>
+            <li>
+              <strong>Layer norm</strong>: per example, across all its features. Independent of the batch and of sequence length, so it's the choice
+              for transformers and RNNs. <strong>RMSNorm</strong>, used in many recent language models, skips the mean and only rescales.
+            </li>
+            <li>
+              <strong>Group norm</strong>: per example, across groups of channels; for CNNs with small batches. <strong>Instance norm</strong> (one
+              channel at a time) is used in style transfer.
+            </li>
+          </ul>
+          <p>
+            The learned γ and β mean nothing is lost: the network can undo the normalisation if that's better. What it gains is stable values, a
+            smoother loss to descend, and the freedom to use larger learning rates.
+          </p>
+          <p>Why each kind of network ends up with its own:</p>
+          <ul>
+            <li>
+              <strong>CNNs</strong> take batch norm's mean for one channel over every image in the batch and every position in the image: 32 images of
+              56 × 56 is about 100,000 numbers per average, so the statistics are steady. That fits, because a channel is one filter and should behave
+              alike everywhere. Because β already shifts each channel, the convolution before it usually drops its bias. The batch noise even
+              regularises a little. When batches shrink to one or two big images, those averages fall apart, and group norm takes over.
+            </li>
+            <li>
+              <strong>Transformers</strong> handle sentences of different lengths padded together, and generate text one token at a time, often with
+              a batch of one. Batch statistics make no sense there, so layer norm works on each token by itself, across its few hundred features.
+              Putting it first in the block (pre-norm) leaves the skip connection as a clean, unnormalised path back, so the gradient reaches the
+              early layers of a 100-layer model. RMSNorm drops the mean and saves a little work.
+            </li>
+            <li>
+              <strong>RNNs</strong> apply the same layer at every time step, and the values drift as the sequence goes on. Batch norm would need
+              separate statistics for step 1, step 2 and so on; layer norm just normalises each step of each sequence as it comes.
+            </li>
+            <li>
+              <strong>At prediction time</strong> batch norm can't rely on a batch, so it uses running averages saved during training. Layer and group
+              norm compute everything from the example itself and behave identically in training and use.
+            </li>
+          </ul>
+        </>
+      ),
+      quiz: [
+        {
+          kind: "number",
+          q: "A unit's values in a batch have mean 4 and standard deviation 2. After normalisation (before γ and β), what does the value 7 become?",
+          answer: 1.5,
+          tolerance: 0.01,
+          why: "(7 − 4) / 2 = 1.5.",
+        },
+        {
+          kind: "choice",
+          q: "Which normalisation does a transformer language model use?",
+          options: [
+            { t: "Layer norm (or RMSNorm): per example, independent of the batch and sequence length.", ok: true, why: "Every transformer block has it." },
+            { t: "Batch norm", why: "Statistics across a batch of varying-length sequences work poorly; it's a CNN tool." },
+            { t: "None", why: "Without it, deep transformers are very hard to train." },
+            { t: "Instance norm", why: "That's for images, mostly style transfer." },
+          ],
+        },
+        {
+          kind: "choice",
+          q: "A CNN with batch norm gives different predictions for the same image depending on what else is in the batch. Why?",
+          options: [
+            { t: "It's still in training mode, normalising with the current batch's statistics instead of the saved ones.", ok: true, why: "Switch to evaluation mode for prediction." },
+            { t: "The weights change during prediction.", why: "Weights are fixed; the batch statistics are what differ." },
+            { t: "Batch norm is random.", why: "It's deterministic given the batch; the batch is the problem." },
+            { t: "The images are too big.", why: "Size isn't the cause; mode is." },
+          ],
+        },
+        {
+          kind: "choice",
+          q: "Why does a convolution followed by batch norm usually have no bias?",
+          options: [
+            { t: "Batch norm subtracts the mean, which removes any bias, and its own β adds a learned shift back.", ok: true, why: "The bias would be cancelled straight away, so it's wasted weight." },
+            { t: "Biases make batch norm slower.", why: "Speed isn't it; the bias is simply cancelled out." },
+            { t: "Convolutions can't have biases.", why: "They can, and do when nothing normalises after them." },
+            { t: "β is set to zero, so a bias is needed elsewhere.", why: "β is learned, and it takes over the bias's job." },
+          ],
+        },
+        { kind: "task", q: "In the traced layer, use ReLU and the normalisation that gives input #1 the same answer whatever else is in its batch.", Sim: TraceSim, check: (s) => s.act === "relu" && s.norm === "layer" && s.ex === 0, done: "Layer norm uses only input #1's own three sums, so the rest of the batch can't move it." },
+        { kind: "task", q: "With weights at 2.0 or more, keep the spread at layer 20 between 0.5 and 2.", Sim: NormSim, check: (s) => s.scale >= 2 && s.last > 0.5 && s.last < 2, done: "Normalisation rescues weights that would otherwise explode." },
+      ],
+      explain: {
+        q: "What does batch normalisation do, and when would you use layer norm instead?",
+        options: [
+          { t: "It rescales each layer's values to a standard range using statistics from the batch; layer norm does it within each example, so it suits transformers, RNNs and small batches.", verdict: "right", why: "Same idea, different averaging, chosen by the kind of network and batch." },
+          { t: "It makes all the weights the same size.", verdict: "wrong", why: "It acts on the values flowing through, not the weights." },
+          { t: "It keeps values in a healthy range so deep networks train.", verdict: "partly", why: "That's the purpose, but it misses the batch-versus-example difference that decides which one to use." },
+          { t: "It normalises the input data once before training.", verdict: "wrong", why: "That's input standardisation. Batch and layer norm act inside the network, at every layer." },
+        ],
+      },
+      readMore: [
+        { title: "Batch normalization", by: "Ioffe and Szegedy (2015)", url: "https://arxiv.org/abs/1502.03167" },
+        { title: "Layer normalization", by: "Ba, Kiros and Hinton (2016)", url: "https://arxiv.org/abs/1607.06450" },
+        { title: "Group normalization", by: "Wu and He (2018)", url: "https://arxiv.org/abs/1803.08494" },
       ],
     },
 

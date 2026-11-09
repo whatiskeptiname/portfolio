@@ -1,8 +1,9 @@
-// Simulations for the neural networks chapter: one neuron, layers, backprop,
-// training a deep network, and memory in recurrent networks.
+// Simulations for the neural networks chapter: one neuron, layers, activations,
+// a traced layer, backprop, normalisation, training a deep network, and memory
+// in recurrent networks.
 import React, { useMemo, useState } from "react";
 import { range, rng } from "../math";
-import { memoryLeft, trainMlp, xorPoints } from "../mlmath";
+import { ACTIVATIONS, gradientThrough, memoryLeft, spreadThroughLayers, TRACE, traceLayer, trainMlp, xorPoints } from "../mlmath";
 import { Axes, Button, Canvas, Choice, Readout, Sim, Slider, Toggle } from "../kit";
 import { fix, frame, linePath, pct, useReport } from "../plot";
 
@@ -294,3 +295,180 @@ export function MemorySim({ onState }) {
   );
 }
 
+
+// ---------------------------------------------------------------------------
+// Activation functions and what they do to the gradient
+
+const ACT_NAMES = [
+  ["sigmoid", "Sigmoid"],
+  ["tanh", "Tanh"],
+  ["relu", "ReLU"],
+  ["leaky", "Leaky ReLU"],
+  ["gelu", "GELU"],
+];
+
+export function ActivationSim({ onState }) {
+  const [name, setName] = useState("sigmoid");
+  const [depth, setDepth] = useState(10);
+  const a = ACTIVATIONS[name];
+  const left = gradientThrough(name, depth);
+  useReport(onState, { name, depth, left: +left.toPrecision(3) });
+  const X = frame([-4, 4], [56, 330]);
+  const Y = frame([-1.2, 4], [H - 40, 16]);
+  const xs = range(161).map((i) => -4 + i / 20);
+  const G = frame([1, 30], [400, W - 16]);
+  const GY = frame([-8, 1], [H - 40, 16]); // log10 of the gradient left
+  return (
+    <Sim
+      label="Compare activation functions and how much gradient survives through depth"
+      controls={
+        <>
+          <Choice label="Activation" options={ACT_NAMES} value={name} onChange={setName} />
+          <Slider label="Layers to pass back through" value={depth} min={1} max={30} onChange={setDepth} />
+        </>
+      }
+      readouts={
+        <>
+          <Readout label="Output range" value={a.range} />
+          <Readout label="Slope at 0" value={fix(a.df(0), 2)} />
+          <Readout label={`Gradient left after ${depth} layers`} value={left < 1e-4 ? left.toExponential(1) : pct(left, left < 0.1 ? 1 : 0)} tone="accent" />
+        </>
+      }
+    >
+      <Canvas width={W} height={H}>
+        <Axes x={X} y={Y} xTicks={[-4, -2, 0, 2, 4]} yTicks={[-1, 0, 1, 2, 3, 4]} xLabel="input" yLabel="output (solid) and slope (dashed)" />
+        <path className="line-a thick" d={linePath(xs.map((x) => [x, Math.max(-1.2, Math.min(4, a.f(x)))]), X.f, Y.f)} />
+        <path className="line-b dashed" d={linePath(xs.map((x) => [x, a.df(x)]), X.f, Y.f)} />
+        <Axes x={G} y={GY} xTicks={[1, 10, 20, 30]} yTicks={[-8, -4, 0]} fmtY={(v) => (v === 0 ? "100%" : `1e${v}`)} xLabel="layers back" yLabel="gradient left (log)" />
+        {ACT_NAMES.map(([n]) => (
+          <path key={n} className={n === name ? "line-a thick" : "line-muted thin"} d={linePath(range(30).map((i) => [i + 1, Math.max(-8, Math.log10(gradientThrough(n, i + 1, 800)))]), G.f, GY.f)} />
+        ))}
+        <circle className="dot-b" cx={G.f(depth)} cy={GY.f(Math.max(-8, Math.log10(left)))} r="6" />
+      </Canvas>
+      <p className="sim-legend">
+        Left: the activation and its slope. Right: how much of the learning signal reaches a layer that far back, with each activation's standard weight initialisation. A slope that's mostly below 1 shrinks the signal at every layer.
+      </p>
+    </Sim>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Normalisation: keeping the numbers in range
+
+export function NormSim({ onState }) {
+  const [norm, setNorm] = useState("none");
+  const [scale, setScale] = useState(1.6);
+  const [batch, setBatch] = useState(16);
+  const result = useMemo(() => spreadThroughLayers({ depth: 20, scale, norm, batch }), [scale, norm, batch]);
+  const last = result.spreads.at(-1);
+  useReport(onState, { norm, scale, batch, last: +last.toPrecision(3), batchEffect: +result.batchEffect.toFixed(3) });
+  const X = frame([1, 20], [56, W - 20]);
+  const Y = frame([-4, 4], [H - 40, 16]); // log10 of the spread
+  return (
+    <Sim
+      label="Push numbers through 20 layers, with and without normalisation"
+      controls={
+        <>
+          <Choice label="Normalisation" options={[["none", "None"], ["batch", "Batch norm"], ["layer", "Layer norm"]]} value={norm} onChange={setNorm} />
+          <Slider label="Weight size at the start" value={scale} min={0.6} max={2.4} step={0.05} onChange={setScale} format={(v) => v.toFixed(2)} />
+          <Slider label="Batch size" value={batch} min={2} max={64} onChange={setBatch} />
+        </>
+      }
+      readouts={
+        <>
+          <Readout label="Spread of values at layer 20" value={last > 1e4 ? "exploded" : last < 1e-4 ? "vanished" : fix(last, 2)} tone="accent" />
+          <Readout label="Same input, other batch-mates: output changes" value={pct(result.batchEffect)} />
+        </>
+      }
+    >
+      <Canvas width={W} height={H}>
+        <Axes x={X} y={Y} xTicks={[1, 5, 10, 15, 20]} yTicks={[-4, -2, 0, 2, 4]} fmtY={(v) => (v === 0 ? "1" : `1e${v}`)} xLabel="layer" yLabel="spread of the values (log scale)" />
+        <rect className="region-a" x={X.range[0]} y={Y.f(0.5)} width={X.range[1] - X.range[0]} height={Y.f(-0.5) - Y.f(0.5)} opacity="0.15" />
+        <path className="line-a thick" d={linePath(result.spreads.map((sp, i) => [i + 1, Math.max(-4, Math.min(4, Math.log10(sp)))]), X.f, Y.f)} />
+      </Canvas>
+      <p className="sim-legend">A real 20-layer ReLU network on random inputs. The band is a healthy range. Without normalisation, slightly too-big weights explode and too-small ones vanish; batch norm and layer norm rescale every layer back into range.</p>
+    </Sim>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// One layer, traced: where the weights, the normalisation and the activation
+// are each calculated, for a batch of four inputs.
+
+export function TraceSim({ onState }) {
+  const [act, setAct] = useState("none");
+  const [norm, setNorm] = useState("none");
+  const [ex, setEx] = useState(0);
+  const t = traceLayer(act, norm);
+  const { W1, W2, X } = TRACE;
+  useReport(onState, { act, norm, ex, y: t.Y[ex].map((v) => +v.toFixed(3)) });
+  const colX = [70, 330, 570];
+  const rowY = (n, i) => 150 + (i - (n - 1) / 2) * 92;
+  const edge = (w) => ({ className: w >= 0 ? "line-a" : "line-b", style: { strokeWidth: 1 + Math.abs(w) * 3 }, opacity: 0.55 });
+  return (
+    <Sim
+      label="Trace one input through a layer: weighted sums, normalisation, activation"
+      controls={
+        <>
+          <Choice label="Input from the batch" options={X.map((x, i) => [String(i), `#${i + 1} (${x.join(", ")})`])} value={String(ex)} onChange={(v) => setEx(+v)} />
+          <Choice label="Activation" options={[["none", "None"], ["relu", "ReLU"], ["sigmoid", "Sigmoid"], ["tanh", "Tanh"]]} value={act} onChange={setAct} />
+          <Choice label="Normalisation" options={[["none", "None"], ["batch", "Batch norm"], ["layer", "Layer norm"]]} value={norm} onChange={setNorm} />
+        </>
+      }
+      readouts={
+        <>
+          <Readout label="Output 1" value={fix(t.Y[ex][0])} tone="accent" />
+          <Readout label="Output 2" value={fix(t.Y[ex][1])} tone="accent" />
+        </>
+      }
+    >
+      <Canvas width={W} height={H}>
+        {W1.map((w, j) => w.map((wk, k) => <line key={`a${j}${k}`} {...edge(wk)} x1={colX[0] + 26} y1={rowY(3, k)} x2={colX[1] - 70} y2={rowY(3, j)} />))}
+        {W2.map((w, o) => w.map((wk, k) => <line key={`b${o}${k}`} {...edge(wk)} x1={colX[1] + 70} y1={rowY(3, k)} x2={colX[2] - 30} y2={rowY(2, o)} />))}
+        {X[ex].map((v, k) => (
+          <g key={`x${k}`}>
+            <circle className="trace-node" cx={colX[0]} cy={rowY(3, k)} r="26" />
+            <text className="label" x={colX[0]} y={rowY(3, k) + 5} textAnchor="middle">
+              {fix(v, 1)}
+            </text>
+          </g>
+        ))}
+        {[0, 1, 2].map((j) => (
+          <g key={`h${j}`}>
+            <rect className="trace-node" x={colX[1] - 70} y={rowY(3, j) - 36} width="140" height="72" rx="12" />
+            <text className="trace-line" x={colX[1] - 60} y={rowY(3, j) - 16}>
+              sum z = {fix(t.Z[ex][j])}
+            </text>
+            <text className={`trace-line${norm === "none" ? " is-off" : ""}`} x={colX[1] - 60} y={rowY(3, j) + 4}>
+              norm = {norm === "none" ? "—" : fix(t.N[ex][j])}
+            </text>
+            <text className={`trace-line is-out${act === "none" ? " is-off" : ""}`} x={colX[1] - 60} y={rowY(3, j) + 24}>
+              {act === "none" ? "out = " : `${act}(·) = `}
+              {fix(t.A[ex][j])}
+            </text>
+          </g>
+        ))}
+        {[0, 1].map((o) => (
+          <g key={`y${o}`}>
+            <circle className="trace-node is-out" cx={colX[2]} cy={rowY(2, o)} r="30" />
+            <text className="label" x={colX[2]} y={rowY(2, o) + 5} textAnchor="middle">
+              {fix(t.Y[ex][o])}
+            </text>
+          </g>
+        ))}
+        <text className="axis-label" x={colX[0]} y={H - 6} textAnchor="middle">
+          inputs
+        </text>
+        <text className="axis-label" x={colX[1]} y={H - 6} textAnchor="middle">
+          hidden layer
+        </text>
+        <text className="axis-label" x={colX[2]} y={H - 6} textAnchor="middle">
+          outputs
+        </text>
+      </Canvas>
+      <p className="sim-legend">
+        Lines are weights: teal positive, orange negative, thicker is bigger. Inside each hidden neuron, top to bottom: the weighted sum of its incoming connections plus its bias, then the normalisation, then the activation. Only the last number travels on to the next layer.
+      </p>
+    </Sim>
+  );
+}

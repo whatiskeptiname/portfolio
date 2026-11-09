@@ -1990,3 +1990,24 @@ a.chapter-cover:hover {
 .bp-edge.is-loss span {
   color: var(--muted);
 }
+
+/* ---------- Layer trace ---------- */
+.sim-svg .trace-node {
+  fill: var(--surface);
+  stroke: var(--line);
+  stroke-width: 1.5;
+}
+.sim-svg .trace-node.is-out {
+  stroke: var(--c-a);
+}
+.sim-svg .trace-line {
+  font: 600 13px var(--font-mono);
+  fill: var(--text);
+}
+.sim-svg .trace-line.is-out {
+  fill: var(--c-a);
+}
+.sim-svg .trace-line.is-off {
+  fill: var(--muted);
+  opacity: 0.6;
+}
