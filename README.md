@@ -315,12 +315,14 @@ settings, settings (sliders icon), ? help.
 equator on autopilot, the day–night cycle running, the Low graphics preset
 and sound muted. The autopilot's route planning and the inputs readout are on
 from the start (what it sees and decides is one key away, <kbd>I</kbd>), and the
-keys for your vehicle stay on screen while you drive or fly. On a device that
+keys for your vehicle show when you start driving or flying, fading once you've
+been at the wheel a few seconds. On a device that
 reports at least 8 processor threads, the first visit suggests switching to the
 High preset; it asks once, ever. One small hint bar at the bottom offers <kbd>C</kbd> *to drive*
 (*Tap to drive* on touch) and *Sound off · turn on*; each chip leaves once
 used. The full guide is behind **?** /
-<kbd>H</kbd>.
+<kbd>H</kbd>: it opens with every control for your vehicle and the
+shortcuts, and scrolls on small screens.
 
 ### The world
 
@@ -338,8 +340,9 @@ always gives the same planet. Distances are real: **1 unit = 1 m** (a car is
   side roads are one lane each way, 10 m across. Each district has a
   roundabout at its centre. Side roads meet roundabouts and the highway with
   flared, curved kerbs (`src/lib/junctions.js`). **Traffic keeps left**, as
-  in Nepal: on the highway everyone cruises in the left-hand lane and
-  overtakes in the one beside it; the stop lines at the lights span both.
+  in Nepal. On the highway, lanes go by speed: at cruising speed you drive in
+  the right-hand (fast) lane, slower traffic in the left-hand (service) lane;
+  the stop lines at the lights span both.
 - **Surfaces and speed limits:** 150 km/h on the highway, 90 on roads, 70 on
   district paving, 45 on grass (with less grip, gravel and judder).
 - **Street furniture:** street lamps along every road that light up at night
@@ -349,7 +352,9 @@ always gives the same planet. Distances are real: **1 unit = 1 m** (a car is
 - **Water.** A river pours off a cliff in the southern mountains as a
   waterfall, winds north across the equator and runs straight into a small sea
   over the north pole, with palm islands and a lighthouse. Roads cross it on
-  raised, arched bridges. Cars can't drive into water.
+  raised, arched bridges, level from kerb to kerb and long enough to clear the
+  water in every lane, with solid parapets you can scrape along but not drive
+  through (the drone can fly over them). Cars can't drive into water.
 - **Poles.** The north pole, which faces the black hole, is sea. The south
   pole is ringed by low snow-capped mountains; only a drone flying above the
   peaks gets over them.
@@ -360,7 +365,7 @@ always gives the same planet. Distances are real: **1 unit = 1 m** (a car is
   time-lapse of your system clock: one planet day every 12 real minutes
   (`src/lib/clock.js`). City windows, plazas, beacons, lamps and headlights
   follow the day/night line, and the HUD shows local planet time. You can also
-  hold it at Day, with the black hole low on the eastern horizon, or at Night
+  hold it at Day, noon with the black hole high overhead, or at Night
   under the Milky Way (see [Settings](#settings)).
 - **Space.** A baked Milky Way, seen from the night side only, with stars, an atmosphere glow, thin wispy
   cloud at 40 to 50 m (`Clouds.jsx`, with its own switch in the settings), and
@@ -381,7 +386,9 @@ always gives the same planet. Distances are real: **1 unit = 1 m** (a car is
   and reverses only once stopped.
 - **Speed and drag:** the tyres and the air hold the car back harder the
   faster it goes, so it gathers speed quickly from a standstill and more
-  slowly near the top; the road's limit still caps it.
+  slowly near the top. Driving it yourself on the highway it'll do **300
+  km/h** flat out (the signs still say 150, and the autopilot keeps to them);
+  on other roads and off-road their limits cap it.
 - **Cruise control:** <kbd>L</kbd> locks the speed you're doing and holds it
   while you steer (if the autopilot was driving, you take over). The
   accelerator still speeds you up past it, and you come back to it when you
@@ -393,7 +400,19 @@ always gives the same planet. Distances are real: **1 unit = 1 m** (a car is
   steered with the throttle and counter-steer (once the tail is loose it keeps
   rotating until you catch it). Let go and the rear grips again over about
   half a second, straightening up. The tyres squeal with the slide angle, and
-  the body leans out of it (`src/lib/carPhysics.js`).
+  the body leans out of it (`src/lib/carPhysics.js`). Off the asphalt it's
+  harder: on paving and grass the tyres dig in, so the tail swings out less
+  and the slide eats speed faster — you can still drift, just not as far.
+- **Drift effects and score:** a slide leaves soft grey smoke billowing off
+  the rear tyres (it swells, rises and thins away over about three seconds)
+  and dark skid marks on the road that fade after nine seconds, with a
+  rough skid sound under the squeal (`src/city/DriftFx.jsx`). While you
+  drift, a score at the top of the screen counts up with the slide angle and
+  your speed; straighten up for a moment and it's banked (*Drift! +1,240*),
+  flick from one side to the other and it carries on, crash mid-slide and it's
+  lost. Your best this visit is shown beside it (`src/lib/drift.js`).
+- **Road feel:** a fine buzz at speed and real judder on grass; the highway
+  rides 20% smoother than other roads.
 - **Indicators:** steering by hand, they come on once the car has actually
   turned about 20° with the wheel held over — the same at any speed — never
   for taps or small corrections.
@@ -405,7 +424,9 @@ always gives the same planet. Distances are real: **1 unit = 1 m** (a car is
   speed and turning the car parallel to the wall; a steeper hit loses more and
   swings it round further; head on, it stops dead and rebounds a little. The
   speed lost into the wall sets how loud the thud is, how hard the camera
-  jolts and how much the car shudders.
+  jolts and how much the car shudders. Knocked or spun into a tree or a wall,
+  the car is never stuck: any move that gets it less far in is allowed, so it
+  can always back or slide out; only moves deeper in are blocked.
 - **Cars share momentum:** hit another car (or have one hit you) and what
   counts is how fast the two were closing — both speeds together, so a head-on
   is far harder than a nudge at a light. The closing speed is shared out by
@@ -453,7 +474,7 @@ A racing FPV quadcopter.
 | --- | --- |
 | **Chase** | Behind the vehicle, pulling in if a building is in the way. Drag to glance around; it swings back after a moment. |
 | **FPV** | First person: the driver's seat in the car, the nose camera on the drone. The field of view widens with speed. Drag to look all round; it re-centres after 4 s. |
-| **Eye view** | A free third-person orbit round the vehicle. Drag to circle, scroll to zoom. |
+| **Eye view** | A free third-person orbit round the vehicle, starting high above and a little ahead of it so you see the road coming. Drag to circle, scroll to zoom. |
 
 During a transformation the camera swings to a three-quarter view.
 
@@ -468,8 +489,10 @@ On by default: the vehicle starts on the equator highway and drives itself.
 - **Go to:** drives you to any district by road, then hands the wheel
   back. <kbd>P</kbd> cancels the trip.
 - **Taking over:** steering or accelerating overrides it only while you hold
-  the keys. Let go and it re-plans from where you are. After 45 s with no
-  input it re-engages by itself.
+  the keys. Let go and, like a real car, the wheel comes back to centre and
+  the car carries straight on at the speed you were doing for half a second;
+  then the autopilot takes the wheel back and re-plans from where you are.
+  After 45 s with no input it re-engages by itself.
 - **Route planning** (`src/lib/routing.js`): Dijkstra over the road network,
   with routes laid down the middle of the left-hand lane and every corner
   smoothed into a curve. Roundabouts are driven round clockwise. A route never
@@ -537,9 +560,11 @@ On by default: the vehicle starts on the equator highway and drives itself.
   cruising), ending in a red wall where it means to stop. When a route is
   planned, the search spreads over the road network as a wave of glowing
   junctions.
-- **Inputs readout (<kbd>O</kbd>):** the controls going to the vehicle, and
-  whether they're yours or the autopilot's. For the car: throttle, brake,
-  reverse, handbrake, steering. For the drone: the four sticks.
+- **Inputs readout (<kbd>O</kbd>):** the controls going to the vehicle, gold
+  when they're yours and cyan when the autopilot's. For the car: throttle,
+  brake, reverse, handbrake, cruise and steering. For the drone: a
+  radio-control transmitter's two sticks (Mode 2), throttle and yaw on the
+  left, pitch and roll on the right.
 
 ### Traffic and traffic lights
 
@@ -554,6 +579,22 @@ autopilot:
 - They overtake slower cars when it's safe, give way to cars already on a
   roundabout (one car on the ring at a time), and never enter a junction box
   that isn't clear.
+- **Lanes by speed, by the rules of the road** (the same for them as for your
+  autopilot): on the highway each driver goes faster than in town by the same
+  factor (one who does 35 km/h on a side road does about 55; a hurrier at 65
+  does over 100), so there's a real spread of speeds.
+  - A car at its cruising speed, when that's highway pace (60 km/h or more),
+    drives in the **right-hand (fast) lane**; a slow driver, or one well
+    below its cruise, keeps to the **left-hand (service) lane**, which is
+    also where cars move before turning off.
+  - In the fast lane a car moves over to let a faster one by. In the service
+    lane a car stuck behind a slower one overtakes on the right and comes
+    back, passing a line of slow cars in one go rather than weaving.
+  - **Nobody passes on the left**: a car in the service lane stays behind a
+    slower one in the fast lane.
+  - Lane changes are signalled, checked in the mirror first, never made in a
+    queue or near a junction (except to turn off there), and a car settles
+    for a few seconds before changing again (`src/lib/traffic.js`).
 - At red lights they stop with the front bumper behind the line, holding the
   brake.
 - Stand-offs are resolved fairly: whoever has waited longest goes, and the car
@@ -563,12 +604,20 @@ autopilot:
 - **Amount** (Settings → Traffic): Off, Light (12 cars) or Busy (24). Other cars are
   solid to your car.
 
-**Traffic lights** stand wherever a side road meets the highway; close
-junctions share one crossroads. They're **vehicle-actuated**: each approach
-detects its queue, empty approaches are skipped, a green is extended while
-cars keep arriving (up to a cap) and ends early once its queue clears, the
-all-red holds until the junction is actually empty, and with no traffic they
-rest on the highway.
+**The highway has priority.** Traffic lights stand only at a real
+**crossroads**, where side roads come in from both sides of the highway (close
+junctions share one set). Where a side road just joins from one side, there
+are no lights: a double broken **give-way line** and an upside-down triangle
+sign, and cars coming off the side road wait there for a safe gap (about 4½
+seconds of clear highway, a little less once they've waited a while) — the
+highway traffic never stops for them.
+
+The lights are **vehicle-actuated**: each approach detects its queue, empty
+approaches are skipped, a green is extended while cars keep arriving (up to a
+cap) and ends early once its queue clears, the all-red holds until the
+junction is actually empty, and with no traffic they rest on the highway.
+The highway gets the long greens: once green it stays green at least 10
+seconds before a side road gets its turn.
 
 ### Sound and Planet Radio
 
@@ -580,8 +629,11 @@ rest on the highway.
   drone's motors and air rush, an ambient pad that changes
   chord between day and night, a rumble when you face the black hole, wind
   with altitude, the river, district chimes, interface clicks and the
-  transformation. Every visit starts muted; turn it on with 🔊 or the hint
-  chip. Volume and channels are in Settings.
+  transformation. A knock is a thud; a real hit is a **crash** — a heavy
+  thump, crunching metal and the clang of panels ringing, with breaking glass
+  on the hardest — louder the harder you hit and quieter from further off.
+  Every visit starts muted; turn it on with 🔊 or the hint chip. Volume and
+  channels are in Settings.
 - **Traffic you can hear:** the three nearest cars each have their own engine
   and tyre swish, louder as they near, heard from the side they're on, and
   higher-pitched as they come and lower as they go (the Doppler effect).
@@ -605,7 +657,7 @@ rest on the highway.
   their own level and mute button, so either can be off while the other
   plays; ambience and interface sounds.
 - **World:** time of day — *Cycle* (the 12-minute day), *Day* or *Night*
-  (held with the black hole on the horizon, or at midnight, wherever you are; the sun eases across when you
+  (held at noon with the black hole high overhead, or at midnight, wherever you are; the sun eases across when you
   switch).
 - **Drone controls:** Arcade or Realistic.
 - **Graphics:** Low (default) / Medium / High presets, plus resolution, frame-rate cap,
