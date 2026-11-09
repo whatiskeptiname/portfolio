@@ -200,3 +200,68 @@ describe("neural networks", () => {
     expect(memoryLeft(20, 0.98)).toBeGreaterThan(0.6);
   });
 });
+
+import { ACTIVATIONS, gradientThrough, spreadThroughLayers, TRACE, traceLayer } from "./mlmath";
+
+describe("activations and normalisation", () => {
+  it("knows each activation's value and slope", () => {
+    expect(ACTIVATIONS.sigmoid.df(0)).toBeCloseTo(0.25, 6);
+    expect(ACTIVATIONS.relu.f(-3)).toBe(0);
+    expect(ACTIVATIONS.relu.df(2)).toBe(1);
+    expect(ACTIVATIONS.gelu.f(0)).toBeCloseTo(0, 4);
+    expect(ACTIVATIONS.gelu.f(3)).toBeCloseTo(3 * 0.99865, 2);
+  });
+
+  it("sigmoid's gradient vanishes through depth far faster than ReLU's", () => {
+    expect(gradientThrough("sigmoid", 10)).toBeLessThan(1e-6);
+    expect(gradientThrough("tanh", 10)).toBeLessThan(0.1);
+    expect(gradientThrough("relu", 10)).toBeGreaterThan(0.9);
+    expect(gradientThrough("relu", 10)).toBeLessThan(1.1);
+  });
+
+  it("without normalisation values explode or vanish with depth; with it they stay put", () => {
+    const big = spreadThroughLayers({ depth: 20, scale: 2 }).spreads;
+    const small = spreadThroughLayers({ depth: 20, scale: 0.8 }).spreads;
+    expect(big.at(-1)).toBeGreaterThan(100);
+    expect(small.at(-1)).toBeLessThan(0.01);
+    for (const norm of ["batch", "layer"]) {
+      const s = spreadThroughLayers({ depth: 20, scale: 2, norm }).spreads;
+      expect(s.at(-1)).toBeGreaterThan(0.5);
+      expect(s.at(-1)).toBeLessThan(2);
+    }
+  });
+
+  it("batch norm depends on the batch, more so in tiny batches; layer norm doesn't", () => {
+    const tiny = spreadThroughLayers({ depth: 6, norm: "batch", batch: 2 }).batchEffect;
+    const big = spreadThroughLayers({ depth: 6, norm: "batch", batch: 64 }).batchEffect;
+    expect(tiny).toBeGreaterThan(big);
+    expect(spreadThroughLayers({ depth: 6, norm: "layer", batch: 2 }).batchEffect).toBeLessThan(1e-9);
+  });
+});
+
+describe("traceLayer", () => {
+  it("adds each input times its connection's weight, plus the bias", () => {
+    const { Z } = traceLayer("none", "none");
+    expect(Z[0][0]).toBeCloseTo(2.05, 6);
+    expect(Z[0][1]).toBeCloseTo(-1.15, 6);
+  });
+  it("collapses to one linear layer without an activation", () => {
+    const { Y } = traceLayer("none", "none");
+    TRACE.X.forEach((x, i) => expect(Y[i][0]).toBeCloseTo(1.47 * x[0] - 0.43 * x[1] - 0.53 * x[2] + 0.24, 6));
+  });
+  it("switches off negative neurons with ReLU, and changes nothing when all are positive", () => {
+    const relu = traceLayer("relu", "none");
+    const lin = traceLayer("none", "none");
+    expect(relu.A[0]).toEqual([expect.closeTo(2.05, 6), 0, 0]);
+    expect(relu.Y[2][0]).toBeCloseTo(lin.Y[2][0], 6);
+  });
+  it("normalises down the batch for batch norm and across each input for layer norm", () => {
+    const mean = (v) => v.reduce((a, b) => a + b, 0) / v.length;
+    const batch = traceLayer("relu", "batch").N;
+    const layer = traceLayer("relu", "layer").N;
+    for (let j = 0; j < 3; j++) expect(mean(batch.map((r) => r[j]))).toBeCloseTo(0, 6);
+    for (const row of layer) expect(mean(row)).toBeCloseTo(0, 6);
+    expect(batch[0][0]).toBeCloseTo(1.06, 2);
+    expect(layer[0][0]).toBeCloseTo(1.41, 2);
+  });
+});

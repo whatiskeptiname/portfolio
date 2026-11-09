@@ -442,3 +442,151 @@ export function trainMlp(points, hidden, { steps = 600, rate = 0.5, seed = 1, ac
 export function memoryLeft(steps, factor) {
   return factor ** steps;
 }
+
+// --- activations and normalisation --------------------------------------------------
+
+const erfApprox = (x) => {
+  // Abramowitz–Stegun 7.1.26
+  const s = Math.sign(x);
+  const t = 1 / (1 + 0.3275911 * Math.abs(x));
+  const y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+  return s * y;
+};
+const phi = (x) => 0.5 * (1 + erfApprox(x / Math.SQRT2));
+
+/** The common activation functions, each with its slope. */
+export const ACTIVATIONS = {
+  sigmoid: { f: sigmoid, df: (x) => sigmoid(x) * (1 - sigmoid(x)), range: "0 to 1" },
+  tanh: { f: Math.tanh, df: (x) => 1 - Math.tanh(x) ** 2, range: "−1 to 1" },
+  relu: { f: (x) => Math.max(0, x), df: (x) => (x > 0 ? 1 : 0), range: "0 to ∞" },
+  leaky: { f: (x) => (x > 0 ? x : 0.1 * x), df: (x) => (x > 0 ? 1 : 0.1), range: "−∞ to ∞" },
+  gelu: { f: (x) => x * phi(x), df: (x) => phi(x) + (x * Math.exp((-x * x) / 2)) / Math.sqrt(2 * Math.PI), range: "about −0.17 to ∞" },
+};
+
+/**
+ * How much of the gradient (its typical size) survives the trip back through
+ * `depth` layers of an activation in a wide network, each layer initialised
+ * the standard way for that activation (He for the ReLU family, Xavier for
+ * sigmoid and tanh). Per layer the gradient's size is multiplied by
+ * gain² × E[slope²] over typical inputs; above 1 it grows, below 1 it fades.
+ */
+export function gradientThrough(name, depth, samples = 4000) {
+  const { df } = ACTIVATIONS[name];
+  const gain2 = name === "sigmoid" || name === "tanh" ? 1 : 2;
+  const rand = rng(11);
+  let m = 0;
+  for (let s = 0; s < samples; s++) m += df(normal(rand)) ** 2;
+  const perLayer = (gain2 * m) / samples;
+  return Math.sqrt(perLayer) ** depth;
+}
+
+/**
+ * Push a batch of random inputs through `depth` random ReLU layers of width
+ * `width`, with weights of size `scale`/√width, and an optional normalisation
+ * after each layer: "none", "batch" (each unit across the batch) or "layer"
+ * (each example across its units). Returns the spread (standard deviation) of
+ * the values after every layer, and — for normalisations that depend on the
+ * batch — how much one example's output changes when its batch-mates change.
+ */
+export function spreadThroughLayers({ depth = 20, width = 24, scale = 1.4, norm = "none", batch = 16, seed = 5 } = {}) {
+  const rand = rng(seed);
+  const layers = range(depth).map(() => range(width).map(() => range(width).map(() => (normal(rand) * scale) / Math.sqrt(width))));
+  const normalise = (X) => {
+    if (norm === "batch") {
+      return X.map((row) => row.map((v, j) => {
+        const col = X.map((r) => r[j]);
+        const m = mean(col);
+        const sd = Math.sqrt(mean(col.map((c) => (c - m) ** 2)) + 1e-5);
+        return (v - m) / sd;
+      }));
+    }
+    if (norm === "layer") {
+      return X.map((row) => {
+        const m = mean(row);
+        const sd = Math.sqrt(mean(row.map((c) => (c - m) ** 2)) + 1e-5);
+        return row.map((v) => (v - m) / sd);
+      });
+    }
+    return X;
+  };
+  const run = (X0) => {
+    let X = X0;
+    const spreads = [];
+    for (const Wl of layers) {
+      X = X.map((row) => Wl.map((wrow) => Math.max(0, sum(wrow.map((w, k) => w * row[k])))));
+      X = normalise(X);
+      const all = X.flat();
+      const m = mean(all);
+      spreads.push(Math.sqrt(mean(all.map((v) => (v - m) ** 2))));
+    }
+    return { X, spreads };
+  };
+  const inputs = range(batch).map(() => range(width).map(() => normal(rand)));
+  const { X, spreads } = run(inputs);
+  // The same first example with different batch-mates.
+  const others = range(batch).map((i) => (i === 0 ? inputs[0] : range(width).map(() => normal(rand))));
+  const again = run(others).X;
+  const a = X[0];
+  const b = again[0];
+  const size = Math.sqrt(mean(a.map((v) => v * v))) || 1;
+  const batchEffect = Math.sqrt(mean(a.map((v, j) => (v - b[j]) ** 2))) / size;
+  return { spreads, batchEffect };
+}
+
+// ---------------------------------------------------------------------------
+// A small fixed network (3 inputs, 3 hidden neurons, 2 outputs) and a batch of
+// four inputs, for tracing where each number in a forward pass comes from.
+
+export const TRACE = {
+  W1: [
+    [0.8, -0.5, 0.3],
+    [-0.6, 0.4, 0.9],
+    [0.5, 0.7, -0.4],
+  ],
+  b1: [0.1, -0.2, 0],
+  W2: [
+    [1.0, -0.7, 0.5],
+    [-0.4, 0.9, 0.6],
+  ],
+  b2: [0, 0.1],
+  X: [
+    [1, -2, 0.5],
+    [0.5, 1, -1],
+    [2, 0.5, 1.5],
+    [-1, -0.5, 0.2],
+  ],
+};
+
+const ACT_FN = {
+  none: (z) => z,
+  relu: (z) => Math.max(0, z),
+  sigmoid: (z) => 1 / (1 + Math.exp(-z)),
+  tanh: Math.tanh,
+};
+
+/** The whole forward pass for every input in the batch: weighted sums, normalised sums, activations, outputs. */
+export function traceLayer(act, norm) {
+  const { W1, b1, W2, b2, X } = TRACE;
+  const Z = X.map((x) => W1.map((w, j) => w.reduce((s, wk, k) => s + wk * x[k], b1[j])));
+  const stat = (vals) => {
+    const m = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const sd = Math.sqrt(vals.reduce((a, v) => a + (v - m) ** 2, 0) / vals.length + 1e-5);
+    return [m, sd];
+  };
+  const N = Z.map((z) =>
+    z.map((v, j) => {
+      if (norm === "layer") {
+        const [m, sd] = stat(z); // across this input's own hidden neurons
+        return (v - m) / sd;
+      }
+      if (norm === "batch") {
+        const [m, sd] = stat(Z.map((r) => r[j])); // across the batch, for this one neuron
+        return (v - m) / sd;
+      }
+      return v;
+    })
+  );
+  const A = N.map((n) => n.map(ACT_FN[act]));
+  const Y = A.map((a) => W2.map((w, o) => w.reduce((s, wk, k) => s + wk * a[k], b2[o])));
+  return { Z, N, A, Y };
+}
