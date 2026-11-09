@@ -200,12 +200,12 @@ chapter's idea (`src/learn/Covers.jsx`) and a one-line hook; clicking one opens 
 lessons out of the tile, the same way the planet opens. They're dark unless the
 visitor has picked light.
 
-There are eight chapters, 56 lessons, in reading order:
+There are eight chapters, 58 lessons, in reading order:
 
 | Chapter | What it covers |
 | --- | --- |
 | **Fitting in** | Linear and logistic regression, gradient descent, regularisation, features and scaling, k-means clustering, PCA, anomaly detection |
-| **Thinking in layers** | Neurons and the perceptron, hidden layers and activations, backpropagation, training deep networks (Adam, dropout, early stopping), recurrent networks and LSTMs |
+| **Thinking in layers** | Neurons and the perceptron, hidden layers, activation functions and normalisation (traced through a small layer, number by number, and why CNNs, transformers and RNNs each use their own), backpropagation, training deep networks (Adam, dropout, early stopping), recurrent networks and LSTMs |
 | **Forests for the trees** | Decision trees, overfitting, metrics, random forests, boosting, honest testing, explaining predictions |
 | **Certainly uncertain** | Kinds of uncertainty, estimation, Bayesian updating, Gaussians, Bayesian networks, Gaussian processes, MCMC |
 | **Tomorrow, roughly** | Time-series components, stationarity, autocorrelation, classical methods, ARIMA, ML forecasting, evaluation, hierarchies |
