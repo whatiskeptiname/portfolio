@@ -547,7 +547,8 @@ export function HelpOverlay({ onClose, type = "car", droneMode }) {
         <dl>
           <dt className="touch-only">On a touch screen</dt>
           <dd className="touch-only">
-            Tap <strong>Car</strong> or <strong>Drone</strong> to drive. The arrows steer, and letting go hands back to the autopilot;{" "}
+            Tap <strong>Car</strong> or <strong>Drone</strong> to drive. The arrows steer, and letting go hands back to the autopilot;
+            in the car, hold <strong>Drift</strong> (the handbrake) with the accelerator and steer to slide;{" "}
             <strong>AUTO</strong> on the speedometer turns it off or on. <strong>⋯</strong> holds the camera views, music and settings.
           </dd>
           <dt>Look around</dt>
@@ -602,8 +603,12 @@ export function HelpOverlay({ onClose, type = "car", droneMode }) {
 export function TouchPad({ keys, flying }) {
   const bind = (control) => ({
     onPointerDown: (e) => {
-      e.currentTarget.setPointerCapture(e.pointerId);
       keys.current.add(control);
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId); // keep it held if the finger slides off
+      } catch {
+        // (Some browsers refuse capture for synthetic or already-lifted pointers.)
+      }
     },
     onPointerUp: () => keys.current.delete(control),
     onPointerCancel: () => keys.current.delete(control),
@@ -622,6 +627,12 @@ export function TouchPad({ keys, flying }) {
         </div>
       )}
       <div className="pedals">
+        {/* In the car, the handbrake: hold it with the accelerator and steer to drift. */}
+        {!flying && (
+          <button className="tp-drift" {...bind("ascend")} aria-label="Handbrake (drift)">
+            Drift
+          </button>
+        )}
         <button {...bind("up")}><Icon name="up" /></button>
         <button {...bind("down")}><Icon name="down" /></button>
       </div>

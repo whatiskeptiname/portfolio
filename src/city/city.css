@@ -2398,3 +2398,27 @@ kbd {
     transition: none;
   }
 }
+
+/* The car's handbrake on touch screens: a smaller pill above the pedals. */
+.city-root .city-touchpad button.tp-drift {
+  height: 40px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 20px;
+  color: #ffd166;
+}
+.city-root .city-touchpad button.tp-drift:active {
+  background: rgb(255 209 102 / 0.35);
+}
+@media (max-width: 600px) {
+  /* Below the speedometer and the sound chip, clear of the minimap. */
+  .drift-score {
+    top: 250px;
+    padding: 6px 16px 8px;
+  }
+  .drift-score strong {
+    font-size: 1.5rem;
+  }
+}
