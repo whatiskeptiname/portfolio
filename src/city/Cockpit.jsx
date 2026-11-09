@@ -189,7 +189,7 @@ function drawCluster({ ctx, canvas }, s) {
   grad.addColorStop(1, "#02040a");
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  dial(ctx, 96, 86, 62, kmh / 180, kmh > limit + 2 ? "#ff5a4f" : "#4ff3ff", "SPEED", String(kmh), "km/h");
+  dial(ctx, 96, 86, 62, kmh / 300, kmh > limit + 2 ? "#ff5a4f" : "#4ff3ff", "SPEED", String(kmh), "km/h");
   dial(ctx, 416, 86, 62, rpm / 7000, rpm > 5000 ? "#ffb347" : "#9b8cff", "RPM ×1000", (rpm / 1000).toFixed(1), "rpm");
   // Middle: gear, the limit, tell-tales.
   ctx.textAlign = "center";

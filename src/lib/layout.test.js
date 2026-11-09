@@ -6,6 +6,8 @@ import {
   ROUNDABOUT_ISLAND,
   BRIDGE_HEIGHT,
   BRIDGE_RAIL,
+  TREE_RADIUS,
+  penetration,
   bridgeElevation,
   railReach,
   collides,
@@ -224,6 +226,22 @@ describe("createLayout", () => {
         }
       }
     }
+  });
+
+  it("measures how far something is into a tree, so a car stuck in one can always get out", () => {
+    // A tree standing on its own, clear of everything else.
+    const t = layout.trees.find((a) => penetration(layout, a.x, a.z + 6, 3) === 0 && layout.trees.every((b) => b === a || worldDistance(layout, a.x, a.z, b.x, b.z) > 8));
+    const r = 1.0;
+    const reach = TREE_RADIUS * t.scale + r;
+    // Clear of it: nothing. Overlapping: the overlap, smaller the further out.
+    expect(penetration(layout, t.x, t.z + reach + 0.5, r)).toBe(0);
+    const deep = penetration(layout, t.x, t.z + reach - 0.6, r);
+    const shallow = penetration(layout, t.x, t.z + reach - 0.2, r);
+    expect(deep).toBeGreaterThan(shallow);
+    expect(shallow).toBeGreaterThan(0);
+    // It agrees with collides() about what's touching.
+    expect(collides(layout, t.x, t.z + reach - 0.2, r)).toBe(true);
+    expect(collides(layout, t.x, t.z + reach + 0.5, r)).toBe(false);
   });
 
   it("knows the surface underfoot", () => {

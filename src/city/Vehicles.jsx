@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { BILLBOARD_RADIUS, BUILDING_RADIUS, HIGHWAY_HALF_WIDTH, SURFACE_TOP, collides, bridgeElevation, surfaceAt, worldDistance, wrapDelta } from "../lib/layout";
+import { BILLBOARD_RADIUS, BUILDING_RADIUS, HIGHWAY_HALF_WIDTH, SURFACE_TOP, collides, penetration, bridgeElevation, surfaceAt, worldDistance, wrapDelta } from "../lib/layout";
 import { crossPole, eastStretch, frameAt } from "../lib/globe";
 import { sunlightAt, surfaceMatrix } from "./globe3d";
 import { TRANSFORM_SECONDS, TransformRig } from "./Transform";
@@ -24,12 +24,15 @@ import { terrainAt } from "../lib/terrain";
 import { carLamps } from "../lib/carLights";
 import { CAR_BODY, HANDBRAKE, collideCars, hitCar, resistance, settleShove, slideCar } from "../lib/carPhysics";
 import { cruiseThrottle } from "../lib/pedals";
+import { driftState, stepDrift } from "../lib/drift";
 import { useDisposable } from "./gpu";
-import { AUTOPILOT, DRONE_ALT, CAR_GRIP, CAR_LIMITS, NO_INPUT, autopilotInput, hasInput, keysToInput, settleToLimit, unstickInput } from "../lib/autopilot";
+import { AUTOPILOT, DRONE_ALT, CAR_GRIP, CAR_LIMITS, KMH_PER_UNIT, NO_INPUT, autopilotInput, hasInput, keysToInput, settleToLimit, unstickInput } from "../lib/autopilot";
 
 export const CAR_RADIUS = 1.3;
 export const DRONE_RADIUS = 1.4;
 export const DRONE_MAX_ALT = 60;
+const LET_GO_MS = 500; // carrying straight on after you let go, before the autopilot takes back the wheel
+const HIGHWAY_SMOOTH = 0.8; // the highway shakes the car (and your view) 20% less than other roads
 const DRONE_MASS = 0.25; // against a car's 1, when it flies into one
 
 const TURN_SIGNAL_ANGLE = (20 * Math.PI) / 180;
@@ -39,7 +42,11 @@ const tiltEuler = new THREE.Euler();
 
 // --- physics -----------------------------------------------------------------
 
-const CAR = { maxReverse: -9, accel: 18, brake: 30, drag: 1.4, steer: 1.9 };
+// top: the most the car can do, 300 km/h (on the open highway, driving it yourself).
+const CAR = { maxReverse: -9, accel: 18, brake: 30, drag: 1.4, steer: 1.9, top: 300 / KMH_PER_UNIT };
+// How well a drift holds on each surface: on asphalt it's free; on paving and
+// grass the tyres dig in, so the tail swings out less and the slide eats speed.
+const DRIFT_GROUND = { highway: 1, road: 1, roundabout: 1, paved: 0.75, grass: 0.5 };
 
 // The surface sets the pace: flat out on the equator highway, brisk on roads,
 // a careful crawl across grass (with less grip and more drag).
@@ -88,13 +95,19 @@ function driveCar(layout, c, k, delta) {
   }
   // An autopilot told to ignore speed limits drives as fast as the car will go.
   const reckless = (c.auto || c.route) && c.pilot?.limits === false;
-  c.speed = Math.max(CAR.maxReverse, settleToLimit(c.speed, reckless ? CAR_LIMITS.highway * 1.2 : CAR_LIMITS[surface], delta));
+  // Driving it yourself on the highway, the car can go flat out (the limit
+  // signs still say 150); elsewhere, and for the autopilot, the limits hold.
+  const cap = reckless ? CAR_LIMITS.highway * 1.2 : k.byHand && surface === "highway" ? CAR.top : CAR_LIMITS[surface];
+  c.speed = Math.max(CAR.maxReverse, settleToLimit(c.speed, cap, delta));
   if (Math.abs(c.speed) < 0.05) c.speed = 0;
 
   // Grip, steering and the slide (see carPhysics.js).
-  const slip = slideCar(c, k, delta, CAR.steer);
-  if (Math.abs(slip) > 0.05) c.speed *= Math.exp(-Math.abs(Math.sin(slip)) * 1.6 * delta);
+  const ground = DRIFT_GROUND[surface] ?? 1;
+  const slip = slideCar(c, k, delta, CAR.steer, ground);
+  if (Math.abs(slip) > 0.05) c.speed *= Math.exp(-Math.abs(Math.sin(slip)) * (1.6 / ground) * delta);
   c.impact = (c.impact ?? 0) * Math.exp(-5 * delta); // a knock dies away
+  // Drift scoring (shown at the top of the screen).
+  stepDrift((c.drift ??= driftState()), { slip, speed: c.speed, impact: c.impact, dt: delta });
   moveWithSliding(layout, c, c.speed * delta, CAR_RADIUS, 0, true, c.speed >= 0 ? c.travelYaw : c.yaw, delta);
 }
 
@@ -340,12 +353,19 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
         setTransforming(null);
       }
     } else {
-      const user = active ? keysToInput(keys.current) : NO_INPUT;
+      const keysNow = active ? keysToInput(keys.current) : NO_INPUT;
       const nowMs = performance.now();
-      const manual = hasInput(user);
+      const handsOn = hasInput(keysNow);
       // "Auto mode": cruising/touring (s.auto) or on a "Go to" trip (s.route).
       const autopilotOn = s.auto || Boolean(s.route);
-      if (manual) {
+      // Let go of the keys while steering in auto mode: like a real car, the
+      // wheel comes back to centre and it carries straight on, holding its
+      // speed, for a moment before the autopilot takes the wheel back.
+      if (handsOn) s.letGoSpeed = Math.max(0, s.speed);
+      const letGo = type === "car" && !handsOn && autopilotOn && s.lastInput > 0 && nowMs - s.lastInput < LET_GO_MS;
+      const user = letGo ? { ...NO_INPUT, ...cruiseThrottle(Math.max(0, s.speed), s.letGoSpeed ?? 0) } : keysNow;
+      const manual = handsOn || letGo;
+      if (handsOn) {
         s.lastInput = nowMs;
         // You're driving: no autopilot overtaking manoeuvre in progress.
         s.overtake = null;
@@ -355,6 +375,7 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
         // let go and it picks up again from wherever you are.
         if (autopilotOn) s.resume = true;
       } else if (
+        !manual &&
         !autopilotOn &&
         nowMs - (s.lastInput ?? 0) > AUTOPILOT.idleSeconds * 1000
       ) {
@@ -530,7 +551,7 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
         // Your keys: S brakes, then reverses; Space is the handbrake. The
         // autopilot slows with the foot brake, and only reverses to get unstuck.
         if (manual || !(s.auto || s.route)) {
-          input = { ...input, handbrake: user.ascend };
+          input = { ...input, handbrake: user.ascend, byHand: manual || !(s.auto || s.route) };
           // Cruise control holds the locked speed; the accelerator still
           // speeds you up past it, and the brake or handbrake cancels it.
           if (s.cruise != null) {
@@ -600,8 +621,9 @@ export function Vehicle({ layout, state, type, keys, active, onMove, onArrive, p
     const [fx, fz] = forwardOf(s.yaw);
     const slope = (dx, dz) => (terrainAt(layout, s.x + dx, s.z + dz) - terrainAt(layout, s.x - dx, s.z - dz)) / 2;
     const k = 1 - Math.exp(-10 * delta);
-    s.pitch = THREE.MathUtils.lerp(s.pitch ?? 0, grounded ? Math.atan(slope(fx * 1.2, fz * 1.2) / 1.2) : 0, k);
-    s.roll = THREE.MathUtils.lerp(s.roll ?? 0, grounded ? Math.atan(slope(-fz * 0.9, fx * 0.9) / 0.9) : 0, k);
+    const feel = s.surface === "highway" ? HIGHWAY_SMOOTH : 1; // the highway rides a little smoother
+    s.pitch = THREE.MathUtils.lerp(s.pitch ?? 0, grounded ? Math.atan(slope(fx * 1.2, fz * 1.2) / 1.2) * feel : 0, k);
+    s.roll = THREE.MathUtils.lerp(s.roll ?? 0, grounded ? Math.atan(slope(-fz * 0.9, fx * 0.9) / 0.9) * feel : 0, k);
     if (Math.abs(s.pitch) + Math.abs(s.roll) > 1e-4) matrix.multiply(tilt.makeRotationFromEuler(tiltEuler.set(s.pitch, 0, s.roll)));
     s.worldMatrix = matrix; // the vehicle's exact pose, for the first-person camera
     root.current.matrix.copy(matrix);
@@ -722,7 +744,16 @@ function moveWithSliding(layout, s, distance, radius, height, isCar = false, hea
   // buildings, trees and the river, and its whole rectangle against other cars.
   const [hx, hz] = forwardOf(s.yaw);
   const ends = isCar ? [1.25, -1.25] : [0];
-  const hitsWorld = (x, z) => ends.some((o) => collides(layout, x + hx * o, z + hz * o, isCar ? 1.0 : radius, height));
+  const r = isCar ? 1.0 : radius;
+  const depthAt = (x, z) => ends.reduce((sum, o) => sum + penetration(layout, x + hx * o, z + hz * o, r, height), 0);
+  // Already overlapping something (knocked or spun into a tree)? Then any
+  // move that gets it less far in is allowed, so it can always back or slide
+  // out instead of being stuck; only moves that go in deeper are blocked.
+  const stuckIn = ends.some((o) => collides(layout, s.x + hx * o, s.z + hz * o, r, height)) ? depthAt(s.x, s.z) : 0;
+  const hitsWorld = (x, z) => {
+    if (!ends.some((o) => collides(layout, x + hx * o, z + hz * o, r, height))) return false;
+    return !(stuckIn > 0 && depthAt(x, z) < stuckIn - 1e-4);
+  };
   const carAt = (x, z) =>
     traffic.find((c) =>
       isCar
@@ -1184,13 +1215,15 @@ function firstPerson(camera, s, vehicle, o, f, delta, baseFov) {
   f.m.copy(s.worldMatrix);
   let fov;
   if (vehicle === "car") {
-    // Road feel: a fine buzz at speed, real judder on grass.
+    // Road feel: a fine buzz at speed, real judder on grass; the smooth
+    // highway a little less (HIGHWAY_SMOOTH) than other roads.
     const rough = s.surface === "grass" ? 0.035 : 0.004;
+    const feel = s.surface === "highway" ? HIGHWAY_SMOOTH : 1;
     const k = Math.min(1, speed / 25);
-    const shake = rough * k;
+    const shake = rough * k * feel;
     f.eye.set(
       DRIVER_EYE[0] + Math.sin(f.t * 41) * shake * 0.5,
-      DRIVER_EYE[1] + Math.sin(f.t * 53 + 1.3) * shake + Math.sin(f.t * 2.1) * 0.006,
+      DRIVER_EYE[1] + Math.sin(f.t * 53 + 1.3) * shake + Math.sin(f.t * 2.1) * 0.006 * feel,
       DRIVER_EYE[2]
     );
     // Lean the head into the corner, plus wherever you're dragging to look.
@@ -1236,9 +1269,11 @@ function jolt(camera, s, reach) {
 // Chase distances (the first that a building doesn't block wins) and the Eye
 // view's starting distance, in metres.
 const CHASE = {
-  car: { distances: [12, 9.6, 7.2, 5.4, 3.6], height: 3, lift: 0.2, look: 1.2, eye: 19 },
-  drone: { distances: [10.8, 8.4, 6, 4.2], height: 2.2, lift: 0.15, look: 0.4, eye: 10 },
+  car: { distances: [12, 9.6, 7.2, 5.4, 3.6], height: 4, lift: 0.2, look: 1.2, eye: 34, ahead: 5 },
+  drone: { distances: [10.8, 8.4, 6, 4.2], height: 2.2, lift: 0.15, look: 0.4, eye: 14, ahead: 2 },
 };
+// The Eye view starts this far above the vehicle (it stays where you drag it).
+const EYE_VIEW = { pitch: 0.6 };
 
 /**
  * Follows `state` around the planet. Camera "up" is the local surface normal
@@ -1310,11 +1345,10 @@ export function ChaseCamera({ layout, state, vehicle, view = "chase", snap = fal
     };
   }, [gl]);
 
-  // Entering eye view starts from a pleasant three-quarter angle.
+  // Every view starts straight behind the vehicle (the Eye view high above
+  // it, see EYE_VIEW); from there you can drag it round.
   useEffect(() => {
-    const o = orbit.current;
-    if (view === "eye") Object.assign(o, { yaw: 0.6, pitch: 0.35, zoom: 1 });
-    else Object.assign(o, { yaw: 0, pitch: 0, zoom: 1 });
+    Object.assign(orbit.current, { yaw: 0, pitch: 0, zoom: 1 });
   }, [view]);
 
   // First person needs a near clipping plane close enough for the cockpit;
@@ -1374,9 +1408,13 @@ export function ChaseCamera({ layout, state, vehicle, view = "chase", snap = fal
 
     let dist;
     let rise;
+    let ahead = 0;
     if (view === "eye") {
+      // High over the vehicle, looking down the road: the orbit is centred a
+      // little ahead of it, so it sits low in the picture with the way ahead in view.
       dist = cfg.eye * o.zoom;
-      rise = 0;
+      rise = dist * Math.tan(EYE_VIEW.pitch);
+      ahead = cfg.ahead * o.zoom;
     } else {
       const blocked = (x, z) =>
         layout.buildings.some((b) => alt < b.height + 1 && worldDistance(layout, b.x, b.z, x, z) < BUILDING_RADIUS + 0.8) ||
@@ -1416,13 +1454,14 @@ export function ChaseCamera({ layout, state, vehicle, view = "chase", snap = fal
       .addScaledVector(tmp.up, Math.sin(pitch))
       .normalize();
     const radius = Math.hypot(dist, rise);
-    const desired = tmp.p.clone().addScaledVector(tmp.dir, radius);
+    const centre = ahead ? tmp.p.clone().addScaledVector(tmp.f, ahead) : tmp.p;
+    const desired = centre.clone().addScaledVector(tmp.dir, radius);
     // Never dip below the ground.
     if (desired.length() < R + 1) desired.setLength(R + 1);
 
     const target =
       view === "eye"
-        ? tmp.p.clone().addScaledVector(tmp.up, 1)
+        ? centre.clone().addScaledVector(tmp.up, 1)
         : tmp.p.clone().addScaledVector(tmp.f, 6 * Math.cos(yaw) * (1 - cine)).addScaledVector(tmp.up, cfg.look + cine);
     if (!snapped.current) {
       // Opened straight into a vehicle (deep link): no fly-in.

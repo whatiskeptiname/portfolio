@@ -24,9 +24,9 @@ export const HANDBRAKE = {
 // What holds a car back while it drives: rolling resistance (a constant drag
 // from the tyres) and air drag (growing with the square of speed). The engine's
 // push is the throttle's share of its full power; the car settles where the
-// two balance. Tuned so full throttle reaches about 200 km/h, half about 140,
-// and a tenth about 60 on the flat (in plane units: 1 unit/s = 4 km/h).
-export const RESISTANCE = { roll: 0.15, air: 0.00714 };
+// two balance. Tuned so full throttle reaches about 300 km/h, half about 210,
+// and a tenth about 90 on the flat (in plane units: 1 unit/s = 4 km/h).
+export const RESISTANCE = { roll: 0.15, air: 0.00317 };
 
 /** The deceleration (m/s²) from the tyres and the air at `speed`. */
 export function resistance(speed) {
@@ -48,8 +48,11 @@ const angleBetween = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
  * @param {{ steer: number, handbrake?: boolean }} k  this frame's input
  * @param {number} delta  seconds
  * @param {number} steerRate  radians a second at full lock and speed
+ * @param {number} [ground]  how freely the surface lets the car slide: 1 on
+ *   asphalt; less on paving or grass, where the tail swings out less and the
+ *   tyres pull it straight sooner (a drift is harder, but still possible)
  */
-export function slideCar(c, k, delta, steerRate) {
+export function slideCar(c, k, delta, steerRate, ground = 1) {
   // Rear grip: lost quickly when the wheels lock, regained over half a second.
   const rolling = Math.abs(c.speed) > 4;
   const wantGrip = k.handbrake && rolling ? HANDBRAKE.grip : 1;
@@ -62,7 +65,7 @@ export function slideCar(c, k, delta, steerRate) {
   // started (you catch it with counter-steer); gripping, it follows the wheel.
   c.steer = (c.steer ?? 0) + (k.steer - (c.steer ?? 0)) * (1 - Math.exp(-10 * delta));
   const bite = Math.min(1, Math.abs(c.speed) / 6) * Math.sign(c.speed);
-  const turn = c.steer * steerRate * bite * (1 + loose * HANDBRAKE.oversteer);
+  const turn = c.steer * steerRate * bite * (1 + loose * HANDBRAKE.oversteer * ground);
   const rate = c.yawRate ?? turn;
   c.yawRate = loose < 0.02 ? turn : rate + (turn - rate) * (1 - Math.exp(-(3 + 11 * c.rearGrip) * delta));
   c.yaw += c.yawRate * delta;
@@ -71,7 +74,7 @@ export function slideCar(c, k, delta, steerRate) {
   // tyres pull it back into line as they grip. (After a jump — "unstuck", a
   // transformation — or a spin it simply points the way it goes.)
   if (c.travelYaw == null || (c.rearGrip > 0.9 && Math.abs(angleBetween(c.yaw, c.travelYaw)) > 1.4)) c.travelYaw = c.yaw;
-  const rejoin = 1.2 + 12.8 * c.rearGrip * c.rearGrip;
+  const rejoin = 1.2 / ground + 12.8 * c.rearGrip * c.rearGrip;
   c.travelYaw += angleBetween(c.yaw, c.travelYaw) * (1 - Math.exp(-rejoin * delta));
   const slip = angleBetween(c.yaw, c.travelYaw);
   c.slip = slip;

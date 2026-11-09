@@ -786,6 +786,8 @@ export function inWater(world, x, z, margin = 0) {
 }
 
 export function collides(world, x, z, radius, height = 0) {
+  // (The same tests as penetration() below, stopping at the first hit: this
+  // runs many times a frame for planning, so it stays cheap.)
   if (z > world.mountains.edge - radius && height < MOUNTAIN_HEIGHT) return true;
   if (height < 1 && inWater(world, x, z, radius * 0.5)) return true;
   for (const b of world.bridges) {
@@ -810,3 +812,38 @@ export function collides(world, x, z, radius, height = 0) {
   return false;
 }
 
+/**
+ * How deep a circle of `radius` at (x, z) is into things it can't pass: 0 if
+ * clear, otherwise the total overlap (m) with buildings, billboards, trees,
+ * bridge parapets and the mountain edge (water counts as 1). A vehicle that
+ * has ended up overlapping something — knocked or spun into a tree — may
+ * make any move that makes this smaller, so it can always back or slide out
+ * instead of being stuck; only moves that go in deeper are blocked.
+ */
+export function penetration(world, x, z, radius, height = 0) {
+  let depth = 0;
+  const into = (gap) => {
+    if (gap > 0) depth += gap;
+  };
+  // The southern mountains: only something flying over the peaks gets through.
+  if (height < MOUNTAIN_HEIGHT) into(z - (world.mountains.edge - radius));
+  if (height < 1 && inWater(world, x, z, radius * 0.5)) depth += 1;
+  // Bridge parapets are solid: you can't drive through the side of a bridge
+  // (or onto one from the bank), only fly over.
+  for (const b of world.bridges) {
+    const { along, across } = bridgeFrame(world, b, x, z);
+    if (Math.abs(along) > railReach(b) + radius) continue;
+    const wall = b.halfWidth + BRIDGE_RAIL.gap + BRIDGE_RAIL.thick / 2;
+    if (height < deckHeight(b, along) + BRIDGE_RAIL.height) into(BRIDGE_RAIL.thick / 2 + radius - Math.abs(Math.abs(across) - wall));
+  }
+  for (const b of world.buildings) {
+    if (height < b.height + 1) into(BUILDING_RADIUS + radius - worldDistance(world, b.x, b.z, x, z));
+  }
+  if (height < 7) {
+    for (const b of world.billboards) into(BILLBOARD_RADIUS + radius - worldDistance(world, b.x, b.z, x, z));
+  }
+  if (height < 4.5) {
+    for (const t of world.trees) into(TREE_RADIUS * t.scale + radius - worldDistance(world, t.x, t.z, x, z));
+  }
+  return depth;
+}

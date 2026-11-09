@@ -228,6 +228,11 @@ class AudioEngine {
     const squealGain = this.gain(0);
     this.loopNoise(white).connect(this.filter("bandpass", 2600, 9)).connect(squealGain).connect(buses.engine);
 
+    // Skid: the rough, lower roar of tyres sliding sideways in a drift.
+    const skidFilter = this.filter("bandpass", 1100, 1.4);
+    const skidGain = this.gain(0);
+    this.loopNoise(white).connect(skidFilter).connect(skidGain).connect(buses.engine);
+
     // Gravel crunch under the tyres off-road.
     const gravelFilter = this.filter("bandpass", 420, 0.9);
     const gravelGain = this.gain(0);
@@ -275,7 +280,7 @@ class AudioEngine {
 
     this.voices = {
       master, buses, white,
-      car, roadFilter, roadGain, passers, squealGain, gravelFilter, gravelGain,
+      car, roadFilter, roadGain, passers, squealGain, skidFilter, skidGain, gravelFilter, gravelGain,
       motors, droneFilter, droneGain, rushFilter, rushGain,
       pad, padFilter, holeGain, windFilter, windGain, riverFilter, riverGain,
     };
@@ -321,6 +326,9 @@ class AudioEngine {
     const sliding = Math.abs(Math.sin(p.slip ?? 0)) * Math.min(1, speed / 12) * 0.5;
     const squeal = isCar && p.surface !== "grass" ? Math.max(turning, sliding) : 0;
     v.squealGain.gain.setTargetAtTime(squeal * near, now, 0.06);
+    const skid = isCar && p.drifting && p.surface !== "grass" ? Math.min(0.32, Math.abs(Math.sin(p.slip ?? 0)) * (speed / 15) * 0.45) : 0;
+    v.skidGain.gain.setTargetAtTime(skid * near, now, 0.05);
+    v.skidFilter.frequency.setTargetAtTime(900 + speed * 12 + Math.random() * 200, now, 0.05);
     const gravel = isCar && p.surface === "grass" ? Math.min(0.16, speed * 0.016) : isCar && p.surface === "paved" ? Math.min(0.03, speed * 0.003) : 0;
     v.gravelGain.gain.setTargetAtTime(gravel * near, now, 0.08);
     v.gravelFilter.frequency.setTargetAtTime(300 + speed * 25 + Math.random() * 120, now, 0.05);
@@ -421,6 +429,35 @@ class AudioEngine {
     this.burst(bus, clank, "lowpass", 900, 1, 0.003, 0.02, 0.25, 0.9);
     this.tone(bus, "triangle", 95, clank, 0.005, 0.03, 0.25, 0.7, 55);
     if (toDrone) this.tone(bus, "sawtooth", 60, now + duration * 0.8, 0.1, 0.4, 0.4, 0.12, 260);
+  }
+
+  /**
+   * A crash: the harder the hit (0–1.5), the more of it you hear — a heavy
+   * thump and crunching metal, the clang of panels ringing, and, on the
+   * hardest, glass breaking and bits skittering away.
+   */
+  crash(strength = 1) {
+    if (!this.ready()) return;
+    const now = this.ctx.currentTime;
+    const bus = this.voices.buses.engine;
+    const k = Math.min(1.5, strength);
+    // The body hit: a deep thump with a short burst of low noise.
+    this.tone(bus, "sine", 90, now, 0.003, 0.04, 0.35, 0.55 * Math.min(1, k) + 0.15, 38);
+    this.burst(bus, now, "lowpass", 500, 0.8, 0.002, 0.03, 0.25, 0.5 * Math.min(1, k) + 0.1);
+    // Crunching metal: a rattle of gritty mid-range bursts over a quarter second.
+    for (let i = 0; i < 6 + Math.round(k * 6); i++) {
+      const t = now + 0.01 + Math.random() * 0.25 * Math.min(1, k);
+      this.burst(bus, t, "bandpass", 500 + Math.random() * 1400, 3, 0.002, 0.01, 0.06 + Math.random() * 0.08, 0.25 * k);
+    }
+    // Panels ringing: a few out-of-tune metallic partials dying away.
+    for (const f of [287, 463, 731, 1129]) this.tone(bus, "triangle", f * (0.95 + Math.random() * 0.1), now + 0.01, 0.002, 0.0, 0.5 + Math.random() * 0.4, 0.05 * k);
+    // Glass on a hard hit: a bright shatter and tinkles falling.
+    if (k > 0.8) {
+      this.burst(bus, now + 0.02, "highpass", 3500, 0.7, 0.001, 0.03, 0.35, 0.3 * (k - 0.5));
+      for (let i = 0; i < 10; i++) {
+        this.tone(bus, "sine", 2800 + Math.random() * 3200, now + 0.05 + Math.random() * 0.6, 0.001, 0.0, 0.08 + Math.random() * 0.1, 0.04 * (k - 0.5));
+      }
+    }
   }
 
   /** Bumping into something. */

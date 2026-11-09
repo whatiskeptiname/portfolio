@@ -41,6 +41,14 @@ describe("handbrake drift", () => {
     expect(Math.abs(caught.slip)).toBeLessThan(Math.abs(spun.slip));
   });
 
+  it("drifts less freely off the asphalt, but still drifts", () => {
+    const asphalt = run({ speed: 20, yaw: 0 }, { steer: 1, handbrake: true }, 1);
+    const grass = { speed: 20, yaw: 0 };
+    for (let t = 0; t < 1; t += DT) slideCar(grass, { steer: 1, handbrake: true }, DT, STEER, 0.5);
+    expect(Math.abs(grass.slip)).toBeLessThan(Math.abs(asphalt.slip));
+    expect(Math.abs(grass.slip)).toBeGreaterThan(0.15);
+  });
+
   it("grips again and straightens up after you let go", () => {
     const c = run({ speed: 20, yaw: 0 }, { steer: 1, handbrake: true }, 1);
     run(c, { steer: 0 }, 1.5);
@@ -166,12 +174,12 @@ describe("engine and drag", () => {
   const ACCEL = 18; // the car's full push
 
   it("settles each pedal position at its own speed", () => {
-    expect(topSpeed(ACCEL) * KMH).toBeGreaterThan(190);
-    expect(topSpeed(ACCEL) * KMH).toBeLessThan(210);
-    expect(topSpeed(ACCEL * 0.5) * KMH).toBeGreaterThan(125);
-    expect(topSpeed(ACCEL * 0.5) * KMH).toBeLessThan(155);
-    expect(topSpeed(ACCEL * 0.1) * KMH).toBeGreaterThan(50);
-    expect(topSpeed(ACCEL * 0.1) * KMH).toBeLessThan(70);
+    expect(topSpeed(ACCEL) * KMH).toBeGreaterThan(290);
+    expect(topSpeed(ACCEL) * KMH).toBeLessThan(310);
+    expect(topSpeed(ACCEL * 0.5) * KMH).toBeGreaterThan(195);
+    expect(topSpeed(ACCEL * 0.5) * KMH).toBeLessThan(225);
+    expect(topSpeed(ACCEL * 0.1) * KMH).toBeGreaterThan(80);
+    expect(topSpeed(ACCEL * 0.1) * KMH).toBeLessThan(100);
   });
 
   it("at a light 10% touch, climbs to that speed and no further", () => {

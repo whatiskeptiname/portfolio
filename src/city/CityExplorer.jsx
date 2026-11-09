@@ -34,9 +34,10 @@ import { Clouds } from "./Clouds";
 import { openingCamera, shiftFor } from "../lib/opening";
 import { ChaseCamera, Vehicle } from "./Vehicles";
 import Minimap from "./Minimap";
-import { BatteryPrompt, AutopilotPanel, DriverPanel, FpvOverlay, Gauge, GoToMenu, GraphicsPanel, HelpOverlay, HighOffer, InfoPanel, InputsPanel, KeyHints, StartHint, Toolbar, TouchPad } from "./Hud";
+import { BatteryPrompt, AutopilotPanel, DriftScore, DriverPanel, FpvOverlay, Gauge, GoToMenu, GraphicsPanel, HelpOverlay, HighOffer, InfoPanel, InputsPanel, KeyHints, StartHint, Toolbar, TouchPad } from "./Hud";
 import Icon from "../components/Icon";
 import { PASSERS, audio } from "./audio";
+import { DriftFx } from "./DriftFx";
 import { radio } from "./radio";
 import { MiniPlayer, RadioButton, RadioPanel } from "./RadioPanel";
 import "./city.css";
@@ -57,6 +58,8 @@ const KEY_MAP = {
   KeyF: "descend",
 };
 const NEARBY_DISTANCE = 9;
+const HINTS_FOR = 4; // seconds of driving by hand before the key hints go
+const CRASH_FROM = 0.35; // bumps harder than this (≈15 km/h lost into it) sound like a crash
 const NEARBY_MAX_ALT = 25;
 
 function hasWebGL() {
@@ -394,6 +397,20 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
 
   const closeHelp = useCallback(() => setShowHelp(false), []);
 
+  // The key hints go once you've been driving by hand for a few seconds (for
+  // this visit); they're in Help from then on.
+  const [hintsDone, setHintsDone] = useState(false);
+  useEffect(() => {
+    if (!driving || hintsDone) return;
+    let driven = 0;
+    const id = setInterval(() => {
+      const k = keys.current;
+      if (["up", "down", "left", "right", "arrowUp", "arrowDown", "arrowLeft", "arrowRight"].some((c) => k.has(c))) driven += 0.25;
+      if (driven >= HINTS_FOR) setHintsDone(true);
+    }, 250);
+    return () => clearInterval(id);
+  }, [driving, hintsDone]);
+
   // Keyboard: driving keys + shortcuts. Only while the explorer is mounted.
   useEffect(() => {
     const down = (e) => {
@@ -584,6 +601,7 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
           {gfx.trees && <Trees layout={layout} />}
           <Vehicle layout={layout} state={vehicleState} type={vehicle} keys={keys} active={driving} onMove={onVehicleMove} onArrive={onArrive} planTour={planTour} replan={replan} traffic={trafficCars} signals={signals} graph={roadGraph} view={driving ? view : "chase"} mirror={gfx.shadows !== "off" || gfx.resolution >= 1} />
           <TrafficLights layout={layout} signals={signals} cars={trafficCars} player={vehicleState} />
+          <DriftFx state={vehicleState} enabled={vehicle === "car"} />
           {TRAFFIC_CARS[gfx.traffic] > 0 && (
             <Traffic
               key={gfx.traffic}
@@ -690,7 +708,8 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
       {driving && showInputs && <InputsPanel vehicle={vehicleState} type={vehicle} />}
       {driving && decisions && <DriverPanel vehicle={vehicleState} />}
       {driving && <Gauge vehicle={vehicleState} type={vehicle} onToggleAuto={toggleAutopilot} altitude={droneAlt} onAltitude={nudgeAltitude} />}
-      {driving && <KeyHints type={vehicle} droneMode={droneMode} />}
+      {driving && <KeyHints type={vehicle} droneMode={droneMode} hidden={hintsDone} />}
+      {driving && vehicle === "car" && <DriftScore vehicle={vehicleState} />}
       <HighOffer settings={gfx} onAccept={() => updateGfx("high")} />
       <StartHint
         driving={driving}
@@ -720,7 +739,7 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
       )}
       {driving && <TouchPad keys={keys} flying={vehicle === "drone"} />}
       {selected && <InfoPanel building={selected} onClose={() => setSelectedId(null)} />}
-      {showHelp && <HelpOverlay onClose={closeHelp} />}
+      {showHelp && <HelpOverlay onClose={closeHelp} type={vehicle} droneMode={droneMode} />}
     </div>
   );
 }
@@ -833,6 +852,7 @@ function AudioDriver({ layout, vehicle, type, driving, keys, traffic }) {
       throttle: s.throttle ?? (keys.current.has("up") ? 1 : 0),
       steer: s.steer,
       slip: type === "car" ? s.slip : 0,
+      drifting: type === "car" && Boolean(s.drifting),
       alt: s.alt,
       climb: s.climb,
       transforming: s.transform != null,
@@ -848,9 +868,11 @@ function AudioDriver({ layout, vehicle, type, driving, keys, traffic }) {
     const l = last.current;
     if ((s.bump ?? 0) !== l.bump) {
       l.bump = s.bump;
-      if ((s.bumpStrength ?? 0) > 0.12 && now - l.bumpAt > 300) {
+      if ((s.bumpStrength ?? 0) * audible > 0.12 && now - l.bumpAt > 300) {
         l.bumpAt = now;
-        audio.thud(s.bumpStrength);
+        // A knock is a thud; a real hit is a crash (heard less from further off).
+        if (s.bumpStrength > CRASH_FROM) audio.crash(s.bumpStrength * audible);
+        else audio.thud(s.bumpStrength * audible);
       }
     }
     if (driving && s.alt < 25) {

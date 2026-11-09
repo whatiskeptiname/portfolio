@@ -179,7 +179,7 @@ export function Gauge({ vehicle, type, onToggleAuto, altitude = 12, onAltitude }
     }, 100);
     return () => clearInterval(id);
   }, [vehicle]);
-  const max = type === "car" ? CAR_LIMITS.highway : 42;
+  const max = type === "car" ? 300 / KMH_PER_UNIT : 42; // the car's dial reads to 300 km/h
   const kmh = Math.round(Math.abs(v.speed) * KMH_PER_UNIT);
   const frac = Math.min(1, Math.abs(v.speed) / max);
   // 240° sweep, from -210° to +30° (SVG angles, y down).
@@ -367,10 +367,11 @@ export function HighOffer({ settings, onAccept }) {
 }
 
 /** The keys for the vehicle you're in, shown while you drive or fly. */
-export function KeyHints({ type, droneMode }) {
-  // Shown the whole time you drive or fly, so the controls are always to hand.
+export function KeyHints({ type, droneMode, hidden = false, inline = false }) {
+  // Shown when you start driving or flying, and gone once you've been at the
+  // wheel a few seconds (they're always in Help, under ?).
   return (
-    <div className="key-hints" aria-hidden="true">
+    <div className={`key-hints${inline ? " is-inline" : ""}${hidden ? " hidden" : ""}`} aria-hidden={inline ? undefined : "true"}>
       {type === "drone" && droneMode === "realistic" ? (
         <>
           <span>
@@ -518,13 +519,22 @@ function CareerPanel({ item, closeRef, onClose }) {
   );
 }
 
-export function HelpOverlay({ onClose }) {
+export function HelpOverlay({ onClose, type = "car", droneMode }) {
   // Focus the button without scrolling to it: on a phone it's far below the title.
   const go = useRef();
   useEffect(() => go.current?.focus({ preventScroll: true }), []);
   return (
     <div className="city-help" role="dialog" aria-modal="true" aria-labelledby="city-help-title" onClick={onClose}>
       <div className="city-help-card" onClick={(e) => e.stopPropagation()}>
+        {/* The controls first: what you came here for once you're driving. */}
+        <section className="help-controls keys-only" aria-label="Controls">
+          <h3>Controls · {type === "drone" ? "drone" : "car"}</h3>
+          <KeyHints type={type} droneMode={droneMode} inline />
+          <p className="help-shortcuts">
+            <kbd>C</kbd> look around / drive · <kbd>T</kbd> chase / eye · <kbd>G</kbd> route plan · <kbd>O</kbd> inputs ·{" "}
+            <kbd>K</kbd> screenshot · <kbd>M</kbd> music · <kbd>H</kbd> or <kbd>?</kbd> help · <kbd>Esc</kbd> close / exit
+          </p>
+        </section>
         <h2 id="city-help-title">Welcome to my planet</h2>
         <p>
           The <strong>northern hemisphere</strong> is my résumé: glass towers in the Work, Learning
@@ -753,7 +763,7 @@ export function GraphicsPanel({
         ]}
         onChange={onTimeMode}
       />
-      <p className="gfx-note">Cycle runs the planet's day — 12 minutes long, synced to your clock. Day and Night hold it wherever you are: the black hole low on the horizon, or midnight under the Milky Way.</p>
+      <p className="gfx-note">Cycle runs the planet's day — 12 minutes long, synced to your clock. Day and Night hold it wherever you are: noon with the black hole high overhead, or midnight under the Milky Way.</p>
 
       <h3>Drone controls</h3>
       <Choice
@@ -1154,43 +1164,8 @@ export function AutopilotPanel({
  * The controls going to the vehicle right now — from the autopilot, or from
  * you: throttle, brake, steering (and climb for the drone).
  */
-export function InputsPanel({ vehicle, type }) {
-  const [c, setC] = useState(null);
-  useEffect(() => {
-    const id = setInterval(() => setC({ ...(vehicle.current.controls ?? {}) }), 60);
-    return () => clearInterval(id);
-  }, [vehicle]);
-  if (!c) return null;
-  const steer = Math.max(-1, Math.min(1, c.steer ?? 0)); // + = left
-  const climb = (c.ascend ? 1 : 0) - (c.descend ? 1 : 0);
-  if (type === "drone" && c.sticks) {
-    // The four sticks, as on a radio.
-    const st = c.sticks;
-    const centre = (v, label) => (
-      <div className="ip-row">
-        <span>{label}</span>
-        <i className="ip-steer">
-          <b style={{ left: `${50 + Math.max(-1, Math.min(1, v)) * 50}%` }} />
-        </i>
-        <output>{Math.round(v * 100)}%</output>
-      </div>
-    );
-    return (
-      <div className={`inputs-panel by-${c.by ?? "you"}`} aria-label="Drone sticks">
-        <span className="ip-title">{c.by === "autopilot" ? "Autopilot sticks" : "Your sticks"}</span>
-        <div className="ip-row">
-          <span>Throttle</span>
-          <i className="ip-bar">
-            <b style={{ width: `${Math.round(st.throttle * 100)}%` }} />
-          </i>
-          <output>{Math.round(st.throttle * 100)}%</output>
-        </div>
-        {centre(-(st.yaw ?? 0), "Yaw")}
-        {centre(st.pitch ?? 0, "Pitch")}
-        {centre(st.roll ?? 0, "Roll")}
-      </div>
-    );
-  }
+/** The car's controls as bars: throttle, brake, reverse, handbrake, cruise, steering. */
+function CarInputs({ c, steer }) {
   return (
     <div className={`inputs-panel by-${c.by ?? "you"}`} aria-label="Vehicle controls">
       <span className="ip-title">{c.by === "autopilot" ? "Autopilot inputs" : "Your inputs"}</span>
@@ -1206,24 +1181,18 @@ export function InputsPanel({ vehicle, type }) {
           <b style={{ width: `${c.pedal === "brake" || c.pedal === "hold" ? Math.round((c.brake ? (c.brakeLevel ?? 1) : 1) * 100) : 0}%` }} />
         </i>
       </div>
-      {type === "car" && (
-        <div className="ip-row">
-          <span>Reverse</span>
-          <i className="ip-bar reverse">
-            <b style={{ width: c.pedal === "reverse" ? "100%" : "0%" }} />
-          </i>
-          <output>{c.pedal === "reverse" ? "R" : ""}</output>
-        </div>
-      )}
-      {type === "car" && (
-        <div className="ip-row">
-          <span>Handbrake</span>
-          <output className={c.handbrake ? "ip-on" : "ip-off"}>
-            {c.handbrake ? "ON" : "off"}
-          </output>
-        </div>
-      )}
-      {type === "car" && c.by !== "autopilot" && (
+      <div className="ip-row">
+        <span>Reverse</span>
+        <i className="ip-bar reverse">
+          <b style={{ width: c.pedal === "reverse" ? "100%" : "0%" }} />
+        </i>
+        <output>{c.pedal === "reverse" ? "R" : ""}</output>
+      </div>
+      <div className="ip-row">
+        <span>Handbrake</span>
+        <output className={c.handbrake ? "ip-on" : "ip-off"}>{c.handbrake ? "ON" : "off"}</output>
+      </div>
+      {c.by !== "autopilot" && (
         <div className="ip-row">
           <span>Cruise</span>
           <output className={c.cruise != null ? "ip-on" : "ip-off"} title="L locks the speed you're doing">
@@ -1238,12 +1207,63 @@ export function InputsPanel({ vehicle, type }) {
         </i>
         <output>{Math.abs(steer) < 0.03 ? "—" : `${Math.round(Math.abs(steer) * 100)}% ${steer > 0 ? "L" : "R"}`}</output>
       </div>
-      {type === "drone" && (
-        <div className="ip-row">
-          <span>Climb</span>
-          <output>{climb > 0 ? "up" : climb < 0 ? "down" : "hold"}</output>
-        </div>
-      )}
+    </div>
+  );
+}
+
+/** One gimbal of the transmitter: the stick's position, x and y in −1…1 (y up). */
+function Stick({ x = 0, y = 0, label, reading }) {
+  const clamp = (v) => Math.max(-1, Math.min(1, v || 0));
+  return (
+    <figure className="rc-stick">
+      <div className="rc-gate" role="img" aria-label={`${label}: ${reading}`}>
+        <b style={{ left: `${50 + clamp(x) * 40}%`, top: `${50 - clamp(y) * 40}%` }} />
+      </div>
+      <figcaption>
+        <span>{label}</span>
+        <output>{reading}</output>
+      </figcaption>
+    </figure>
+  );
+}
+
+const pct = (v) => `${Math.round(Math.abs(v) * 100)}%`;
+
+/**
+ * What's being sent to the vehicle. The car: bars for each control. The
+ * drone: a radio-control transmitter's two sticks in "Mode 2" — left stick
+ * throttle (up/down) and yaw (sideways), right stick pitch and roll.
+ */
+export function InputsPanel({ vehicle, type }) {
+  const [c, setC] = useState(null);
+  useEffect(() => {
+    const id = setInterval(() => setC({ ...(vehicle.current.controls ?? {}) }), 60);
+    return () => clearInterval(id);
+  }, [vehicle]);
+  if (!c) return null;
+  const auto = c.by === "autopilot";
+  const steer = Math.max(-1, Math.min(1, c.steer ?? 0)); // + = left
+  const turn = Math.abs(steer) < 0.03 ? "centre" : `${pct(steer)} ${steer > 0 ? "L" : "R"}`;
+  if (type === "car") return <CarInputs c={c} steer={steer} />;
+  let left;
+  let right;
+  if (c.sticks) {
+    const st = c.sticks;
+    left = { x: -(st.yaw ?? 0), y: (st.throttle ?? 0) * 2 - 1, label: "Throttle · yaw", reading: `${pct(st.throttle ?? 0)} · ${pct(st.yaw ?? 0)}` };
+    right = { x: st.roll ?? 0, y: st.pitch ?? 0, label: "Pitch · roll", reading: `${pct(st.pitch ?? 0)} · ${pct(st.roll ?? 0)}` };
+  } else {
+    const climb = (c.ascend ? 1 : 0) - (c.descend ? 1 : 0);
+    const fwd = (c.up ? 1 : 0) - (c.down ? 1 : 0);
+    left = { x: -steer, y: climb, label: "Climb · turn", reading: `${climb > 0 ? "up" : climb < 0 ? "down" : "hold"} · ${turn}` };
+    right = { x: 0, y: fwd, label: "Forward", reading: fwd > 0 ? "forward" : fwd < 0 ? "back" : "hold" };
+  }
+  return (
+    <div className={`inputs-panel rc by-${c.by ?? "you"}`} aria-label="Drone sticks">
+      <span className="ip-title">{auto ? "Autopilot · radio" : "You · radio"}</span>
+      <div className="rc-sticks">
+        <Stick {...left} />
+        <Stick {...right} />
+      </div>
     </div>
   );
 }
@@ -1289,5 +1309,43 @@ export function BatteryPrompt({ vehicle }) {
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * The drift score, top centre: the points piling up while you slide, then
+ * the banked total for a moment (or "Drift lost" if it ended in a crash),
+ * and your best this visit.
+ */
+export function DriftScore({ vehicle }) {
+  const [d, setD] = useState(null);
+  useEffect(() => {
+    const id = setInterval(() => {
+      const x = vehicle.current.drift;
+      setD(x ? { active: x.active, score: Math.round(x.score), angle: Math.round((x.angle * 180) / Math.PI), last: x.last, best: x.best } : null);
+    }, 80);
+    return () => clearInterval(id);
+  }, [vehicle]);
+  if (!d || (!d.active && !d.last)) return null;
+  return (
+    <div className={`drift-score${d.last?.lost && !d.active ? " is-lost" : ""}`} role="status" aria-live="polite">
+      {d.active ? (
+        <>
+          <span className="drift-label">Drift · {d.angle}°</span>
+          <strong>{d.score.toLocaleString()}</strong>
+        </>
+      ) : d.last.lost ? (
+        <>
+          <span className="drift-label">Drift lost</span>
+          <strong>{d.last.score.toLocaleString()}</strong>
+        </>
+      ) : (
+        <>
+          <span className="drift-label">Drift!</span>
+          <strong>+{d.last.score.toLocaleString()}</strong>
+        </>
+      )}
+      {d.best > 0 && <span className="drift-best">best {d.best.toLocaleString()}</span>}
+    </div>
   );
 }
