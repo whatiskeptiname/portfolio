@@ -49,7 +49,7 @@ export function UncertaintySim({ onState }) {
     >
       <Canvas width={640} height={290}>
         <text className="label" x={40} y={16}>
-          What you believe about their true rate
+          Belief about their true rate
         </text>
         <Axes x={X} y={Y} xTicks={[0, 0.5, 1]} fmtX={(v) => pct(v)} />
         <path className="area-a" d={`${linePath(curve, X.f, Y.f)}L${X.f(1)},${Y.f(0)}L${X.f(0)},${Y.f(0)}Z`} />
@@ -59,7 +59,7 @@ export function UncertaintySim({ onState }) {
           truth: 70%
         </text>
         <text className="label" x={360} y={16}>
-          Baskets in their next 10 shots
+          Baskets in the next 10 shots
         </text>
         {next.map((p, k) => (
           <rect key={k} className="bar-b" x={BX.f(k) - 9} y={BY.f(p)} width={18} height={BY.f(0) - BY.f(p)} rx="3" />

@@ -31,6 +31,13 @@ const WORDS = {
   bike: [-0.62, -0.12],
   train: [-0.9, -0.05],
 };
+/** Where each word's name sits, so close neighbours don't overlap: right of the dot unless listed. */
+const LABEL_AT = { prince: "above", princess: "above", momo: "left", pizza: "left", train: "left" };
+const labelAt = (w, x, y) =>
+  ({
+    above: { x, y: y - 10, textAnchor: "middle" },
+    left: { x: x - 9, y: y + 4, textAnchor: "end" },
+  })[LABEL_AT[w]] || { x: x + 9, y: y + 4, textAnchor: "start" };
 
 export function EmbedSim({ onState }) {
   const [word, setWord] = useState("queen");
@@ -79,7 +86,7 @@ export function EmbedSim({ onState }) {
         {Object.entries(WORDS).map(([w, [x, y]]) => (
           <g key={w}>
             <circle className={w === word && !analogy ? "dot-b" : "dot-a"} cx={X.f(x)} cy={Y.f(y)} r="6" />
-            <text className="label" x={X.f(x) + 9} y={Y.f(y) + 4}>
+            <text className="label" {...labelAt(w, X.f(x), Y.f(y))}>
               {w}
             </text>
           </g>
@@ -184,20 +191,26 @@ export function AttentionSim({ onState }) {
       controls={
         <>
           <Choice label="The sentence ends" options={[["tired", "…too tired"], ["wide", "…too wide"]]} value={end} onChange={setEnd} />
-          <Choice label="Looking from" options={[["7", "it"], ["5", "street"], ["3", "cross"]]} value={String(focus)} onChange={(v) => setFocus(+v)} />
         </>
       }
       readouts={<Readout label={`"${words[focus]}" attends most to`} value={top} tone="accent" />}
     >
-      <div className="attn-row" role="img" aria-label={`Attention from ${words[focus]}`}>
+      <div className="attn-row" role="group" aria-label={`Attention from "${words[focus]}". Tap a word to look from it.`}>
         {words.map((w, j) => (
-          <span key={j} className={`attn-word${j === focus ? " is-focus" : ""}`} style={{ "--w": j === focus ? 0 : weights[j] }}>
+          <button
+            key={j}
+            type="button"
+            className={`attn-word${j === focus ? " is-focus" : ""}`}
+            style={{ "--w": j === focus ? 0 : weights[j] }}
+            aria-pressed={j === focus}
+            onClick={() => setFocus(j)}
+          >
             {w}
-            <small>{j === focus ? "" : pct(weights[j])}</small>
-          </span>
+            <small>{j === focus ? "looking" : pct(weights[j])}</small>
+          </button>
         ))}
       </div>
-      <p className="sim-legend">Illustrative weights. Change the last word and "it" shifts from the animal to the street: the model works out what "it" means from the whole sentence.</p>
+      <p className="sim-legend">Tap any word to see what it pays attention to. Illustrative weights. Change the last word and "it" shifts from the animal to the street: the model works out what "it" means from the whole sentence.</p>
     </Sim>
   );
 }

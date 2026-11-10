@@ -557,11 +557,30 @@ a.chapter-cover:hover {
   padding: 14px 14px 6px;
 }
 .sim-svg {
+  /* Diagrams are drawn 640 units wide and shrink to about half on a phone, so
+     their text is scaled up there to stay readable (about 9–10px on screen). */
+  --svg-text: 1;
   display: block;
   width: 100%;
   height: auto;
   overflow: visible;
   font-family: var(--font-body);
+}
+@media (max-width: 600px) {
+  .sim .sim-svg {
+    --svg-text: 1.45;
+    --svg-axis: 1.5;
+    margin-bottom: 6px;
+  }
+  /* The traced layer is drawn narrower, so it needs less help. */
+  .sim .sim-svg.trace-svg {
+    --svg-text: 1.1;
+    --svg-axis: 1.1;
+  }
+  /* The x-axis name drops a line so the bigger tick numbers don't run into it. */
+  .sim .sim-svg .axis-label.is-x {
+    transform: translateY(8px);
+  }
 }
 .sim-svg.draggable {
   touch-action: none;
@@ -801,7 +820,11 @@ a.chapter-cover:hover {
 .sim-svg .axis-label,
 .sim-svg .note {
   fill: var(--muted);
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--svg-text));
+}
+.sim-svg .tick,
+.sim-svg .axis-label {
+  font-size: calc(11.5px * var(--svg-axis, 1));
 }
 .sim-svg .note-a {
   fill: var(--c-a);
@@ -811,7 +834,7 @@ a.chapter-cover:hover {
 }
 .sim-svg .label {
   fill: var(--text);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--svg-text));
   font-weight: 600;
 }
 .sim-svg .line-a,
@@ -896,12 +919,12 @@ a.chapter-cover:hover {
 }
 .sim-svg .cm-n {
   fill: var(--text);
-  font-size: 15px;
+  font-size: calc(15px * var(--svg-text));
   font-weight: 700;
 }
 .sim-svg .cm-label {
   fill: var(--muted);
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--svg-text));
 }
 .sim-svg .residual {
   stroke: var(--c-bad);
@@ -917,7 +940,7 @@ a.chapter-cover:hover {
 }
 .sim-svg .trial-n {
   fill: var(--text);
-  font-size: 9px;
+  font-size: calc(9px * var(--svg-text));
   font-weight: 700;
 }
 .sim-svg .push-up {
@@ -928,7 +951,7 @@ a.chapter-cover:hover {
 }
 .sim-svg .push-label {
   fill: var(--text);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--svg-text));
 }
 .sim-svg .px-on {
   fill: var(--text);
@@ -1204,9 +1227,6 @@ a.chapter-cover:hover {
   border-color: var(--c-bad);
   background: var(--c-bad);
   box-shadow: inset 0 0 0 3px var(--surface);
-}
-.option.is-faded {
-  opacity: 0.5;
 }
 .option-why {
   display: block;
@@ -1686,7 +1706,8 @@ a.chapter-cover:hover {
   fill: var(--line);
 }
 .reel-bar-label {
-  font-size: 12px;
+  /* HTML inside the diagram, so it scales with the diagram's text on a phone. */
+  font-size: calc(12px * var(--svg-text, 1));
   line-height: 1.25;
   text-align: center;
   color: var(--muted);
@@ -1992,6 +2013,23 @@ a.chapter-cover:hover {
 }
 
 /* ---------- Layer trace ---------- */
+/* overflow: clip keeps the rounded corners without making a scroll box, so the diagram can stick. */
+.sim:has(.trace-stick) {
+  overflow: clip;
+}
+.trace-stick {
+  position: sticky;
+  top: 49px;
+  z-index: 2;
+  margin: -14px -14px 0;
+  padding: 12px 14px 8px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.trace-svg {
+  max-width: 560px;
+  margin: 0 auto;
+}
 .sim-svg .trace-node {
   fill: var(--surface);
   stroke: var(--line);
@@ -2000,8 +2038,12 @@ a.chapter-cover:hover {
 .sim-svg .trace-node.is-out {
   stroke: var(--c-a);
 }
+.sim-svg .trace-num {
+  fill: var(--text);
+  font: 600 15px var(--font-mono);
+}
 .sim-svg .trace-line {
-  font: 600 13px var(--font-mono);
+  font: 600 16px var(--font-mono);
   fill: var(--text);
 }
 .sim-svg .trace-line.is-out {
@@ -2009,5 +2051,154 @@ a.chapter-cover:hover {
 }
 .sim-svg .trace-line.is-off {
   fill: var(--muted);
-  opacity: 0.6;
+}
+.sim-svg .trace-neuron {
+  cursor: pointer;
+  outline: none;
+}
+.sim-svg .trace-neuron:hover .trace-node,
+.sim-svg .trace-neuron:focus-visible .trace-node {
+  stroke: var(--muted);
+  stroke-width: 2.5;
+}
+.sim-svg .trace-neuron.is-picked .trace-node {
+  stroke: var(--c-a);
+  stroke-width: 3;
+}
+.sim-svg .trace-weight rect {
+  fill: var(--surface);
+  stroke: var(--line);
+}
+.sim-svg .trace-weight text {
+  fill: var(--text);
+  font: 600 14px var(--font-mono);
+}
+.trace-work {
+  list-style: none;
+  margin: 0;
+  padding: 4px 4px 12px;
+  display: grid;
+  gap: 10px;
+}
+.trace-work li {
+  display: grid;
+  grid-template-columns: 9rem minmax(0, 1fr);
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.trace-head,
+.trace-maths {
+  display: grid;
+  gap: 2px;
+  align-content: start;
+  min-width: 0;
+}
+.trace-step {
+  font-weight: 600;
+  color: var(--text);
+}
+.trace-over {
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+.trace-rule,
+.trace-sub {
+  font: 0.8rem/1.5 var(--font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.trace-rule {
+  color: var(--muted);
+}
+.trace-sub {
+  color: var(--text);
+}
+.trace-sub strong {
+  color: var(--c-a);
+}
+@media (max-width: 600px) {
+  .trace-work li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+}
+
+/* ---------- Things you tap in a diagram ---------- */
+button.attn-word {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  cursor: pointer;
+}
+button.attn-word:hover {
+  outline: 1px solid var(--muted);
+}
+button.attn-word.is-focus {
+  outline: 2px solid var(--c-b);
+}
+.rec-who {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+.rec-who:hover {
+  border-color: var(--line);
+}
+.rec-who[aria-pressed="true"] {
+  color: var(--c-b);
+  border-color: var(--c-b);
+}
+.sim-svg .cam-thing {
+  fill: var(--text);
+  fill-opacity: 0.4;
+  stroke: transparent;
+  stroke-width: 3;
+  cursor: pointer;
+  outline: none;
+}
+.sim-svg .cam-thing:hover,
+.sim-svg .cam-thing:focus-visible {
+  stroke: var(--muted);
+}
+.sim-svg .cam-thing.is-picked {
+  stroke: var(--c-b);
+}
+
+/* On a phone every simulation runs edge to edge: the diagrams are drawn 640
+   units wide, and the extra width keeps their text near 10px instead of 8. */
+@media (max-width: 600px) {
+  .learn-main .sim {
+    margin-left: -16px;
+    margin-right: -16px;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+  .learn-main .sim-stage {
+    padding: 10px 10px 2px;
+  }
+  .learn-main .sim-legend {
+    margin-left: 12px;
+    margin-right: 12px;
+  }
+  .learn-main .trace-stick {
+    margin: -10px -10px 0;
+    padding: 10px 10px 6px;
+  }
+  .learn-main .trace-work {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+/* ---------- While a chapter's lessons download ---------- */
+.lesson-loading-note {
+  margin-top: 28px;
+  color: var(--muted);
 }

@@ -355,7 +355,6 @@ export function RecSim({ onState }) {
       label="Fill in the ratings people haven't given yet"
       controls={
         <>
-          <Slider label="Viewer" value={who} min={0} max={5} onChange={setWho} format={(v) => VIEWERS[v]} />
           <Slider label="Hidden tastes (k)" value={tastes} min={1} max={3} onChange={setTastes} />
         </>
       }
@@ -380,7 +379,11 @@ export function RecSim({ onState }) {
         <tbody>
           {KNOWN.map((row, u) => (
             <tr key={u} className={u === who ? "is-who" : ""}>
-              <th>{VIEWERS[u]}</th>
+              <th>
+                <button type="button" className="rec-who" aria-pressed={u === who} onClick={() => setWho(u)}>
+                  {VIEWERS[u]}
+                </button>
+              </th>
               {row.map((r, i) => {
                 const p = model.predict(u, i);
                 return (
@@ -394,7 +397,7 @@ export function RecSim({ onState }) {
         </tbody>
       </table>
       </div>
-      <p className="sim-legend">Bold numbers are real ratings; faded ones are the model's guesses, learned only from the pattern of who liked what.</p>
+      <p className="sim-legend">Tap a viewer's name to see what they'd be recommended. Bold numbers are real ratings; faded ones are the model's guesses, learned only from the pattern of who liked what.</p>
     </Sim>
   );
 }

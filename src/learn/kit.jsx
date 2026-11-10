@@ -118,7 +118,7 @@ export function Axes({ x, y, xTicks = [], yTicks = [], xLabel, yLabel, fmtX = (v
       ))}
       <line className="axis" x1={x0} x2={x1} y1={y0} y2={y0} />
       {xLabel && (
-        <text className="axis-label" x={x1} y={y0 + 32} textAnchor="end">
+        <text className="axis-label is-x" x={x1} y={y0 + 32} textAnchor="end">
           {xLabel}
         </text>
       )}

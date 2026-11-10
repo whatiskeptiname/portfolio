@@ -262,19 +262,20 @@ export function ThresholdSim({ onState }) {
         <text className="note" x={X.f(threshold) + 6} y={292}>
           flagged →
         </text>
-        <g className="cm" transform="translate(432,216)">
+        <g className="cm" transform="translate(432,204)">
           {[
             ["caught", m.tp, "good"],
             ["false alarm", m.fp, "bad"],
             ["missed", m.fn, "bad"],
             ["cleared", m.tn, "good"],
           ].map(([label, n, tone], i) => (
-            <g key={label} transform={`translate(${(i % 2) * 104},${Math.floor(i / 2) * 36})`}>
-              <rect className={`cm-cell tone-${tone}`} width="100" height="32" rx="6" />
-              <text className="cm-n" x="8" y="21">
+            <g key={label} transform={`translate(${(i % 2) * 104},${Math.floor(i / 2) * 50})`}>
+              {/* The count on top and its name underneath, so neither crowds the other on a phone. */}
+              <rect className={`cm-cell tone-${tone}`} width="100" height="46" rx="6" />
+              <text className="cm-n" x="8" y="20">
                 {n}
               </text>
-              <text className="cm-label" x="92" y="20" textAnchor="end">
+              <text className="cm-label" x="8" y="38">
                 {label}
               </text>
             </g>
@@ -658,10 +659,12 @@ export function ShapSim({ onState }) {
           const x0 = X.f(Math.min(s.from, s.to));
           const w = Math.max(2, Math.abs(X.f(s.to) - X.f(s.from)));
           const up = s.to > s.from;
+          // Labels sit past the end the bar grows towards, unless that would run off the chart.
+          const after = up ? x0 + w < 380 : x0 < 240;
           return (
             <g key={s.f.id} transform={`translate(0,${14 + i * 46})`}>
               <rect className={up ? "push-up" : "push-down"} x={x0} y={0} width={w} height={22} rx="4" />
-              <text className="push-label" x={up ? x0 + w + 8 : x0 - 8} y={15} textAnchor={up ? "start" : "end"}>
+              <text className="push-label" x={up === after ? x0 + w + 8 : x0 - 8} y={15} textAnchor={up === after ? "start" : "end"}>
                 {s.f.label} {up ? "+" : "−"}
                 {Math.abs((s.to - s.from) * 100).toFixed(0)} pts
               </text>

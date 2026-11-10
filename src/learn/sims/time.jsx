@@ -88,16 +88,17 @@ export function ComponentsSim({ onState }) {
         </>
       }
     >
-      <Canvas width={640} height={354}>
+      <Canvas width={640} height={378}>
         <Axes x={X} y={Y} xTicks={[0, 24, 48, 72, 95]} fmtX={(v) => `month ${v + 1}`} />
         <path className="line-ink thick" d={linePath(total.map((v, t) => [t, v]), X.f, Y.f)} />
         {strips.map(([k, label, cls], i) => {
-          const top = 182 + i * 42;
+          // Each part gets its own strip: the name on top, its curve underneath, clear of the next name.
+          const top = 190 + i * 48;
           const [lo, hi] = extent(parts[k]);
-          const S = frame(hi - lo < 1e-9 ? [lo - 1, hi + 1] : [lo, hi], [top + 36, top + 12]);
+          const S = frame(hi - lo < 1e-9 ? [lo - 1, hi + 1] : [lo, hi], [top + 40, top + 16]);
           return (
             <g key={k}>
-              <text className="note" x={40} y={top + 2}>
+              <text className="note" x={40} y={top + 6}>
                 {label}
               </text>
               <path className={cls} d={linePath(parts[k].map((v, t) => [t, v]), X.f, S.f)} />
@@ -231,7 +232,7 @@ export function ACFSim({ onState }) {
           ACF: correlation with k months ago
         </text>
         <text className="note" x={350} y={128}>
-          PACF: the same, minus what shorter lags explain
+          PACF: the same, net of shorter lags
         </text>
         {[AX, PX].map((AXIS, j) => (
           <g key={j}>
@@ -326,7 +327,8 @@ export function ForecastSim({ onState }) {
 // ARIMA intuition: how forecast uncertainty grows
 
 export function FanSim({ onState }) {
-  const [model, setModel] = useState("ar");
+  // Starts on the random walk, whose range never stops widening, so the task needs a real change.
+  const [model, setModel] = useState("rw");
   const [phi, setPhi] = useState(0.7);
   const sigma = 1;
   const hist = useMemo(() => {
@@ -616,7 +618,7 @@ export function HierarchySim({ onState }) {
         {fix(v, 0)}
       </text>
       <text className="note" x="114" y="37" textAnchor="end">
-        actual {t}
+        real {t}
       </text>
     </g>
   );

@@ -389,7 +389,7 @@ export function NMSSim({ onState }) {
           {result.steps.map((s, i) => (
             <text key={i} className="note" y={i * 20} opacity={i < step ? 1 : 0.35}>
               {i + 1}. keep {s.kept.score.toFixed(2)}
-              {s.dropped.length ? `, drop ${s.dropped.length} overlapping` : ""}
+              {s.dropped.length ? `, drop ${s.dropped.length}` : ""}
             </text>
           ))}
         </g>
@@ -746,7 +746,7 @@ export function PatchSim({ onState }) {
         </g>
         <g transform="translate(290,24)">
           <text className="note" y={-6}>
-            what the transformer reads: [CLS] + 16 patch tokens
+            the transformer reads: [CLS] + 16 patches
           </text>
           <rect className="node is-on" x={0} y={6} width={30} height={26} rx="5" />
           <text className="note" x={15} y={23} textAnchor="middle">
@@ -758,7 +758,7 @@ export function PatchSim({ onState }) {
             </g>
           ))}
           <text className="note" y={92}>
-            each gets a position embedding, so order isn't lost
+            each also gets its position
           </text>
           {range(16).map((j) => (
             <g key={j} transform={`translate(${(j % 8) * 40},${112 + Math.floor(j / 8) * 64})`}>
@@ -869,7 +869,6 @@ export function GradCamSim({ onState }) {
   return (
     <Sim
       label="Grad-CAM: weight each feature map by how much it pushes the chosen class, add them up, keep the positive part"
-      controls={<Choice label="Explain the score for" options={[["dog", "Dog"], ["ball", "Ball"]]} value={target} onChange={setTarget} />}
       readouts={
         <>
           {w.map((v, k) => (
@@ -892,12 +891,27 @@ export function GradCamSim({ onState }) {
         </text>
         <g transform="translate(380,30)">
           <rect className="node" width={7 * c} height={7 * c} rx="8" />
-          <ellipse className="px-on" cx={2.4 * c} cy={3.8 * c} rx={1.9 * c} ry={1.4 * c} fillOpacity="0.45" />
-          <circle className="px-on" cx={1.4 * c} cy={2.2 * c} r={0.9 * c} fillOpacity="0.45" />
-          <circle className="px-on" cx={5.4 * c} cy={5.3 * c} r={0.8 * c} fillOpacity="0.6" />
           {cam.map((row, y) => row.map((v, x) => <rect key={`${x}${y}`} x={x * c} y={y * c} width={c} height={c} className="heat-b" fillOpacity={(v / top) * 0.75} />))}
+          {/* The dog and the ball are the controls: tap one to explain its score. They sit above the heat so they catch the tap. */}
+          {[
+            ["dog", <g key="d"><ellipse cx={2.4 * c} cy={3.8 * c} rx={1.9 * c} ry={1.4 * c} /><circle cx={1.4 * c} cy={2.2 * c} r={0.9 * c} /></g>],
+            ["ball", <circle key="b" cx={5.4 * c} cy={5.3 * c} r={0.8 * c} />],
+          ].map(([k, shape]) => (
+            <g
+              key={k}
+              className={`cam-thing${target === k ? " is-picked" : ""}`}
+              role="button"
+              tabIndex={0}
+              aria-pressed={target === k}
+              aria-label={`Explain the score for the ${k}`}
+              onClick={() => setTarget(k)}
+              onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setTarget(k))}
+            >
+              {shape}
+            </g>
+          ))}
           <text className="note" x={0} y={7 * c + 16}>
-            heat map over the photo: a dog and a ball
+            tap the dog or the ball
           </text>
         </g>
       </Canvas>
