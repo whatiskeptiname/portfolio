@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { countEvent, countOnce, countPage, durationBand, eventName, linkEvent, pagePath, shortName } from "./visits";
+import { countEvent, countOnce, countPage, durationBand, eventName, linkEvent, pagePath, scrubError, shortName } from "./visits";
 
 describe("pagePath", () => {
   it("counts the part after #/ as the page", () => {
@@ -122,5 +122,12 @@ describe("names", () => {
   it("cuts long names at a word", () => {
     expect(shortName("Compare activation functions and how much gradient survives")).toBe("compare-activation-functions-and-how");
     expect(shortName("Short one")).toBe("short-one");
+  });
+});
+
+describe("scrubError", () => {
+  it("takes addresses and long numbers out of an error before it's counted", () => {
+    expect(scrubError("Failed to load https://example.com/a?b=c for someone@example.com, code 123456")).toBe("Failed to load <link> for <email> code <number>");
+    expect(scrubError(undefined)).toBe("unknown");
   });
 });

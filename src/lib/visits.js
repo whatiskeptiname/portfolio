@@ -115,6 +115,15 @@ export function countOnce(...parts) {
   send({ path, event: true });
 }
 
+/** An error message safe to count: web and email addresses and long numbers taken out, and kept short. */
+export function scrubError(message) {
+  return String(message || "unknown")
+    .replace(/[a-z][a-z0-9+.-]*:\/\/\S+/gi, "<link>")
+    .replace(/\S+@\S+\.\S+/g, "<email>")
+    .replace(/\d{4,}/g, "<number>")
+    .slice(0, 60);
+}
+
 /** A name cut to a few words at most, at a word boundary: "compare-activation-functions-and-how". */
 export function shortName(text, max = 36) {
   const slug = eventName(text);
@@ -152,7 +161,7 @@ export function startCounting() {
   });
   let errors = 0;
   const onError = (message) => {
-    if (errors++ < 5) countEvent("error", here(), String(message || "unknown").slice(0, 60));
+    if (errors++ < 5) countEvent("error", here(), scrubError(message));
   };
   window.addEventListener("error", (e) => onError(e.message));
   window.addEventListener("unhandledrejection", (e) => onError(e.reason?.message || e.reason));
