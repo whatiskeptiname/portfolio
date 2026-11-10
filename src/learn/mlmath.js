@@ -590,3 +590,66 @@ export function traceLayer(act, norm) {
   const Y = A.map((a) => W2.map((w, o) => w.reduce((s, wk, k) => s + wk * a[k], b2[o])));
   return { Z, N, A, Y };
 }
+
+/** A number as it's written in the working: two decimals, a real minus sign, brackets when negative and multiplied. */
+function num(v, bracket = false, places = 2) {
+  const s = (Math.abs(v) < 0.5 * 10 ** -places ? 0 : v).toFixed(places).replace("-", "−");
+  return bracket && s.startsWith("−") ? `(${s})` : s;
+}
+
+/** A list of numbers added up, written the way you'd write it: 2.05 − 0.30 + 1.90. */
+function sumText(vals) {
+  return vals.map((v, i) => (i === 0 ? num(v) : v < 0 ? `− ${num(-v)}` : `+ ${num(v)}`)).join(" ");
+}
+
+const ACT_WORKING = {
+  none: { rule: "a = ẑ (no activation: the number passes straight through)", sub: (v) => `a = ${num(v)}` },
+  relu: { rule: "a = max(0, ẑ)", sub: (v) => `a = max(0, ${num(v)})` },
+  sigmoid: { rule: "a = 1 / (1 + e^(−ẑ))", sub: (v) => `a = 1 / (1 + e^(${num(-v)}))` },
+  tanh: { rule: "a = (e^ẑ − e^(−ẑ)) / (e^ẑ + e^(−ẑ))", sub: (v) => `a = tanh(${num(v)})` },
+};
+
+/**
+ * The working for one hidden neuron j and one input ex of the traced layer:
+ * each step's general rule, the same rule with the numbers put in, and the result.
+ */
+export function traceWorking(act, norm, ex, j) {
+  const { W1, b1, W2, b2, X } = TRACE;
+  const t = traceLayer(act, norm);
+  const x = X[ex];
+  const z = t.Z[ex][j];
+  const steps = [
+    {
+      name: "Weighted sum",
+      rule: `z${j + 1} = w${j + 1}1·x1 + w${j + 1}2·x2 + w${j + 1}3·x3 + b${j + 1}`,
+      sub: `z${j + 1} = ${W1[j].map((w, k) => `${num(w, true)}·${num(x[k], true)}`).join(" + ")} + ${num(b1[j], true)}`,
+      result: z,
+    },
+  ];
+  if (norm === "none") {
+    steps.push({ name: "Normalisation", rule: "ẑ = z (none: nothing is rescaled)", sub: `ẑ = ${num(z)}`, result: z });
+  } else {
+    const vals = norm === "batch" ? t.Z.map((r) => r[j]) : t.Z[ex];
+    const n = vals.length;
+    const m = vals.reduce((a, b) => a + b, 0) / n;
+    const sd = Math.sqrt(vals.reduce((a, v) => a + (v - m) ** 2, 0) / n + 1e-5);
+    const over = norm === "batch" ? `neuron ${j + 1}'s sums for all ${n} inputs in the batch` : `input #${ex + 1}'s own ${n} hidden sums`;
+    steps.push({
+      name: norm === "batch" ? "Batch norm" : "Layer norm",
+      rule: "ẑ = (z − μ) / σ   (then γ·ẑ + β; here γ = 1, β = 0)",
+      over,
+      sub: `μ = (${sumText(vals)}) / ${n} = ${num(m, false, 3)}\nσ = √(mean of (value − μ)²) = ${num(sd, false, 3)}\nẑ = (${num(z)} − ${num(m, true, 3)}) / ${num(sd, false, 3)}`,
+      result: t.N[ex][j],
+    });
+  }
+  const zn = t.N[ex][j];
+  steps.push({ name: "Activation", rule: ACT_WORKING[act].rule, sub: ACT_WORKING[act].sub(zn), result: t.A[ex][j] });
+  const a = t.A[ex];
+  steps.push({
+    name: "Next layer",
+    rule: "y_o = Σ w_o·a + b_o, over all three hidden neurons",
+    sub: W2.map((w, o) => `y${o + 1} = ${w.map((wk, k) => `${num(wk, true)}·${num(a[k], true)}`).join(" + ")} + ${num(b2[o], true)} = ${num(t.Y[ex][o])}`).join("\n"),
+    result: null,
+  });
+  return steps;
+}

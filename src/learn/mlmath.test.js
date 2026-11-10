@@ -201,7 +201,7 @@ describe("neural networks", () => {
   });
 });
 
-import { ACTIVATIONS, gradientThrough, spreadThroughLayers, TRACE, traceLayer } from "./mlmath";
+import { ACTIVATIONS, gradientThrough, spreadThroughLayers, TRACE, traceLayer, traceWorking } from "./mlmath";
 
 describe("activations and normalisation", () => {
   it("knows each activation's value and slope", () => {
@@ -263,5 +263,28 @@ describe("traceLayer", () => {
     for (const row of layer) expect(mean(row)).toBeCloseTo(0, 6);
     expect(batch[0][0]).toBeCloseTo(1.06, 2);
     expect(layer[0][0]).toBeCloseTo(1.41, 2);
+  });
+});
+
+describe("traceWorking", () => {
+  it("writes the weighted sum with the real weights and inputs", () => {
+    const [sum] = traceWorking("none", "none", 0, 0);
+    expect(sum.sub).toBe("z1 = 0.80·1.00 + (−0.50)·(−2.00) + 0.30·0.50 + 0.10");
+    expect(sum.result).toBeCloseTo(2.05, 6);
+  });
+  it("takes batch norm's mean down the batch and layer norm's across the input", () => {
+    const batch = traceWorking("relu", "batch", 0, 0)[1];
+    expect(batch.sub).toContain("μ = (2.05 − 0.30 + 1.90 − 0.39) / 4 = 0.815\nσ = √(mean of (value − μ)²) = 1.162");
+    expect(batch.result).toBeCloseTo(1.06, 2);
+    const layer = traceWorking("relu", "layer", 0, 0)[1];
+    expect(layer.sub).toContain("μ = (2.05 − 1.15 − 1.10) / 3 = −0.067");
+    expect(layer.sub).toContain("ẑ = (2.05 − (−0.067)) / 1.497");
+    expect(layer.result).toBeCloseTo(1.41, 2);
+  });
+  it("applies the chosen activation and ends with both outputs", () => {
+    const steps = traceWorking("relu", "none", 0, 1);
+    expect(steps[2].sub).toBe("a = max(0, −1.15)");
+    expect(steps[2].result).toBe(0);
+    expect(steps[3].sub).toContain("y1 = 1.00·2.05 + (−0.70)·0.00 + 0.50·0.00 + 0.00 = 2.05");
   });
 });

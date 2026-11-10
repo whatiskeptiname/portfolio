@@ -3,7 +3,7 @@
 // in recurrent networks.
 import React, { useMemo, useState } from "react";
 import { range, rng } from "../math";
-import { ACTIVATIONS, gradientThrough, memoryLeft, spreadThroughLayers, TRACE, traceLayer, trainMlp, xorPoints } from "../mlmath";
+import { ACTIVATIONS, gradientThrough, memoryLeft, spreadThroughLayers, TRACE, traceLayer, traceWorking, trainMlp, xorPoints } from "../mlmath";
 import { Axes, Button, Canvas, Choice, Readout, Sim, Slider, Toggle } from "../kit";
 import { fix, frame, linePath, pct, useReport } from "../plot";
 
@@ -395,16 +395,37 @@ export function NormSim({ onState }) {
 // One layer, traced: where the weights, the normalisation and the activation
 // are each calculated, for a batch of four inputs.
 
+// The diagram is drawn narrower than the other sims so its numbers stay readable
+// on a phone, and it stays pinned while the working scrolls beneath it.
+const TW = 480;
+const TH = 250;
+const TCOL = [40, 240, 440];
+const trow = (n, i) => 118 + (i - (n - 1) / 2) * 78;
+const BOX = { w: 124, h: 66 };
+
 export function TraceSim({ onState }) {
   const [act, setAct] = useState("none");
   const [norm, setNorm] = useState("none");
   const [ex, setEx] = useState(0);
+  const [pick, setPick] = useState(0);
   const t = traceLayer(act, norm);
+  const working = traceWorking(act, norm, ex, pick);
   const { W1, W2, X } = TRACE;
-  useReport(onState, { act, norm, ex, y: t.Y[ex].map((v) => +v.toFixed(3)) });
-  const colX = [70, 330, 570];
-  const rowY = (n, i) => 150 + (i - (n - 1) / 2) * 92;
-  const edge = (w) => ({ className: w >= 0 ? "line-a" : "line-b", style: { strokeWidth: 1 + Math.abs(w) * 3 }, opacity: 0.55 });
+  useReport(onState, { act, norm, ex, pick, y: t.Y[ex].map((v) => +v.toFixed(3)) });
+  const left = TCOL[1] - BOX.w / 2;
+  const right = TCOL[1] + BOX.w / 2;
+  // Connections into the picked neuron stand out; the rest fade back.
+  const edge = (w, lit) => ({
+    className: w >= 0 ? "line-a" : "line-b",
+    style: { strokeWidth: 1 + Math.abs(w) * 3 },
+    opacity: lit ? 0.9 : 0.14,
+  });
+  const choose = (j) => (e) => {
+    if (e.type === "click" || e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setPick(j);
+    }
+  };
   return (
     <Sim
       label="Trace one input through a layer: weighted sums, normalisation, activation"
@@ -422,53 +443,97 @@ export function TraceSim({ onState }) {
         </>
       }
     >
-      <Canvas width={W} height={H}>
-        {W1.map((w, j) => w.map((wk, k) => <line key={`a${j}${k}`} {...edge(wk)} x1={colX[0] + 26} y1={rowY(3, k)} x2={colX[1] - 70} y2={rowY(3, j)} />))}
-        {W2.map((w, o) => w.map((wk, k) => <line key={`b${o}${k}`} {...edge(wk)} x1={colX[1] + 70} y1={rowY(3, k)} x2={colX[2] - 30} y2={rowY(2, o)} />))}
-        {X[ex].map((v, k) => (
-          <g key={`x${k}`}>
-            <circle className="trace-node" cx={colX[0]} cy={rowY(3, k)} r="26" />
-            <text className="label" x={colX[0]} y={rowY(3, k) + 5} textAnchor="middle">
-              {fix(v, 1)}
-            </text>
-          </g>
-        ))}
-        {[0, 1, 2].map((j) => (
-          <g key={`h${j}`}>
-            <rect className="trace-node" x={colX[1] - 70} y={rowY(3, j) - 36} width="140" height="72" rx="12" />
-            <text className="trace-line" x={colX[1] - 60} y={rowY(3, j) - 16}>
-              sum z = {fix(t.Z[ex][j])}
-            </text>
-            <text className={`trace-line${norm === "none" ? " is-off" : ""}`} x={colX[1] - 60} y={rowY(3, j) + 4}>
-              norm = {norm === "none" ? "—" : fix(t.N[ex][j])}
-            </text>
-            <text className={`trace-line is-out${act === "none" ? " is-off" : ""}`} x={colX[1] - 60} y={rowY(3, j) + 24}>
-              {act === "none" ? "out = " : `${act}(·) = `}
-              {fix(t.A[ex][j])}
-            </text>
-          </g>
-        ))}
-        {[0, 1].map((o) => (
-          <g key={`y${o}`}>
-            <circle className="trace-node is-out" cx={colX[2]} cy={rowY(2, o)} r="30" />
-            <text className="label" x={colX[2]} y={rowY(2, o) + 5} textAnchor="middle">
-              {fix(t.Y[ex][o])}
-            </text>
-          </g>
-        ))}
-        <text className="axis-label" x={colX[0]} y={H - 6} textAnchor="middle">
-          inputs
-        </text>
-        <text className="axis-label" x={colX[1]} y={H - 6} textAnchor="middle">
-          hidden layer
-        </text>
-        <text className="axis-label" x={colX[2]} y={H - 6} textAnchor="middle">
-          outputs
-        </text>
-      </Canvas>
+      <div className="trace-stick">
+        <Canvas width={TW} height={TH} className="trace-svg">
+          {W2.map((w, o) => w.map((wk, k) => <line key={`b${o}${k}`} {...edge(wk, k === pick)} x1={right} y1={trow(3, k)} x2={TCOL[2] - 26} y2={trow(2, o)} />))}
+          {W1.map((w, j) => w.map((wk, k) => <line key={`a${j}${k}`} {...edge(wk, j === pick)} x1={TCOL[0] + 22} y1={trow(3, k)} x2={left} y2={trow(3, j)} />))}
+          {W1[pick].map((wk, k) => {
+            // Each weight is labelled a third of the way along its connection, where the three don't overlap.
+            const x = TCOL[0] + 22 + (left - TCOL[0] - 22) * 0.4;
+            const y = trow(3, k) + (trow(3, pick) - trow(3, k)) * 0.4;
+            return (
+              <g key={`w${k}`} className="trace-weight">
+                <rect x={x - 28} y={y - 12} width="56" height="22" rx="6" />
+                <text x={x} y={y + 4} textAnchor="middle">
+                  ×{fix(wk, 1)}
+                </text>
+              </g>
+            );
+          })}
+          {X[ex].map((v, k) => (
+            <g key={`x${k}`}>
+              <circle className="trace-node" cx={TCOL[0]} cy={trow(3, k)} r="22" />
+              <text className="trace-num" x={TCOL[0]} y={trow(3, k) + 5} textAnchor="middle">
+                {fix(v, 1)}
+              </text>
+            </g>
+          ))}
+          {[0, 1, 2].map((j) => {
+            const y = trow(3, j);
+            return (
+              <g
+                key={`h${j}`}
+                className={`trace-neuron${j === pick ? " is-picked" : ""}`}
+                role="button"
+                tabIndex={0}
+                aria-pressed={j === pick}
+                aria-label={`Hidden neuron ${j + 1}: show its working`}
+                onClick={choose(j)}
+                onKeyDown={choose(j)}
+              >
+                <rect className="trace-node" x={left} y={y - BOX.h / 2} width={BOX.w} height={BOX.h} rx="12" />
+                <text className="trace-line" x={left + 12} y={y - 12}>
+                  z = {fix(t.Z[ex][j])}
+                </text>
+                <text className={`trace-line${norm === "none" ? " is-off" : ""}`} x={left + 12} y={y + 7}>
+                  ẑ = {norm === "none" ? "z" : fix(t.N[ex][j])}
+                </text>
+                <text className={`trace-line is-out${act === "none" ? " is-off" : ""}`} x={left + 12} y={y + 26}>
+                  a = {fix(t.A[ex][j])}
+                </text>
+              </g>
+            );
+          })}
+          {[0, 1].map((o) => (
+            <g key={`y${o}`}>
+              <circle className="trace-node is-out" cx={TCOL[2]} cy={trow(2, o)} r="26" />
+              <text className="trace-num" x={TCOL[2]} y={trow(2, o) + 5} textAnchor="middle">
+                {fix(t.Y[ex][o])}
+              </text>
+            </g>
+          ))}
+          <text className="axis-label" x={TCOL[0]} y={TH - 2} textAnchor="middle">
+            inputs
+          </text>
+          <text className="axis-label" x={TCOL[1]} y={TH - 2} textAnchor="middle">
+            hidden layer (tap one)
+          </text>
+          <text className="axis-label" x={TCOL[2]} y={TH - 2} textAnchor="middle">
+            outputs
+          </text>
+        </Canvas>
+      </div>
       <p className="sim-legend">
-        Lines are weights: teal positive, orange negative, thicker is bigger. Inside each hidden neuron, top to bottom: the weighted sum of its incoming connections plus its bias, then the normalisation, then the activation. Only the last number travels on to the next layer.
+        Teal weights are positive, orange negative; thicker is bigger. In each hidden neuron, z is the weighted sum, ẑ the normalised sum and a the
+        activation, the only number that travels on. Tap a hidden neuron to see its working.
       </p>
+      <ol className="trace-work" aria-live="polite" aria-label={`The working for hidden neuron ${pick + 1}, input #${ex + 1}`}>
+        {working.map((step) => (
+          <li key={step.name}>
+            <div className="trace-head">
+              <span className="trace-step">{step.name}</span>
+              {step.over && <span className="trace-over">over {step.over}</span>}
+            </div>
+            <div className="trace-maths">
+              <code className="trace-rule">{step.rule}</code>
+              <code className="trace-sub">
+                {step.sub}
+                {step.result !== null && <strong> = {fix(step.result)}</strong>}
+              </code>
+            </div>
+          </li>
+        ))}
+      </ol>
     </Sim>
   );
 }
