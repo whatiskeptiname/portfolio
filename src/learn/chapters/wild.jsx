@@ -68,10 +68,10 @@ export default {
           kind: "choice",
           q: "Why report the 99th-percentile latency rather than the average?",
           options: [
-            { t: "The slowest requests are the ones users notice, and an average hides them.", ok: true, why: "A good average can hide 1 request in 100 taking seconds." },
+            { t: "Users notice the slowest requests; averages hide them.", ok: true, why: "A good average can hide 1 request in 100 taking seconds." },
             { t: "Because averages are harder to compute.", why: "They're easier. The point is what they hide." },
             { t: "The 99th percentile is always lower.", why: "It's always at least as high as the median." },
-            { t: "It's a legal requirement.", why: "It's simply what reflects user experience." },
+            { t: "It's what service agreements legally require.", why: "It's simply what reflects user experience." },
           ],
         },
         { kind: "task", q: "At 150 requests a second, find a batch size that keeps the wait under 200 ms.", Sim: ServeSim, check: (s) => s.traffic >= 150 && s.latency != null && s.latency < 200, done: "Under heavy traffic, batching is what keeps the queue from running away." },
@@ -79,10 +79,10 @@ export default {
       explain: {
         q: "Why not always use the biggest batch the hardware can take?",
         options: [
-          { t: "Each request has to wait for the batch to fill; when traffic is light that wait dominates, so a smaller batch answers sooner.", verdict: "right", why: "Throughput and latency pull against each other; the best batch depends on traffic." },
-          { t: "Big batches give less accurate predictions.", verdict: "wrong", why: "Accuracy doesn't depend on how requests are grouped." },
-          { t: "Because big batches use more memory.", verdict: "partly", why: "They do, but within what the hardware can take, waiting time is the main reason." },
-          { t: "You should; bigger is always faster.", verdict: "wrong", why: "Faster in total, slower for each request when traffic is light." },
+          { t: "Requests wait for the batch to fill, which is slow when traffic is light.", verdict: "right", why: "Throughput and latency pull against each other; the best batch depends on traffic." },
+          { t: "Big batches give less accurate predictions, since each one gets less attention.", verdict: "wrong", why: "Accuracy doesn't depend on how requests are grouped." },
+          { t: "Because big batches use more memory than the server can always spare.", verdict: "partly", why: "They do, but within what the hardware can take, waiting time is the main reason." },
+          { t: "You should: bigger batches are always faster per request.", verdict: "wrong", why: "Faster in total, slower for each request when traffic is light." },
         ],
       },
       readMore: [
@@ -155,9 +155,9 @@ export default {
           kind: "choice",
           q: "A model in production starts misbehaving. What does a model registry let you do first?",
           options: [
-            { t: "Roll back to the previous version and look up exactly what changed.", ok: true, why: "Stop the damage, then investigate with the records." },
-            { t: "Retrain from scratch.", why: "Without knowing what changed, you may reproduce the problem." },
-            { t: "Delete the model.", why: "Then nothing is serving predictions." },
+            { t: "Roll back, and see exactly what changed.", ok: true, why: "Stop the damage, then investigate with the records." },
+            { t: "Retrain it from scratch on the latest data.", why: "Without knowing what changed, you may reproduce the problem." },
+            { t: "Delete the model so it stops serving.", why: "Then nothing is serving predictions." },
             { t: "Nothing; registries are just storage.", why: "Their point is promotion, comparison and rollback." },
           ],
         },
@@ -166,10 +166,10 @@ export default {
       explain: {
         q: "Why version data, not just code?",
         options: [
-          { t: "Because the same code on different data gives a different model, and data changes all the time.", verdict: "right", why: "In ML, data is as much a part of the 'program' as the code." },
-          { t: "Because data is bigger than code.", verdict: "wrong", why: "Size isn't the reason; its effect on the model is." },
-          { t: "For backups.", verdict: "partly", why: "That's a benefit, but the main point is being able to rebuild and compare models." },
-          { t: "It isn't needed if the code is versioned.", verdict: "wrong", why: "Code alone can't rebuild a model trained on last month's data." },
+          { t: "The same code on different data gives a different model.", verdict: "right", why: "In ML, data is as much a part of the 'program' as the code." },
+          { t: "Because data is bigger than code, so it's the riskier thing to lose.", verdict: "wrong", why: "Size isn't the reason; its effect on the model is." },
+          { t: "For backups, in case the data store fails.", verdict: "partly", why: "That's a benefit, but the main point is being able to rebuild and compare models." },
+          { t: "It isn't needed if the code is versioned, since code produces the data.", verdict: "wrong", why: "Code alone can't rebuild a model trained on last month's data." },
         ],
       },
       readMore: [
@@ -238,20 +238,20 @@ export default {
           kind: "choice",
           q: "A PSI of 0.32 on an important feature means:",
           options: [
-            { t: "A real shift: investigate before trusting the model.", ok: true, why: "Above 0.25 is the usual 'significant shift' threshold." },
-            { t: "The model is 32% less accurate.", why: "PSI measures how the inputs changed, not accuracy." },
-            { t: "Nothing; it's below 1.", why: "PSI values are usually small; 0.32 is large." },
-            { t: "The model must be deleted.", why: "It needs investigating, maybe retraining, not deleting." },
+            { t: "A real shift worth investigating", ok: true, why: "Above 0.25 is the usual 'significant shift' threshold." },
+            { t: "The model is 32% less accurate", why: "PSI measures how the inputs changed, not accuracy." },
+            { t: "Nothing much, since it's well below 1", why: "PSI values are usually small; 0.32 is large." },
+            { t: "The model must be retired at once", why: "It needs investigating, maybe retraining, not deleting." },
           ],
         },
         {
           kind: "choice",
           q: "Why monitor input drift if you could just measure accuracy?",
           options: [
-            { t: "True outcomes often arrive weeks or months late; inputs are available immediately.", ok: true, why: "Input drift is an early warning." },
+            { t: "Outcomes arrive late; inputs arrive at once.", ok: true, why: "Input drift is an early warning." },
             { t: "Accuracy can't be measured in production.", why: "It can, once the labels arrive. Drift monitoring is faster." },
             { t: "Drift and accuracy are the same thing.", why: "Inputs can drift without hurting accuracy, and accuracy can fall without input drift (concept drift)." },
-            { t: "It's cheaper to compute.", why: "Perhaps, but timing is the main reason." },
+            { t: "Drift is much cheaper to compute than accuracy.", why: "Perhaps, but timing is the main reason." },
           ],
         },
         { kind: "task", q: "Find a shift that pushes the drift score past 0.25.", Sim: DriftSim, check: (s) => s.psi > 0.25, done: "That would page someone. Notice it happened before a single label arrived." },
@@ -259,10 +259,10 @@ export default {
       explain: {
         q: "What is data drift?",
         options: [
-          { t: "Live data gradually becoming unlike the data the model was trained on, so its accuracy can fall without any error.", verdict: "right", why: "Clear about the cause and the silent effect." },
-          { t: "The model forgetting what it learned.", verdict: "wrong", why: "The model doesn't change; the world it's applied to does." },
-          { t: "Changes in the data over time.", verdict: "partly", why: "True, but the point is the mismatch with training data and its effect on accuracy." },
-          { t: "A bug in the data pipeline.", verdict: "partly", why: "Pipeline bugs can look like drift, and monitoring catches both, but drift is usually the real world changing." },
+          { t: "Live data growing unlike the training data, so accuracy can quietly fall.", verdict: "right", why: "Clear about the cause and the silent effect." },
+          { t: "The model slowly forgetting what it learned as time passes.", verdict: "wrong", why: "The model doesn't change; the world it's applied to does." },
+          { t: "Changes in the data over time, in any column.", verdict: "partly", why: "True, but the point is the mismatch with training data and its effect on accuracy." },
+          { t: "A bug somewhere in the data pipeline that quietly corrupts some of the model's inputs.", verdict: "partly", why: "Pipeline bugs can look like drift, and monitoring catches both, but drift is usually the real world changing." },
         ],
       },
       readMore: [
@@ -329,20 +329,20 @@ export default {
           kind: "choice",
           q: "The 95% interval for the improvement is −0.4 to +2.1 percentage points. What do you conclude?",
           options: [
-            { t: "The test can't tell them apart yet: the interval includes zero.", ok: true, why: "It might help, or do nothing, or hurt a little." },
+            { t: "They can't be told apart yet.", ok: true, why: "It might help, or do nothing, or hurt a little." },
             { t: "The new model is better by 0.85 points.", why: "That's the middle of the interval, but zero is still plausible." },
-            { t: "The new model is worse.", why: "Most of the interval is above zero; it's inconclusive, not worse." },
-            { t: "The test is broken.", why: "Inconclusive results are normal, especially with few users." },
+            { t: "The new model is probably worse, since it can be negative.", why: "Most of the interval is above zero; it's inconclusive, not worse." },
+            { t: "The test is broken: an interval can't cross zero.", why: "Inconclusive results are normal, especially with few users." },
           ],
         },
         {
           kind: "choice",
           q: "Why split users randomly rather than giving the new model to new customers?",
           options: [
-            { t: "Random splitting makes the groups alike in everything else, so differences come from the model.", ok: true, why: "Any other split mixes up the model's effect with the groups' differences." },
-            { t: "It's easier to code.", why: "Maybe, but the reason is fairness of the comparison." },
-            { t: "New customers don't buy anything.", why: "They might buy differently, which is exactly the problem with that split." },
-            { t: "It makes the test shorter.", why: "Randomisation doesn't change the length; it makes it valid." },
+            { t: "So the groups differ only in which model they got.", ok: true, why: "Any other split mixes up the model's effect with the groups' differences." },
+            { t: "Random splits are easier to code and maintain.", why: "Maybe, but the reason is fairness of the comparison." },
+            { t: "New customers buy too little to measure anything.", why: "They might buy differently, which is exactly the problem with that split." },
+            { t: "It makes the test finish sooner, with fewer users.", why: "Randomisation doesn't change the length; it makes it valid." },
           ],
         },
         { kind: "task", q: "Set up a test that spots a 1-point improvement at least 80% of the time.", Sim: AbSim, check: (s) => s.lift === 1 && s.power >= 0.8, done: "That needs several thousand users per group. That's why the sample size is planned first." },
@@ -350,10 +350,10 @@ export default {
       explain: {
         q: "Why A/B test a model that already scored better on the test set?",
         options: [
-          { t: "The test set measures predictions on past data; only an experiment shows whether it changes what real users do now.", verdict: "right", why: "Offline scores and business outcomes often disagree." },
+          { t: "The test set is past data; only an experiment shows what users do now.", verdict: "right", why: "Offline scores and business outcomes often disagree." },
           { t: "Because the test set might have been wrong.", verdict: "partly", why: "Possible, but even a perfect test set can't show the effect on behaviour." },
-          { t: "It's a formality before release.", verdict: "wrong", why: "Many offline wins turn out neutral or negative online." },
-          { t: "To make it faster.", verdict: "wrong", why: "An experiment measures effect, not speed." },
+          { t: "It's a formality before release that confirms the test-set score on a few more users.", verdict: "wrong", why: "Many offline wins turn out neutral or negative online." },
+          { t: "To make it faster, by tuning it on live traffic.", verdict: "wrong", why: "An experiment measures effect, not speed." },
         ],
       },
       readMore: [
@@ -423,10 +423,10 @@ export default {
           kind: "choice",
           q: "A retrain finishes overnight. What should happen before it serves users?",
           options: [
-            { t: "Compare it with the current model on recent held-out data, and promote it only if it's at least as good.", ok: true, why: "A gate stops a bad retrain (bad data, a bug) from shipping." },
+            { t: "Check it beats the current model on recent data.", ok: true, why: "A gate stops a bad retrain (bad data, a bug) from shipping." },
             { t: "Deploy it straight away; newer is better.", why: "Newer data can be broken data. Check first." },
-            { t: "Wait a month.", why: "That throws away the freshness you retrained for." },
-            { t: "Ask users which they prefer.", why: "That's an A/B test, which can come after the offline check." },
+            { t: "Wait a month in case the data changes again.", why: "That throws away the freshness you retrained for." },
+            { t: "Ask a few users which answers they prefer.", why: "That's an A/B test, which can come after the offline check." },
           ],
         },
         { kind: "task", q: "Keep the lowest point above 85% with as few retrains as you can (no more than 4 in six months).", Sim: RetrainSim, check: (s) => s.retrains > 0 && s.retrains <= 4 && s.low > 0.85, done: "Matched to the pace of change, a handful of retrains keeps it healthy." },
@@ -434,10 +434,10 @@ export default {
       explain: {
         q: "How do you decide how often to retrain?",
         options: [
-          { t: "Measure how fast accuracy decays, then retrain often enough to stay above the minimum without paying for retrains that barely help.", verdict: "right", why: "It's a trade-off between staleness and cost, set by data." },
-          { t: "As often as possible.", verdict: "wrong", why: "Past a point each retrain costs more than it gains, and adds risk." },
-          { t: "Whenever the data changes.", verdict: "partly", why: "Drift-triggered retraining is valid, but data always changes a little; it needs a threshold." },
-          { t: "Once a year.", verdict: "wrong", why: "A fixed number ignores how fast your world changes." },
+          { t: "Retrain often enough to stay above the minimum accuracy, and no more.", verdict: "right", why: "It's a trade-off between staleness and cost, set by data." },
+          { t: "As often as possible, since fresher data is always better.", verdict: "wrong", why: "Past a point each retrain costs more than it gains, and adds risk." },
+          { t: "Whenever any of the data changes, so the model never falls behind the world.", verdict: "partly", why: "Drift-triggered retraining is valid, but data always changes a little; it needs a threshold." },
+          { t: "Once a year, when the business plans are reviewed.", verdict: "wrong", why: "A fixed number ignores how fast your world changes." },
         ],
       },
       readMore: [
@@ -517,9 +517,9 @@ export default {
           kind: "choice",
           q: "Why doesn't removing the 'district' column make a model fair?",
           options: [
-            { t: "Other columns, like branch or phone network, carry the same information.", ok: true, why: "Proxies let the model rebuild what you removed." },
-            { t: "Because models can't drop columns.", why: "They can; the problem is proxies." },
-            { t: "It does make it fair.", why: "Usually not: the pattern survives through correlated columns." },
+            { t: "Other columns carry the same information.", ok: true, why: "Proxies let the model rebuild what you removed." },
+            { t: "Trained models still remember columns they were given once.", why: "Retrained without it, the model never sees district. What it does see are the columns that stand in for it." },
+            { t: "It does make it fair, if district was the only problem.", why: "Usually not: the pattern survives through correlated columns." },
             { t: "Because fairness only depends on accuracy.", why: "Fairness is about how errors fall across groups, not overall accuracy." },
           ],
         },
@@ -528,10 +528,10 @@ export default {
       explain: {
         q: "A model is 85% accurate. Is it fair?",
         options: [
-          { t: "Overall accuracy can't tell you; you need each group's error rates, and a decision about which kind of equality matters here.", verdict: "right", why: "Fairness is about who bears the errors, and it involves a choice." },
-          { t: "Yes, 85% is good.", verdict: "wrong", why: "The 15% of errors could fall mostly on one group." },
-          { t: "Only if it doesn't use sensitive columns.", verdict: "partly", why: "That's one check, but proxies mean it isn't enough." },
-          { t: "Fairness can't be measured.", verdict: "wrong", why: "It can, per group, once you choose a definition." },
+          { t: "Accuracy can't say; you need each group's error rates, and a choice of fairness.", verdict: "right", why: "Fairness is about who bears the errors, and it involves a choice." },
+          { t: "Yes: 85% is good, so it treats people well overall.", verdict: "wrong", why: "The 15% of errors could fall mostly on one group." },
+          { t: "Only if it doesn't use any sensitive columns, like gender, caste or religion, as its inputs.", verdict: "partly", why: "That's one check, but proxies mean it isn't enough." },
+          { t: "Fairness can't be measured, so accuracy is the best guide.", verdict: "wrong", why: "It can, per group, once you choose a definition." },
         ],
       },
       readMore: [
@@ -576,7 +576,7 @@ export default {
           </p>
         </>
       ),
-      play: [{ Sim: RecSim, try: "Pick each viewer and see what's recommended. Then try one hidden taste and three: which fits the known ratings best?" }],
+      play: [{ Sim: RecSim, try: "Tap each viewer's name and see what's recommended. Then try one hidden taste and three: which fits the known ratings best?" }],
       how: (
         <>
           <p>Give each user u a short vector of tastes p<sub>u</sub> and each item i a vector of qualities q<sub>i</sub>. A predicted rating is their match:</p>
@@ -606,10 +606,10 @@ export default {
           kind: "choice",
           q: "Why do brand-new films get recommended poorly by collaborative filtering?",
           options: [
-            { t: "Nobody has rated them yet, so there's no pattern to learn from (cold start).", ok: true, why: "Item details or a bit of exploration are needed until ratings arrive." },
-            { t: "New films are worse.", why: "Quality has nothing to do with it." },
-            { t: "The model refuses new items.", why: "It simply has no data about them." },
-            { t: "Their titles are unfamiliar.", why: "Collaborative filtering doesn't read titles." },
+            { t: "Nobody has rated them yet.", ok: true, why: "Item details or a bit of exploration are needed until ratings arrive." },
+            { t: "New films are worse on average, and it learns that.", why: "Quality has nothing to do with it." },
+            { t: "The model is set to skip items under a month old.", why: "It simply has no data about them." },
+            { t: "Their titles aren't in its vocabulary yet.", why: "Collaborative filtering doesn't read titles." },
           ],
         },
         { kind: "task", q: "Find what the model recommends to Deepa, who likes romance.", Sim: RecSim, check: (s) => s.who === 3 && s.pick.startsWith("Romance"), done: "It worked out her taste only from the pattern of ratings." },
@@ -617,10 +617,10 @@ export default {
       explain: {
         q: "How does 'people who liked this also liked…' work?",
         options: [
-          { t: "It learns hidden tastes from everyone's ratings, then predicts how much you'd like things you haven't tried from how your tastes match theirs.", verdict: "right", why: "Collaborative filtering in a sentence." },
-          { t: "It recommends the most popular items.", verdict: "wrong", why: "That's a baseline. A recommender personalises." },
+          { t: "It learns hidden tastes from everyone's ratings and matches yours to items.", verdict: "right", why: "Collaborative filtering in a sentence." },
+          { t: "It recommends the most popular items among all the people like you.", verdict: "wrong", why: "That's a baseline. A recommender personalises." },
           { t: "It finds people similar to you and shows what they liked.", verdict: "partly", why: "That's neighbourhood-based filtering, a close cousin; factorisation does it through shared hidden tastes." },
-          { t: "Someone tags each film and matches the tags.", verdict: "wrong", why: "That's content-based filtering; collaborative filtering needs no tags." },
+          { t: "Someone tags each film by genre and mood, and it matches those tags to what you watched.", verdict: "wrong", why: "That's content-based filtering; collaborative filtering needs no tags." },
         ],
       },
       readMore: [

@@ -78,9 +78,9 @@ export default {
           q: "Why does least squares square the errors instead of just adding them?",
           options: [
             { t: "So misses above and below don't cancel out, and big misses count more.", ok: true, why: "Right. Plain errors would cancel; squaring makes them all positive and punishes large ones hardest." },
-            { t: "Because squares are faster for a computer to add.", why: "Speed isn't the reason. Absolute errors are just as cheap; they give a different (median-like) line." },
+            { t: "Squared numbers are quicker for a computer to add up than plain errors.", why: "Speed isn't the reason. Absolute errors are just as cheap; they give a different (median-like) line." },
             { t: "To make the line pass through every point.", why: "No line can pass through scattered points. Squaring decides which compromise is best." },
-            { t: "So that the answer is always positive.", why: "The error total becomes positive, but that's a side effect. The point is no cancelling, and weighting big misses." },
+            { t: "So the fitted slope always comes out as a positive number.", why: "The error total becomes positive, but that's a side effect. The point is no cancelling, and weighting big misses." },
           ],
         },
         { kind: "task", q: "Get the average squared error within 15% of the best possible, by hand.", Sim: LineSim, check: (s) => s.mse <= s.best * 1.15, done: "Close to least squares. The formula just does this search exactly." },
@@ -88,10 +88,10 @@ export default {
       explain: {
         q: "A colleague says the weight on 'floor area' is 0.9. What does that mean?",
         options: [
-          { t: "Each extra square metre adds about 0.9 lakh to the predicted price, other inputs held the same.", verdict: "right", why: "That's the reading: a rate of change, holding the rest still, valid within the range of the data." },
-          { t: "Floor area explains 90% of the price.", verdict: "wrong", why: "That would be R². A weight is a rate per unit, and it changes if you measure in square feet instead." },
-          { t: "Bigger flats cost more.", verdict: "partly", why: "True, but it throws away the useful part: how much more per square metre." },
-          { t: "Floor area causes 0.9 lakh of the price.", verdict: "wrong", why: "Regression measures association. Bigger flats may also be in better areas; the weight can't separate the two." },
+          { t: "Each extra square metre adds about 0.9 lakh to the prediction, other inputs fixed.", verdict: "right", why: "That's the reading: a rate of change, holding the rest still, valid within the range of the data." },
+          { t: "Floor area explains 90% of the variation in price across the flats.", verdict: "wrong", why: "That would be R². A weight is a rate per unit, and it changes if you measure in square feet instead." },
+          { t: "Bigger flats cost more, and floor area is the strongest input.", verdict: "partly", why: "True, but it throws away the useful part: how much more per square metre." },
+          { t: "Floor area causes 0.9 lakh of each flat's price, whatever else about the flat changes.", verdict: "wrong", why: "Regression measures association. Bigger flats may also be in better areas; the weight can't separate the two." },
         ],
       },
       readMore: [
@@ -174,10 +174,10 @@ export default {
       explain: {
         q: "How would you explain 'training a model' to someone new?",
         options: [
-          { t: "It measures how wrong it is on examples, works out which way to change its numbers to be less wrong, takes a small step that way, and repeats.", verdict: "right", why: "That's gradient descent in a sentence, and it's what training means for almost every model." },
-          { t: "It tries random settings and keeps the best one.", verdict: "wrong", why: "Random search is hopeless with millions of weights. The slope tells it which way to go." },
-          { t: "It memorises the examples it's shown.", verdict: "partly", why: "It can, if trained too long (that's overfitting), but the aim is to learn settings that work on new examples." },
-          { t: "Someone writes the rules and the computer checks them.", verdict: "wrong", why: "That's traditional programming. In machine learning the rules (the weights) are learned from data." },
+          { t: "It measures how wrong it is, nudges its numbers to be less wrong, and repeats.", verdict: "right", why: "That's gradient descent in a sentence, and it's what training means for almost every model." },
+          { t: "It tries many random settings of its numbers and keeps whichever scored best.", verdict: "wrong", why: "Random search is hopeless with millions of weights. The slope tells it which way to go." },
+          { t: "It memorises the examples it's shown, so it can look up the closest one later.", verdict: "partly", why: "It can, if trained too long (that's overfitting), but the aim is to learn settings that work on new examples." },
+          { t: "An expert writes the rules, and the computer checks them against the examples.", verdict: "wrong", why: "That's traditional programming. In machine learning the rules (the weights) are learned from data." },
         ],
       },
       readMore: [
@@ -254,10 +254,10 @@ export default {
           kind: "choice",
           q: "Why not predict yes/no with an ordinary straight line?",
           options: [
-            { t: "A line can go below 0 or above 1, which makes no sense as a probability.", ok: true, why: "Right. The logistic curve keeps the line's simplicity but squeezes its output into 0–1." },
-            { t: "Lines can't be fitted to categories at all.", why: "You can fit one, coding yes as 1 and no as 0; its answers just escape the 0–1 range." },
+            { t: "A line runs past 0 and 1, which no probability can.", ok: true, why: "Right. The logistic curve keeps the line's simplicity but squeezes its output into 0–1." },
+            { t: "Least squares can't be run on columns of 0s and 1s at all.", why: "You can fit one, coding yes as 1 and no as 0; its answers just escape the 0–1 range." },
             { t: "Logistic regression is more accurate on every problem.", why: "It isn't always. It's the right shape for probabilities, which is the point." },
-            { t: "Because the data is curved.", why: "The S-curve isn't about curved data; it's about turning any score into a valid probability." },
+            { t: "Yes/no data always follows a curve, so a line underfits it.", why: "The S-curve isn't about curved data; it's about turning any score into a valid probability." },
           ],
         },
         { kind: "task", q: "Bring the log loss within 0.02 of the best possible.", Sim: LogisticSim, check: (s) => s.loss <= s.best + 0.02, done: "That's the fit gradient descent would find. The cut-off is a separate business decision." },
@@ -265,10 +265,10 @@ export default {
       explain: {
         q: "The model says a loan applicant has a 0.7 chance of repaying. What does that mean?",
         options: [
-          { t: "Of applicants who get a score like this, about 7 in 10 repay, if the model is well calibrated.", verdict: "right", why: "A probability describes the group of similar cases, and it's only trustworthy if checked against what happened." },
-          { t: "This applicant will repay.", verdict: "wrong", why: "0.7 means 3 in 10 similar applicants don't. Whether to lend is a cut-off decision." },
-          { t: "The model is 70% accurate.", verdict: "wrong", why: "Accuracy is about the model overall; 0.7 is this one prediction." },
-          { t: "They're a bit more likely to repay than not.", verdict: "partly", why: "True, but 'a bit' undersells it: 0.7 is more than twice as likely as not." },
+          { t: "Of applicants scored like this, about 7 in 10 repay, if it's calibrated.", verdict: "right", why: "A probability describes the group of similar cases, and it's only trustworthy if checked against what happened." },
+          { t: "This applicant will repay, since 0.7 is above the 0.5 cut-off.", verdict: "wrong", why: "0.7 means 3 in 10 similar applicants don't. Whether to lend is a cut-off decision." },
+          { t: "The model is right about 70% of the time on applicants who look like this one.", verdict: "wrong", why: "Accuracy is about the model overall; 0.7 is this one prediction." },
+          { t: "They're more likely to repay than not, but it's far from certain.", verdict: "partly", why: "True, but 'a bit' undersells it: 0.7 is more than twice as likely as not." },
         ],
       },
       readMore: [
@@ -353,10 +353,10 @@ export default {
       explain: {
         q: "Why would you deliberately make a model fit its training data worse?",
         options: [
-          { t: "Because fitting the training data perfectly means fitting its noise too; a slightly worse fit there usually predicts new data better.", verdict: "right", why: "The goal is new data. Giving up a little training fit buys a lot of stability." },
-          { t: "To make it train faster.", verdict: "wrong", why: "Speed isn't the reason; a penalty barely changes training time." },
-          { t: "Because simpler models are always better.", verdict: "partly", why: "Simpler often generalises better, but too simple misses real patterns. The penalty is tuned, not maxed." },
-          { t: "It doesn't; regularisation improves training accuracy.", verdict: "wrong", why: "It nearly always lowers training accuracy. Validation accuracy is what improves." },
+          { t: "A perfect fit also fits the noise; a slightly worse one predicts new data better.", verdict: "right", why: "The goal is new data. Giving up a little training fit buys a lot of stability." },
+          { t: "To make it train faster, since a looser fit needs fewer steps to reach.", verdict: "wrong", why: "Speed isn't the reason; a penalty barely changes training time." },
+          { t: "Because simpler models are always better, whatever the data looks like.", verdict: "partly", why: "Simpler often generalises better, but too simple misses real patterns. The penalty is tuned, not maxed." },
+          { t: "It doesn't: regularisation improves training accuracy by steadying the weights as they learn.", verdict: "wrong", why: "It nearly always lowers training accuracy. Validation accuracy is what improves." },
         ],
       },
       readMore: [
@@ -447,10 +447,10 @@ export default {
       explain: {
         q: "Why scale features before using k-nearest neighbours?",
         options: [
-          { t: "Because it measures distance, and a column in big units would otherwise drown out the rest.", verdict: "right", why: "Scaling puts every column on the same footing, so 'similar' means similar in all of them." },
+          { t: "It measures distance, and a column in big units would drown out the rest.", verdict: "right", why: "Scaling puts every column on the same footing, so 'similar' means similar in all of them." },
           { t: "Because models can only read numbers between 0 and 1.", verdict: "wrong", why: "Models read any number. The problem is how distances weigh the columns." },
-          { t: "To make training faster.", verdict: "partly", why: "It can help gradient-based training converge, but for k-NN the reason is fairness between columns." },
-          { t: "It isn't needed; the model learns the units.", verdict: "wrong", why: "k-NN has nothing to learn the units with. It just measures distance." },
+          { t: "To make it faster, since smaller numbers are quicker to compare.", verdict: "partly", why: "It can help gradient-based training converge, but for k-NN the reason is fairness between columns." },
+          { t: "It isn't needed: the model learns how much each column matters.", verdict: "wrong", why: "k-NN has nothing to learn the units with. It just measures distance." },
         ],
       },
       readMore: [
@@ -520,10 +520,10 @@ export default {
           kind: "choice",
           q: "What does the 'update' step of k-means do?",
           options: [
-            { t: "Moves each centre to the average position of the points assigned to it.", ok: true, why: "Right; then points are reassigned to the nearest new centre." },
+            { t: "Moves each centre to the average of its points.", ok: true, why: "Right; then points are reassigned to the nearest new centre." },
             { t: "Adds a new group if a point is far from all centres.", why: "k-means keeps k fixed. Methods like DBSCAN let the number of groups emerge." },
-            { t: "Labels each group with a name.", why: "The algorithm has no idea what the groups mean. Naming them is your job." },
-            { t: "Removes points that don't fit.", why: "Every point always belongs to some group in k-means." },
+            { t: "Names each group after its most typical point.", why: "The algorithm has no idea what the groups mean. Naming them is your job." },
+            { t: "Drops points that sit far from every centre as outliers.", why: "Every point always belongs to some group in k-means." },
           ],
         },
         {
@@ -531,9 +531,9 @@ export default {
           q: "You run k-means with k = 8 on data that has no real groups at all. What happens?",
           options: [
             { t: "It still returns 8 groups.", ok: true, why: "It always splits the data into k groups, real or not. That's why you check whether they mean anything." },
-            { t: "It returns one group.", why: "k is fixed by you; it will return k." },
-            { t: "It reports an error.", why: "There's nothing in the algorithm that checks whether groups are real." },
-            { t: "It loops forever.", why: "It always settles, because each round lowers the inertia." },
+            { t: "It merges everything into one group, since there's no structure.", why: "k is fixed by you; it will return k." },
+            { t: "It stops with a warning that the data has no clusters.", why: "There's nothing in the algorithm that checks whether groups are real." },
+            { t: "It never settles, because no grouping is better than another.", why: "It always settles, because each round lowers the inertia." },
           ],
         },
         { kind: "task", q: "With 3 groups, run rounds until the spread inside groups is under 0.9 (try a new start if it gets stuck).", Sim: KMeansSim, check: (s) => s.k === 3 && s.inertia != null && s.inertia < 0.9, done: "Settled on the three real groups. The algorithm never saw a label, and a bad start can trap it, which is why libraries try several." },
@@ -541,10 +541,10 @@ export default {
       explain: {
         q: "How would you explain what clustering found to a manager?",
         options: [
-          { t: "It grouped customers who behave alike, without being told the groups; we still have to check the groups make business sense.", verdict: "right", why: "That's honest: the groups are found, not given, and their meaning comes from people who know the business." },
-          { t: "It discovered the true customer types.", verdict: "wrong", why: "It found the k groups you asked for, given the columns you gave it. 'True' is too strong." },
+          { t: "It grouped customers who behave alike; we still have to check the groups make sense.", verdict: "right", why: "That's honest: the groups are found, not given, and their meaning comes from people who know the business." },
+          { t: "It discovered the true customer types that were hidden in our data.", verdict: "wrong", why: "It found the k groups you asked for, given the columns you gave it. 'True' is too strong." },
           { t: "It sorted customers into groups by how close they are.", verdict: "partly", why: "Right mechanics, but it leaves out that the number of groups and the columns are choices." },
-          { t: "It predicted which group each customer belongs to.", verdict: "wrong", why: "There's nothing to predict without labels. It made the groups." },
+          { t: "It predicted which of our existing marketing segments each of the customers belongs to.", verdict: "wrong", why: "There's nothing to predict without labels. It made the groups." },
         ],
       },
       readMore: [
@@ -619,9 +619,9 @@ export default {
           kind: "choice",
           q: "Why scale columns before PCA?",
           options: [
-            { t: "Otherwise the column with the biggest units has the biggest variance and dominates the first component.", ok: true, why: "PCA chases variance, and variance depends on units." },
-            { t: "PCA only accepts values between 0 and 1.", why: "It accepts any numbers; scaling is about fairness between columns." },
-            { t: "Scaling makes PCA find more components.", why: "The number of components is the number of columns either way." },
+            { t: "Otherwise the column in the biggest units dominates.", ok: true, why: "PCA chases variance, and variance depends on units." },
+            { t: "PCA's maths only works on values between 0 and 1.", why: "It accepts any numbers; scaling is about fairness between columns." },
+            { t: "Scaling lets PCA find more components than there are columns.", why: "The number of components is the number of columns either way." },
             { t: "It isn't necessary; PCA ignores units.", why: "It doesn't. Measure height in millimetres and it'll dominate." },
           ],
         },
@@ -630,10 +630,10 @@ export default {
       explain: {
         q: "What does 'the first principal component' mean?",
         options: [
-          { t: "The direction through the data along which it's most spread out.", verdict: "right", why: "That's it: the single line that keeps the most variance when the data is projected onto it." },
-          { t: "The most important original column.", verdict: "wrong", why: "It's a mixture of columns, not one of them." },
-          { t: "A summary that combines the columns.", verdict: "partly", why: "True, but it misses how the combination is chosen: to keep the most spread." },
-          { t: "The direction that best predicts the target.", verdict: "wrong", why: "PCA never looks at a target. That would be a supervised method, like regression." },
+          { t: "The direction along which the data is most spread out.", verdict: "right", why: "That's it: the single line that keeps the most variance when the data is projected onto it." },
+          { t: "The original column that carries the most information about the rest.", verdict: "wrong", why: "It's a mixture of columns, not one of them." },
+          { t: "A summary that combines the columns into one number per row.", verdict: "partly", why: "True, but it misses how the combination is chosen: to keep the most spread." },
+          { t: "The direction through the data that best predicts the target.", verdict: "wrong", why: "PCA never looks at a target. That would be a supervised method, like regression." },
         ],
       },
       readMore: [
@@ -704,10 +704,10 @@ export default {
           kind: "choice",
           q: "Why use anomaly detection instead of a normal classifier for fraud?",
           options: [
-            { t: "Fraud is rare and keeps changing, so there are too few labelled examples to learn it, but plenty of normal ones.", ok: true, why: "Learning normal sidesteps the shortage of fraud examples." },
-            { t: "Anomaly detection is always more accurate.", why: "With plenty of labelled fraud, a classifier often wins. It's about what data you have." },
-            { t: "Classifiers can't handle money amounts.", why: "They handle any numbers. The issue is the lack of labelled positives." },
-            { t: "It doesn't need a threshold.", why: "It does, and choosing it is the main decision." },
+            { t: "Fraud is rare and changing, but normal payments are plentiful.", ok: true, why: "Learning normal sidesteps the shortage of fraud examples." },
+            { t: "Anomaly detectors are more accurate on any imbalanced data.", why: "With plenty of labelled fraud, a classifier often wins. It's about what data you have." },
+            { t: "Classifiers can't take money amounts as inputs without binning.", why: "They handle any numbers. The issue is the lack of labelled positives." },
+            { t: "It needs no threshold, so there's nothing to tune.", why: "It does, and choosing it is the main decision." },
           ],
         },
         { kind: "task", q: "Catch all 4 frauds with as few false alarms as you can (2 or fewer).", Sim: OutlierSim, check: (s) => s.caught === 4 && s.flagged - s.caught <= 2, done: "Notice the Rs 300 fraud needs a low threshold. In practice, a second signal (a new device, a new city) would catch it." },
@@ -715,10 +715,10 @@ export default {
       explain: {
         q: "A detector flags a payment as an anomaly. What does that tell you?",
         options: [
-          { t: "It's unlike most payments the system has seen; someone or something still has to decide whether it's a problem.", verdict: "right", why: "Unusual is a reason to look, not a verdict." },
-          { t: "It's fraud.", verdict: "wrong", why: "Plenty of honest payments are unusual. Big one-off purchases trip it all the time." },
-          { t: "It's far from average.", verdict: "partly", why: "That's the mechanics, but the useful point is what to do next: review it." },
-          { t: "The model is broken.", verdict: "wrong", why: "Flagging is its job. Too many flags means the threshold or features need work." },
+          { t: "It's unlike most payments seen so far; whether it's a problem is still open.", verdict: "right", why: "Unusual is a reason to look, not a verdict." },
+          { t: "It's fraud, since normal payments don't get flagged.", verdict: "wrong", why: "Plenty of honest payments are unusual. Big one-off purchases trip it all the time." },
+          { t: "It's far from the average payment in size.", verdict: "partly", why: "That's the mechanics, but the useful point is what to do next: review it." },
+          { t: "The model is broken, because it should only flag fraud.", verdict: "wrong", why: "Flagging is its job. Too many flags means the threshold or features need work." },
         ],
       },
       readMore: [

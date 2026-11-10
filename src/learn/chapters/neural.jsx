@@ -68,10 +68,10 @@ export default {
           kind: "choice",
           q: "Why can't a single neuron learn XOR?",
           options: [
-            { t: "Its decision boundary is a single straight line, and XOR's classes can't be split by one line.", ok: true, why: "XOR needs two cuts, so it needs more than one neuron." },
-            { t: "It hasn't been trained long enough.", why: "No amount of training helps: no setting of the weights works." },
-            { t: "XOR has too many data points.", why: "It fails with just four points." },
-            { t: "Its activation function is wrong.", why: "Any activation still gives one straight boundary for one neuron." },
+            { t: "Its boundary is one straight line, and no line splits XOR.", ok: true, why: "XOR needs two cuts, so it needs more than one neuron." },
+            { t: "Four points are too few for gradient descent to settle.", why: "No amount of training helps: no setting of the weights works." },
+            { t: "XOR's inputs are 0s and 1s, which give no gradient.", why: "0s and 1s give gradients like any other inputs. The trouble is that no setting of the weights works." },
+            { t: "The sigmoid can't output exactly 0 or exactly 1.", why: "Any activation still gives one straight boundary for one neuron." },
           ],
         },
         { kind: "task", q: "On the separable data, set the weights and bias so the neuron gets every point right.", Sim: NeuronSim, check: (s) => s.data === "line" && s.acc === 1, done: "One line, the right one. Now you've seen what one neuron can do; XOR shows what it can't." },
@@ -79,10 +79,10 @@ export default {
       explain: {
         q: "What does one artificial neuron do?",
         options: [
-          { t: "It adds up its inputs, each multiplied by a learned weight, plus a bias, and passes the total through a function that decides how strongly it fires.", verdict: "right", why: "Weighted sum plus activation: that's all of it." },
-          { t: "It works like a brain cell.", verdict: "partly", why: "Loosely inspired by one, but it's simple arithmetic, far simpler than a real neuron." },
-          { t: "It stores a fact.", verdict: "wrong", why: "It stores weights, not facts; meaning only emerges across many neurons." },
-          { t: "It makes a yes/no decision by looking things up.", verdict: "wrong", why: "There's no lookup; it computes a weighted sum." },
+          { t: "It adds up its weighted inputs plus a bias, then bends the total with a function.", verdict: "right", why: "Weighted sum plus activation: that's all of it." },
+          { t: "It works like a brain cell, firing a signal whenever its inputs reach a set threshold.", verdict: "partly", why: "Loosely inspired by one, but it's simple arithmetic, far simpler than a real neuron." },
+          { t: "It stores one fact the network has learned, ready to be recalled.", verdict: "wrong", why: "It stores weights, not facts; meaning only emerges across many neurons." },
+          { t: "It makes a yes/no decision by looking its inputs up in a table.", verdict: "wrong", why: "There's no lookup; it computes a weighted sum." },
         ],
       },
       readMore: [
@@ -146,10 +146,10 @@ export default {
           kind: "choice",
           q: "What happens if you stack ten layers but use no activation function between them?",
           options: [
-            { t: "The whole network is still just one linear function, no more powerful than a single layer.", ok: true, why: "A product of linear maps is linear. The activation is what lets layers bend." },
-            { t: "It becomes ten times more powerful.", why: "Without non-linearity the layers collapse into one." },
-            { t: "It can't be trained at all.", why: "It can be trained; it just can't learn curved boundaries." },
-            { t: "It overfits immediately.", why: "It's limited, not over-flexible." },
+            { t: "It's still one linear function, no better than one layer.", ok: true, why: "A product of linear maps is linear. The activation is what lets layers bend." },
+            { t: "Each layer adds a bend, so it fits far more complex shapes.", why: "Without non-linearity the layers collapse into one." },
+            { t: "Backpropagation fails, since there are no slopes to pass back.", why: "It can be trained; it just can't learn curved boundaries." },
+            { t: "It overfits, because ten layers have so many weights.", why: "It's limited, not over-flexible." },
           ],
         },
         {
@@ -164,10 +164,10 @@ export default {
       explain: {
         q: "Why do neural networks have hidden layers?",
         options: [
-          { t: "Each layer combines and bends the previous layer's outputs, so together they can form boundaries and features no single layer could.", verdict: "right", why: "Composition of simple bent pieces is what gives networks their power." },
-          { t: "To hide how the model works.", verdict: "wrong", why: "'Hidden' just means not an input or an output." },
-          { t: "To make the model bigger.", verdict: "partly", why: "They do add size, but the point is the non-linear combinations they make possible." },
-          { t: "Because more layers are always better.", verdict: "wrong", why: "Too many for the data overfits; deeper also needs care to train." },
+          { t: "Each layer combines and bends the last one's outputs, building shapes one layer can't.", verdict: "right", why: "Composition of simple bent pieces is what gives networks their power." },
+          { t: "To hide the model's working from users, so only inputs and outputs show.", verdict: "wrong", why: "'Hidden' just means not an input or an output." },
+          { t: "To make the model bigger, since more weights means more accuracy.", verdict: "partly", why: "They do add size, but the point is the non-linear combinations they make possible." },
+          { t: "Because more layers are always better, given enough training time.", verdict: "wrong", why: "Too many for the data overfits; deeper also needs care to train." },
         ],
       },
       readMore: [
@@ -247,7 +247,7 @@ export default {
         </>
       ),
       play: [
-        { Sim: TraceSim, try: "Start with no activation and note both outputs for input #1. Switch to ReLU and watch which hidden neurons go to 0. Then try input #3." },
+        { Sim: TraceSim, try: "Start with no activation and note both outputs for input #1. Switch to ReLU and watch which hidden neurons go to 0, and read the working underneath for each neuron. Then try input #3." },
         { Sim: ActivationSim, try: "Compare sigmoid, tanh and ReLU at 10 and 30 layers. Which keeps the learning signal alive?" },
       ],
       how: (
@@ -316,10 +316,10 @@ export default {
           kind: "choice",
           q: "A network must pick one of 10 classes. What goes on its output layer?",
           options: [
-            { t: "Softmax: probabilities over the 10 classes that add up to 1.", ok: true, why: "One-of-many answers need softmax." },
-            { t: "ReLU", why: "ReLU outputs aren't probabilities and don't add up to 1." },
-            { t: "Sigmoid on each class", why: "That's for independent yes/no labels (multi-label), where several can be true at once." },
-            { t: "No activation", why: "Raw scores need softmax to become probabilities." },
+            { t: "Softmax, giving probabilities that add up to 1", ok: true, why: "One-of-many answers need softmax." },
+            { t: "ReLU, so no class gets a negative score", why: "ReLU outputs aren't probabilities and don't add up to 1." },
+            { t: "A sigmoid on each of the 10 outputs", why: "That's for independent yes/no labels (multi-label), where several can be true at once." },
+            { t: "No activation: pick the largest raw score", why: "Raw scores need softmax to become probabilities." },
           ],
         },
         {
@@ -343,10 +343,10 @@ export default {
           kind: "choice",
           q: "Why do LSTM gates use the sigmoid rather than ReLU?",
           options: [
-            { t: "A gate is a fraction of the signal to let through, and only the sigmoid gives a value between 0 and 1.", ok: true, why: "0 blocks, 1 passes, and anything in between is a dial." },
-            { t: "Sigmoid has a bigger slope.", why: "It's smaller (at most 0.25); gates use it for its range, not its slope." },
-            { t: "ReLU can't be used in recurrent networks at all.", why: "It can, carefully, but a gate still needs a 0–1 value." },
-            { t: "It's cheaper to compute.", why: "ReLU is cheaper; the range is the reason." },
+            { t: "A gate is a fraction to let through, so it needs 0 to 1.", ok: true, why: "0 blocks, 1 passes, and anything in between is a dial." },
+            { t: "Its slope is larger than ReLU's, so gates learn faster.", why: "It's smaller (at most 0.25); gates use it for its range, not its slope." },
+            { t: "ReLU can't be used anywhere in a recurrent network.", why: "It can, carefully, but a gate still needs a 0–1 value." },
+            { t: "It's cheaper to compute at every step of a long sequence.", why: "ReLU is cheaper; the range is the reason." },
           ],
         },
         { kind: "task", q: "Find the input in the traced layer where ReLU changes nothing at all, and show it with ReLU on.", Sim: TraceSim, check: (s) => s.act === "relu" && s.norm === "none" && s.ex === 2, done: "All three sums are positive for input #3, so ReLU is a straight line there. The bends come from the inputs that switch neurons off." },
@@ -355,10 +355,10 @@ export default {
       explain: {
         q: "Why did ReLU replace the sigmoid in deep networks?",
         options: [
-          { t: "Its slope is 1 for positive inputs, so the learning signal doesn't shrink as it passes back through many layers, while sigmoid's small slope makes it vanish.", verdict: "right", why: "Vanishing gradients were the obstacle; ReLU's slope removes most of it." },
-          { t: "It's more like a real neuron.", verdict: "wrong", why: "The sigmoid is closer to a firing rate. ReLU won on trainability." },
-          { t: "It's faster to compute.", verdict: "partly", why: "True, and it helps, but the main reason is the gradient." },
-          { t: "Its outputs are probabilities.", verdict: "wrong", why: "ReLU outputs any non-negative number; that's the sigmoid's job." },
+          { t: "Its slope is 1 for positive inputs, so the learning signal doesn't shrink layer by layer.", verdict: "right", why: "Vanishing gradients were the obstacle; ReLU's slope removes most of it." },
+          { t: "It's more like a real neuron, which is silent until stimulated enough.", verdict: "wrong", why: "The sigmoid is closer to a firing rate. ReLU won on trainability." },
+          { t: "It's faster to compute, which is what matters most when a network has billions of them.", verdict: "partly", why: "True, and it helps, but the main reason is the gradient." },
+          { t: "Its outputs are probabilities, which makes the layers easier to read.", verdict: "wrong", why: "ReLU outputs any non-negative number; that's the sigmoid's job." },
         ],
       },
       readMore: [
@@ -429,10 +429,10 @@ export default {
           kind: "choice",
           q: "Why is backpropagation efficient?",
           options: [
-            { t: "It computes the error once and reuses it as it passes backwards, so all gradients cost about one extra pass.", ok: true, why: "Shared factors are reused, not recomputed per weight." },
-            { t: "It only updates a few weights each step.", why: "It computes a gradient for every weight." },
-            { t: "It guesses the gradients randomly.", why: "The gradients are exact (for the batch used)." },
-            { t: "It skips the hidden layers.", why: "The hidden layers are exactly what it trains." },
+            { t: "It reuses each layer's blame for the layer before it.", ok: true, why: "Shared factors are reused, not recomputed per weight." },
+            { t: "It updates only the weights with the largest errors each step.", why: "It computes a gradient for every weight." },
+            { t: "It estimates gradients from a few random nudges to the weights.", why: "The gradients are exact (for the batch used)." },
+            { t: "It works out the output layer exactly and skips the hidden ones.", why: "The hidden layers are exactly what it trains." },
           ],
         },
         { kind: "task", q: "Use backprop steps to bring the loss under 0.0005.", Sim: BackpropSim, check: (s) => s.loss < 0.0005, done: "Every step, every weight moved against its share of the blame. A real network does this for millions of weights at once." },
@@ -440,10 +440,10 @@ export default {
       explain: {
         q: "How does a neural network know which weights to change?",
         options: [
-          { t: "Backpropagation passes the output error backwards with the chain rule, giving every weight its share of the blame; gradient descent then adjusts each one.", verdict: "right", why: "Blame backwards, then a step downhill: that's training." },
+          { t: "Backpropagation passes the error back, giving each weight its share of the blame.", verdict: "right", why: "Blame backwards, then a step downhill: that's training." },
           { t: "It tries changing each weight and sees if the error goes down.", verdict: "wrong", why: "That would take millions of trials per step. Backprop gets all the slopes in one pass." },
-          { t: "It works out the gradient of the loss.", verdict: "partly", why: "True, but it leaves out how: the chain rule, backwards through the layers." },
-          { t: "The programmer sets them.", verdict: "wrong", why: "The weights are learned, not set." },
+          { t: "It works out the gradient of the loss with respect to every one of the weights at once.", verdict: "partly", why: "True, but it leaves out how: the chain rule, backwards through the layers." },
+          { t: "The programmer sets them, and training checks how well they work.", verdict: "wrong", why: "The weights are learned, not set." },
         ],
       },
       readMore: [
@@ -512,9 +512,9 @@ export default {
             2.05, −0.3, 1.9 and −0.39.
           </p>
           <p>
-            Batch norm works down that column, one neuron across the batch: mean 0.82, spread 1.16, so input #1's 2.05 becomes (2.05 − 0.82) / 1.16
-            = 1.06. Layer norm works across the row instead, one input across its own neurons: input #1's three sums are 2.05, −1.15 and −1.1, with
-            mean −0.07 and spread 1.50, so they become 1.41, −0.72 and −0.69.
+            Batch norm works down that column, one neuron across the batch: mean 0.815, spread 1.162, so input #1's 2.05 becomes (2.05 − 0.815) /
+            1.162 = 1.06. Layer norm works across the row instead, one input across its own neurons: input #1's three sums are 2.05, −1.15 and −1.1, with
+            mean −0.067 and spread 1.497, so they become 1.41, −0.72 and −0.69.
           </p>
           <p>
             Both pull the numbers into the same range, but look at what each depends on. Under batch norm, input #1's value depends on the other
@@ -525,7 +525,7 @@ export default {
         </>
       ),
       play: [
-        { Sim: TraceSim, try: "Pick ReLU, then compare None, Batch norm and Layer norm for input #1 and input #3. Which hidden neurons switch on or off?" },
+        { Sim: TraceSim, try: "Pick ReLU, then compare None, Batch norm and Layer norm for input #1 and input #3. The working underneath shows which numbers each one averages over. Which hidden neurons switch on or off?" },
         { Sim: NormSim, try: "With no normalisation, move the weight size from 1.0 to 2.0. Then try batch norm and layer norm, and shrink the batch to 2 with batch norm." },
       ],
       how: (
@@ -589,29 +589,29 @@ export default {
           kind: "choice",
           q: "Which normalisation does a transformer language model use?",
           options: [
-            { t: "Layer norm (or RMSNorm): per example, independent of the batch and sequence length.", ok: true, why: "Every transformer block has it." },
-            { t: "Batch norm", why: "Statistics across a batch of varying-length sequences work poorly; it's a CNN tool." },
-            { t: "None", why: "Without it, deep transformers are very hard to train." },
-            { t: "Instance norm", why: "That's for images, mostly style transfer." },
+            { t: "Layer norm (or RMSNorm), within each token", ok: true, why: "Every transformer block has it." },
+            { t: "Batch norm, across the sentences in a batch", why: "Statistics across a batch of varying-length sequences work poorly; it's a CNN tool." },
+            { t: "None: attention keeps the values in range", why: "Without it, deep transformers are very hard to train." },
+            { t: "Instance norm, one feature at a time", why: "That's for images, mostly style transfer." },
           ],
         },
         {
           kind: "choice",
           q: "A CNN with batch norm gives different predictions for the same image depending on what else is in the batch. Why?",
           options: [
-            { t: "It's still in training mode, normalising with the current batch's statistics instead of the saved ones.", ok: true, why: "Switch to evaluation mode for prediction." },
-            { t: "The weights change during prediction.", why: "Weights are fixed; the batch statistics are what differ." },
-            { t: "Batch norm is random.", why: "It's deterministic given the batch; the batch is the problem." },
-            { t: "The images are too big.", why: "Size isn't the cause; mode is." },
+            { t: "It's still in training mode, using each batch's statistics.", ok: true, why: "Switch to evaluation mode for prediction." },
+            { t: "Its weights keep adjusting a little with every batch it sees.", why: "Weights are fixed; the batch statistics are what differ." },
+            { t: "Batch norm adds random noise to its outputs, like dropout.", why: "It's deterministic given the batch; the batch is the problem." },
+            { t: "Large images get resized differently depending on the batch.", why: "Size isn't the cause; mode is." },
           ],
         },
         {
           kind: "choice",
           q: "Why does a convolution followed by batch norm usually have no bias?",
           options: [
-            { t: "Batch norm subtracts the mean, which removes any bias, and its own β adds a learned shift back.", ok: true, why: "The bias would be cancelled straight away, so it's wasted weight." },
-            { t: "Biases make batch norm slower.", why: "Speed isn't it; the bias is simply cancelled out." },
-            { t: "Convolutions can't have biases.", why: "They can, and do when nothing normalises after them." },
+            { t: "Batch norm subtracts the mean, cancelling it; β takes over.", ok: true, why: "The bias would be cancelled straight away, so it's wasted weight." },
+            { t: "A bias makes batch norm's statistics much slower to compute.", why: "Speed isn't it; the bias is simply cancelled out." },
+            { t: "A filter is shared across positions, so it can't have a bias.", why: "They can, and do when nothing normalises after them." },
             { t: "β is set to zero, so a bias is needed elsewhere.", why: "β is learned, and it takes over the bias's job." },
           ],
         },
@@ -621,10 +621,10 @@ export default {
       explain: {
         q: "What does batch normalisation do, and when would you use layer norm instead?",
         options: [
-          { t: "It rescales each layer's values to a standard range using statistics from the batch; layer norm does it within each example, so it suits transformers, RNNs and small batches.", verdict: "right", why: "Same idea, different averaging, chosen by the kind of network and batch." },
-          { t: "It makes all the weights the same size.", verdict: "wrong", why: "It acts on the values flowing through, not the weights." },
+          { t: "It rescales values using batch statistics; layer norm uses each example's own.", verdict: "right", why: "Same idea, different averaging, chosen by the kind of network and batch." },
+          { t: "It makes all the weights in a layer the same size, so none dominates.", verdict: "wrong", why: "It acts on the values flowing through, not the weights." },
           { t: "It keeps values in a healthy range so deep networks train.", verdict: "partly", why: "That's the purpose, but it misses the batch-versus-example difference that decides which one to use." },
-          { t: "It normalises the input data once before training.", verdict: "wrong", why: "That's input standardisation. Batch and layer norm act inside the network, at every layer." },
+          { t: "It normalises the input data once, before training starts, so it's comparable.", verdict: "wrong", why: "That's input standardisation. Batch and layer norm act inside the network, at every layer." },
         ],
       },
       readMore: [
@@ -694,18 +694,18 @@ export default {
           options: [
             { t: "The one from the epoch with the lowest validation loss.", ok: true, why: "That's early stopping: the best generalising weights, not the latest." },
             { t: "The latest one, since its training loss is lowest.", why: "Low training loss here means memorising." },
-            { t: "The first one.", why: "It hadn't learned much yet." },
-            { t: "An average of all of them.", why: "Some methods average checkpoints, but the late, overfitted ones would drag it down." },
+            { t: "The first one, before it could memorise anything.", why: "It hadn't learned much yet." },
+            { t: "An average of every epoch's weights, to smooth out the noise.", why: "Some methods average checkpoints, but the late, overfitted ones would drag it down." },
           ],
         },
         {
           kind: "choice",
           q: "What does dropout do during training?",
           options: [
-            { t: "Randomly switches off some neurons on each step, so the network can't depend on any one of them.", ok: true, why: "It forces redundant, more general features." },
-            { t: "Removes training examples the model gets wrong.", why: "It drops neurons, not data." },
-            { t: "Permanently deletes weak neurons.", why: "It's random and temporary; all neurons are used at prediction time." },
-            { t: "Lowers the learning rate over time.", why: "That's a learning-rate schedule." },
+            { t: "Randomly switches off some neurons on each step.", ok: true, why: "It forces redundant, more general features." },
+            { t: "Drops the training examples the model keeps getting wrong.", why: "It drops neurons, not data." },
+            { t: "Permanently removes the neurons with the smallest weights.", why: "It's random and temporary; all neurons are used at prediction time." },
+            { t: "Lowers the learning rate whenever validation loss stalls.", why: "That's a learning-rate schedule." },
           ],
         },
         { kind: "task", q: "Find settings where the model you keep has a validation loss under 0.25.", Sim: TrainingSim, check: (s) => s.final < 0.25, done: "Faster optimisation, less memorising, and keeping the best epoch: the everyday recipe." },
@@ -713,10 +713,10 @@ export default {
       explain: {
         q: "Why watch validation loss while training a neural network?",
         options: [
-          { t: "Training loss always improves; validation loss shows when the network stops learning general patterns and starts memorising, so you know when to stop.", verdict: "right", why: "The gap between the two curves is the warning sign." },
-          { t: "To check the code is running.", verdict: "wrong", why: "Any loss would show that. Validation shows generalisation." },
-          { t: "To see how good the model is.", verdict: "partly", why: "True, and the point is to see it during training so you can stop at the right time." },
-          { t: "Because training loss is unreliable.", verdict: "wrong", why: "It's reliable about the training data; that's exactly why it can't warn you about overfitting." },
+          { t: "It shows when the network starts memorising, so you know when to stop.", verdict: "right", why: "The gap between the two curves is the warning sign." },
+          { t: "To check the training code is running and the loss is being computed.", verdict: "wrong", why: "Any loss would show that. Validation shows generalisation." },
+          { t: "To see how good the model is, since that's its real score.", verdict: "partly", why: "True, and the point is to see it during training so you can stop at the right time." },
+          { t: "Because training loss is unreliable: it jumps about too much from one step to the next.", verdict: "wrong", why: "It's reliable about the training data; that's exactly why it can't warn you about overfitting." },
         ],
       },
       readMore: [
@@ -789,10 +789,10 @@ export default {
           kind: "choice",
           q: "What does an LSTM's forget gate do?",
           options: [
-            { t: "It decides, at each step, how much of the stored memory to keep.", ok: true, why: "Near 1 keeps it; near 0 clears it." },
-            { t: "It deletes training examples.", why: "It acts on the memory inside the network, not on data." },
-            { t: "It makes the network forget its weights.", why: "Weights stay; the gate controls the running memory." },
-            { t: "It speeds up training.", why: "Its job is long memory; LSTMs are slower than plain RNNs." },
+            { t: "Decides at each step how much stored memory to keep.", ok: true, why: "Near 1 keeps it; near 0 clears it." },
+            { t: "Deletes training sequences that are too long to learn from.", why: "It acts on the memory inside the network, not on data." },
+            { t: "Resets some of the network's weights after each sequence.", why: "Weights stay; the gate controls the running memory." },
+            { t: "Skips old steps so training runs faster on long sequences.", why: "Its job is long memory; LSTMs are slower than plain RNNs." },
           ],
         },
         { kind: "task", q: "Make the LSTM remember at least half the signal 30 words later.", Sim: MemorySim, check: (s) => s.len >= 30 && s.lstm >= 0.5, done: "A gate close to 1 is what lets it carry information over long gaps." },
@@ -800,10 +800,10 @@ export default {
       explain: {
         q: "Why were LSTMs invented?",
         options: [
-          { t: "Plain recurrent networks forget quickly, because their memory is multiplied at every step; gates let an LSTM keep information over long sequences.", verdict: "right", why: "Vanishing memory was the problem; gated memory the fix." },
-          { t: "To process images.", verdict: "wrong", why: "They're for sequences; convolutions handle images." },
-          { t: "To make networks deeper.", verdict: "partly", why: "Over time steps they are 'deep', and the gates tackle the same vanishing-gradient problem." },
-          { t: "Because transformers were too slow.", verdict: "wrong", why: "LSTMs (1997) came twenty years before transformers." },
+          { t: "Plain RNNs forget quickly; gates let an LSTM keep information for long.", verdict: "right", why: "Vanishing memory was the problem; gated memory the fix." },
+          { t: "To process images one row of pixels at a time.", verdict: "wrong", why: "They're for sequences; convolutions handle images." },
+          { t: "To make networks deeper by stacking layers through time.", verdict: "partly", why: "Over time steps they are 'deep', and the gates tackle the same vanishing-gradient problem." },
+          { t: "Because transformers were too slow on long sequences of text.", verdict: "wrong", why: "LSTMs (1997) came twenty years before transformers." },
         ],
       },
       readMore: [

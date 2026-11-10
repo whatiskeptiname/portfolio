@@ -88,8 +88,8 @@ export default {
           options: [
             { t: "A trend with multiplicative seasonality", ok: true, why: "Right. The season scales with the level, so it's a percentage effect. A log would make it additive." },
             { t: "A trend with additive seasonality", why: "Additive seasonality would add the same amount every December, not a growing one." },
-            { t: "A business cycle", why: "Cycles have no fixed period. A December peak is tied to the calendar." },
-            { t: "Pure noise", why: "A peak every December is a pattern, not noise." },
+            { t: "A business cycle that peaks every December", why: "Cycles have no fixed period. A December peak is tied to the calendar." },
+            { t: "Noise around a steadily rising trend", why: "A peak every December is a pattern, not noise." },
           ],
         },
         {
@@ -114,22 +114,22 @@ export default {
         q: "Why can't you treat a time series like any other table of data?",
         options: [
           {
-            t: "Because each value depends on the ones before it, the order carries information. Shuffling destroys it, and any test must only use the past to predict the future.",
+            t: "Each value depends on earlier ones, so order matters and tests must only use the past.",
             verdict: "right",
             why: "Both consequences in one: order is information, and evaluation must respect it.",
           },
           {
-            t: "Because time series always have a trend.",
+            t: "Because time series always have a trend running through them, which other tables don't have.",
             verdict: "wrong",
             why: "Many don't. Stationary series have no trend at all, and they're still time series.",
           },
           {
-            t: "Because you need special software for dates.",
+            t: "Because dates need special software before any model can read them.",
             verdict: "wrong",
             why: "Dates are just an index. The difference is statistical, not technical.",
           },
           {
-            t: "Because the rows aren't independent.",
+            t: "Because the rows aren't independent, so the usual statistics are off.",
             verdict: "partly",
             why: "That's the technical core, but the practical consequence (never let the future into training) is what bites people.",
           },
@@ -234,20 +234,20 @@ export default {
           kind: "choice",
           q: "An ADF test on a share price gives a p-value of 0.62. What does that suggest?",
           options: [
-            { t: "You can't reject a random walk: the series is probably not stationary, so difference it.", ok: true, why: "Right. ADF's starting assumption is non-stationary, and 0.62 is nowhere near small enough to reject it." },
-            { t: "The series is stationary.", why: "That would need a small p-value from ADF. A large one means no evidence of stationarity." },
+            { t: "It probably isn't stationary, so difference it.", ok: true, why: "Right. ADF's starting assumption is non-stationary, and 0.62 is nowhere near small enough to reject it." },
+            { t: "The series is stationary, since 0.62 is above 0.05.", why: "That would need a small p-value from ADF. A large one means no evidence of stationarity." },
             { t: "There's a 62% chance the series is stationary.", why: "A p-value isn't the probability that a hypothesis is true." },
-            { t: "The series has a season.", why: "ADF doesn't test for seasonality." },
+            { t: "The series has a season that the test picked up.", why: "ADF doesn't test for seasonality." },
           ],
         },
         {
           kind: "choice",
           q: "Why take the log before differencing monthly sales whose summer peaks get bigger every year?",
           options: [
-            { t: "The log turns growing, percentage-style swings into constant ones, so the spread stops growing.", ok: true, why: "Exactly. After the log, a 20% summer bump is the same size every year." },
-            { t: "The log removes the trend.", why: "The log keeps the trend (as a straight line); differencing removes it." },
-            { t: "Models can't handle large numbers.", why: "Size isn't the problem. Changing spread is." },
-            { t: "It makes the series positive.", why: "Sales are already positive; the log needs them to be." },
+            { t: "It turns growing, percentage-style swings into steady ones.", ok: true, why: "Exactly. After the log, a 20% summer bump is the same size every year." },
+            { t: "The log removes the trend, so differencing has less to do.", why: "The log keeps the trend (as a straight line); differencing removes it." },
+            { t: "Forecasting models lose precision on large numbers.", why: "Size isn't the problem. Changing spread is." },
+            { t: "It makes every value positive, which ARIMA requires.", why: "Sales are already positive; the log needs them to be." },
           ],
         },
       ],
@@ -255,22 +255,22 @@ export default {
         q: "How would you explain stationarity to a teammate who's new to forecasting?",
         options: [
           {
-            t: "A stationary series behaves the same way at every point in time: same average, same spread, same rhythm. Models learned on one stretch of it then apply to the next, which is why we transform series until they look like that.",
+            t: "It behaves the same at every point: same average, spread and rhythm, so models carry over.",
             verdict: "right",
             why: "It defines it and says why anyone cares.",
           },
           {
-            t: "A stationary series is one that doesn't change.",
+            t: "A stationary series is one that doesn't change from one month to the next.",
             verdict: "wrong",
             why: "Stationary series move all the time. It's their statistical behaviour that stays the same.",
           },
           {
-            t: "A series with no trend.",
+            t: "A series with no trend, so its line runs flat over the years.",
             verdict: "partly",
             why: "No trend is necessary but not enough. A season or a changing spread also breaks stationarity.",
           },
           {
-            t: "A series where every value is independent of the others.",
+            t: "A series where every value is independent of all the others, like a long run of coin flips.",
             verdict: "wrong",
             why: "That's white noise, one special stationary series. Most stationary series have memory.",
           },
@@ -379,10 +379,10 @@ export default {
           kind: "choice",
           q: "After fitting a model, the residuals' ACF has a large spike at lag 12. What does it tell you?",
           options: [
-            { t: "There's yearly seasonality the model hasn't captured.", ok: true, why: "Right. Add a seasonal term, as in SARIMA." },
-            { t: "The model is perfect.", why: "Perfect residuals have no spikes at all." },
-            { t: "The data has 12 missing values.", why: "The ACF says nothing about missing values." },
-            { t: "You should difference the residuals.", why: "You fix the model, not the residuals." },
+            { t: "There's yearly seasonality the model missed.", ok: true, why: "Right. Add a seasonal term, as in SARIMA." },
+            { t: "The model fits well: one spike in 20 lags is chance.", why: "Perfect residuals have no spikes at all." },
+            { t: "The data has 12 missing months that were filled in.", why: "The ACF says nothing about missing values." },
+            { t: "The residuals need differencing before they can be read.", why: "You fix the model, not the residuals." },
           ],
         },
       ],
@@ -390,12 +390,12 @@ export default {
         q: "Which is the best plain description of the PACF?",
         options: [
           {
-            t: "It shows how directly each past value is linked to today, after removing the influence of the values in between.",
+            t: "How directly each past value links to today, once the ones between are removed.",
             verdict: "right",
             why: "That's the 'partial' part, said simply.",
           },
           {
-            t: "It's the ACF of half the series.",
+            t: "It's the ACF computed on half the series, to check it's stable.",
             verdict: "wrong",
             why: "Partial refers to removing intermediate effects, not to using part of the data.",
           },
@@ -405,7 +405,7 @@ export default {
             why: "That's the plain ACF. The PACF removes the indirect route through the months in between.",
           },
           {
-            t: "It measures seasonality.",
+            t: "It measures how strong the seasonality is at each lag.",
             verdict: "wrong",
             why: "It can reveal seasonality as a spike at the seasonal lag, but that's not what it is.",
           },
@@ -507,8 +507,8 @@ export default {
           options: [
             { t: "The naive forecast: the last value", ok: true, why: "Right. All the weight goes on the newest value." },
             { t: "The average of the whole history", why: "That's closer to α near 0." },
-            { t: "Seasonal naive", why: "Simple smoothing has no season at all." },
-            { t: "Holt–Winters", why: "Holt–Winters adds trend and season terms that simple smoothing doesn't have." },
+            { t: "Seasonal naive: the same month last year", why: "Simple smoothing has no season at all." },
+            { t: "Holt–Winters with its trend switched off", why: "Holt–Winters adds trend and season terms that simple smoothing doesn't have." },
           ],
         },
         {
@@ -523,12 +523,12 @@ export default {
         q: "Why should every forecasting project start with a naive baseline?",
         options: [
           {
-            t: "Because simple methods are often hard to beat, and without a baseline you can't tell whether a complex model is adding anything. If it can't beat 'same as last year', it isn't worth shipping.",
+            t: "Simple methods are hard to beat; without one you can't tell if a model adds anything.",
             verdict: "right",
             why: "That's the reason: a baseline turns 'good' into a number you can check.",
           },
           {
-            t: "Because naive methods are always the most accurate.",
+            t: "Because naive methods are always the most accurate once they meet real, messy business data.",
             verdict: "wrong",
             why: "They often aren't. The point is to measure the improvement, not to stop there.",
           },
@@ -538,7 +538,7 @@ export default {
             why: "Useful, but not the reason. The baseline is part of the evaluation.",
           },
           {
-            t: "Because they need no data.",
+            t: "Because they need no data, so they're ready on day one of the project.",
             verdict: "partly",
             why: "They need very little, which makes them cheap. The bigger reason is that they set the bar.",
           },
@@ -668,22 +668,22 @@ export default {
         q: "Explain the 'I' in ARIMA to a friend.",
         options: [
           {
-            t: "It stands for integrated: you model the changes instead of the values, then add the predicted changes back up to get a forecast of the values.",
+            t: "Integrated: you model the changes, then add them back up to forecast the values.",
             verdict: "right",
             why: "That's exactly what the d differences and the undoing at the end do.",
           },
           {
-            t: "It means the model is interpretable.",
+            t: "It means the model is interpretable, unlike a neural network forecast.",
             verdict: "wrong",
             why: "Clever guess, but no.",
           },
           {
-            t: "It's the number of times the series is differenced.",
+            t: "It's the number of times the series is differenced before the rest of the model is fitted.",
             verdict: "partly",
             why: "That's the d parameter that controls it. The friend would still want to know why the forecast comes back in the original units.",
           },
           {
-            t: "It means the errors are independent.",
+            t: "It means the errors are independent of each other from month to month.",
             verdict: "wrong",
             why: "Independent errors are an assumption of the model, not what the I stands for.",
           },
@@ -792,9 +792,9 @@ export default {
           kind: "choice",
           q: "Why can't a regression tree predict a value higher than any in its training data?",
           options: [
-            { t: "Each leaf predicts the average of training targets that landed in it, so every prediction is an average of seen values.", ok: true, why: "Exactly. Averages can't exceed the maximum." },
-            { t: "Trees are capped at depth 10.", why: "Depth doesn't matter; even infinitely deep trees average seen values." },
-            { t: "Trees ignore lag features.", why: "They use them fine; the problem is in what the leaves can output." },
+            { t: "Each leaf predicts an average of training targets.", ok: true, why: "Exactly. Averages can't exceed the maximum." },
+            { t: "Trees are capped in depth, which limits how high they can go.", why: "Depth doesn't matter; even infinitely deep trees average seen values." },
+            { t: "Trees ignore lag features, so they can't follow a rising series.", why: "They use them fine; the problem is in what the leaves can output." },
             { t: "It can, if the learning rate is high enough.", why: "A single tree has no learning rate. Boosted trees add up many trees, but still within the range of training residuals." },
           ],
         },
@@ -813,22 +813,22 @@ export default {
         q: "A teammate's boosted-tree forecast flatlines at last year's peak. How do you explain it?",
         options: [
           {
-            t: "Trees predict by averaging training values, so they can't go above the highest one they've seen. Train them on changes or detrended data and add the trend back.",
+            t: "Trees average training values, so they can't exceed the highest; model the changes.",
             verdict: "right",
             why: "The cause and the fix, in two sentences.",
           },
           {
-            t: "The model is overfitting.",
+            t: "The model is overfitting to last year, so it repeats that year's peak.",
             verdict: "wrong",
             why: "It may also overfit, but flatlining is about extrapolation, not variance.",
           },
           {
-            t: "It needs more trees.",
+            t: "It needs more trees, so the later ones can push past the peak.",
             verdict: "wrong",
             why: "More trees still average seen values. The limit is structural.",
           },
           {
-            t: "Tree models can't extrapolate.",
+            t: "Tree models can't extrapolate beyond the data they were trained on.",
             verdict: "partly",
             why: "True, but it doesn't say why, or what to do about it.",
           },
@@ -930,20 +930,20 @@ export default {
           kind: "choice",
           q: "A model's MASE on the test set is 0.8. What does that mean?",
           options: [
-            { t: "Its average error is 20% smaller than the naive forecast's average error in training.", ok: true, why: "Right. MASE below 1 beats the naive benchmark." },
-            { t: "It's right 80% of the time.", why: "MASE isn't a hit rate." },
-            { t: "Its errors are 0.8 units on average.", why: "That's MAE. MASE has no units." },
-            { t: "It's 80% worse than naive.", why: "That would be a MASE of 1.8." },
+            { t: "Its errors are 20% smaller than naive's in training.", ok: true, why: "Right. MASE below 1 beats the naive benchmark." },
+            { t: "It's right 80% of the time, within the tolerance.", why: "MASE isn't a hit rate." },
+            { t: "Its errors are 0.8 units on average, in the data's units.", why: "That's MAE. MASE has no units." },
+            { t: "It's 80% worse than the naive forecast on the same data.", why: "That would be a MASE of 1.8." },
           ],
         },
         {
           kind: "choice",
           q: "Why is ordinary shuffled k-fold cross-validation wrong for time series?",
           options: [
-            { t: "Training folds include data from after the test period, so the model effectively sees the future.", ok: true, why: "Right. Walk-forward folds keep training strictly before testing." },
-            { t: "It uses too few folds.", why: "The number of folds isn't the issue; their order is." },
-            { t: "Time series are too short for it.", why: "Length isn't the problem." },
-            { t: "It can't compute MAPE.", why: "Any metric works; the leak is the problem." },
+            { t: "Training folds include data from after the test period.", ok: true, why: "Right. Walk-forward folds keep training strictly before testing." },
+            { t: "It uses too few folds to cover every season.", why: "The number of folds isn't the issue; their order is." },
+            { t: "Time series are too short to split into five folds.", why: "Length isn't the problem." },
+            { t: "It can't compute MAPE on shuffled months.", why: "Any metric works; the leak is the problem." },
           ],
         },
       ],
@@ -951,7 +951,7 @@ export default {
         q: "Which explanation of walk-forward validation would you give?",
         options: [
           {
-            t: "You pretend to stand at several moments in the past. Each time you train only on what was known then, forecast the next stretch, and score it. Averaging those scores tells you how the model would really have done.",
+            t: "Stand at several past moments, train on what was known then, and score what came next.",
             verdict: "right",
             why: "It makes clear why it's honest: every test is a genuine forecast.",
           },
@@ -966,7 +966,7 @@ export default {
             why: "That's one fold of it. Walk-forward repeats it at several cut-off points, so one lucky period can't decide the result.",
           },
           {
-            t: "You test the model on new data after deploying it.",
+            t: "You test the model on new data as it arrives, after it has been deployed for real users.",
             verdict: "wrong",
             why: "That's monitoring. Walk-forward happens before deployment, on history.",
           },
@@ -1061,10 +1061,10 @@ export default {
           kind: "choice",
           q: "Why might top-down forecasting miss a store whose sales are growing fast?",
           options: [
-            { t: "It splits the total by historical shares, so the store's growing share isn't reflected.", ok: true, why: "Right. Old proportions hide changing ones." },
-            { t: "It ignores the total.", why: "It starts from the total." },
-            { t: "It adds up the stores.", why: "That's bottom-up." },
-            { t: "It can't produce store-level numbers.", why: "It does; that's the splitting step." },
+            { t: "It splits the total by past shares, which miss growth.", ok: true, why: "Right. Old proportions hide changing ones." },
+            { t: "It ignores the total, so it misses the overall growth.", why: "It starts from the total." },
+            { t: "It adds up the stores' own forecasts, which lag behind.", why: "That's bottom-up." },
+            { t: "It can't produce store-level numbers, only totals.", why: "It does; that's the splitting step." },
           ],
         },
         {
@@ -1079,22 +1079,22 @@ export default {
         q: "How would you explain reconciliation to a finance manager?",
         options: [
           {
-            t: "We forecast every level separately, then nudge all the numbers as little as possible so stores add up to regions and regions to the total. Using every level's view usually makes the result more accurate too.",
+            t: "We forecast every level, then nudge the numbers just enough that they add up.",
             verdict: "right",
             why: "It answers their real concern (the numbers add up) and the bonus (better accuracy).",
           },
           {
-            t: "We forecast the stores and add them up.",
+            t: "We forecast the stores and add them up to get the regions and the company total.",
             verdict: "partly",
             why: "That's bottom-up, one way to get numbers that add up, but it ignores the other levels' forecasts.",
           },
           {
-            t: "We average the forecasts from all levels.",
+            t: "We average the forecasts from all levels into one number for each store.",
             verdict: "wrong",
             why: "Averaging numbers at different levels doesn't make sense: a store and the total aren't comparable.",
           },
           {
-            t: "We force the total to match last year's.",
+            t: "We force the total to match last year's, then split it across the stores.",
             verdict: "wrong",
             why: "That's not reconciliation; it would throw away the forecast.",
           },

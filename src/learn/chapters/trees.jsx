@@ -99,7 +99,7 @@ export default {
           kind: "choice",
           q: "Why do a decision tree's boundaries look like a staircase when the true boundary is a diagonal line?",
           options: [
-            { t: "Each question tests one feature against one threshold, so every cut is parallel to an axis.", ok: true, why: "Right. A diagonal needs both features at once, so the tree approximates it with many small axis-aligned steps." },
+            { t: "Each split tests one feature, so every cut is axis-parallel.", ok: true, why: "Right. A diagonal needs both features at once, so the tree approximates it with many small axis-aligned steps." },
             { t: "Trees work on a pixel grid, so they can't draw smooth lines.", why: "Trees don't use a grid. The thresholds can sit anywhere; the problem is that each one uses a single feature." },
             { t: "The Gini formula squares the shares, which bends the boundary.", why: "Gini only scores how mixed a group is. It has no say in the shape of the cut." },
             { t: "It's how the chart is drawn, not what the model does.", why: "The staircase is real. Ask the tree about a point on the diagonal and it answers according to the steps." },
@@ -117,7 +117,7 @@ export default {
         q: "A friend asks how a tree decides on its first question. Which answer would you give?",
         options: [
           {
-            t: "It tries every possible yes/no question on every feature and keeps the one that leaves the two groups least mixed.",
+            t: "It tries every yes/no question on every feature and keeps the least mixed split.",
             verdict: "right",
             why: "That's it. It's a brute-force search over features and thresholds, scored by impurity, done one step at a time.",
           },
@@ -257,22 +257,22 @@ export default {
         q: "How would you explain overfitting to someone who's never trained a model?",
         options: [
           {
-            t: "The model learns the quirks of the examples it was shown instead of the general pattern, so it does well on those examples and badly on new ones.",
+            t: "It learns the quirks of its examples, not the pattern, so new cases trip it up.",
             verdict: "right",
             why: "Clear and correct. The key is the contrast between seen and unseen data.",
           },
           {
-            t: "The model is too complicated, so it runs slowly.",
+            t: "The model is too complicated, so it runs too slowly to use in practice.",
             verdict: "wrong",
             why: "Speed is a separate issue. Overfitting is about predictions on new data getting worse.",
           },
           {
-            t: "The model has been trained for too long.",
+            t: "The model has been trained for too long and has worn itself out.",
             verdict: "partly",
             why: "That can cause it in models trained in rounds, like boosting or neural networks, but the underlying problem is fitting noise. A tree overfits by growing too deep, not by training long.",
           },
           {
-            t: "The model gets a low score on its training data.",
+            t: "The model gets a low score on its own training data, however long you let it train.",
             verdict: "wrong",
             why: "That's underfitting. An overfit model usually looks excellent on its training data.",
           },
@@ -376,19 +376,19 @@ export default {
         },
         {
           kind: "task",
-          q: "With fraud rare, move the cut-off until the model catches at least 80% of the fraud. Then look at precision.",
+          q: "With fraud rare, find a cut-off that still catches at least 80% of the fraud while at least a third of what you flag really is fraud.",
           Sim: ThresholdSim,
-          check: (s) => s.rare && s.recall >= 0.8,
-          done: "Catching more fraud cost a lot of precision: most of what you're flagging now is honest. That's the trade every fraud team negotiates.",
+          check: (s) => s.rare && s.recall >= 0.8 && s.precision >= 0.33,
+          done: "Only a narrow band of cut-offs, around 0.65, manages both. Lower and you drown in honest payments; higher and fraud slips through. That's the trade every fraud team negotiates.",
         },
         {
           kind: "choice",
           q: "A model has an AUC of 0.5. What does that tell you?",
           options: [
-            { t: "Its scores rank fraud above honest payments no better than chance.", ok: true, why: "Right. Half the time a random fraud outscores a random honest payment, which is a coin toss." },
-            { t: "It's right half the time.", why: "AUC isn't accuracy. A model can be 94% accurate with an AUC of 0.5, as the 'always honest' model shows." },
-            { t: "Its best cut-off is 0.5.", why: "AUC doesn't depend on any one cut-off; it sums over all of them." },
-            { t: "It catches half the fraud.", why: "That's a recall of 0.5, at one cut-off. AUC summarises every cut-off." },
+            { t: "Its scores rank fraud no better than chance.", ok: true, why: "Right. Half the time a random fraud outscores a random honest payment, which is a coin toss." },
+            { t: "It labels half of all payments correctly.", why: "AUC isn't accuracy. A model can be 94% accurate with an AUC of 0.5, as the 'always honest' model shows." },
+            { t: "Its best cut-off is 0.5, halfway along the scores.", why: "AUC doesn't depend on any one cut-off; it sums over all of them." },
+            { t: "It catches half of the fraud at any cut-off.", why: "That's a recall of 0.5, at one cut-off. AUC summarises every cut-off." },
           ],
         },
       ],
@@ -396,22 +396,22 @@ export default {
         q: "Your manager asks why you didn't just report accuracy. What do you say?",
         options: [
           {
-            t: "Because fraud is rare, a model that never flags anything already scores 94%. Precision and recall show how much fraud we catch and how many false alarms we raise, which is what we actually care about.",
+            t: "Fraud is rare, so flagging nothing already scores 94%; precision and recall show what we catch.",
             verdict: "right",
             why: "That's the whole argument, in terms a manager can act on.",
           },
           {
-            t: "Accuracy is an outdated metric; modern teams use F1.",
+            t: "Accuracy is an outdated metric; modern data teams report F1 instead for every model they build.",
             verdict: "wrong",
             why: "Accuracy is fine when classes are balanced and mistakes cost the same. The reason to look further is the imbalance, not fashion.",
           },
           {
-            t: "Accuracy only works for regression problems.",
+            t: "Accuracy only works for regression problems, where it measures the average error.",
             verdict: "wrong",
             why: "Accuracy is a classification metric. Regression uses errors like RMSE.",
           },
           {
-            t: "Our accuracy was low, so other metrics look better.",
+            t: "Our accuracy was low this time, so the other metrics give a better impression.",
             verdict: "wrong",
             why: "Picking metrics to flatter a model is how bad models get shipped. Here accuracy was misleadingly high.",
           },
@@ -541,7 +541,7 @@ export default {
         q: "Explain to a friend why a forest of so-so trees beats one carefully built tree.",
         options: [
           {
-            t: "Each tree makes mistakes, but different trees make different mistakes. When they vote, the mistakes mostly cancel and the shared, real pattern wins.",
+            t: "Different trees make different mistakes, so in a vote the mistakes mostly cancel.",
             verdict: "right",
             why: "That's the core idea, including the part people forget: the mistakes have to be different.",
           },
@@ -647,8 +647,8 @@ export default {
           kind: "choice",
           q: "In gradient boosting with squared error, what does each new tree try to predict?",
           options: [
-            { t: "The residuals: how far off the current model is on each row.", ok: true, why: "Right. More generally it's the negative gradient of the loss, which for squared error is the residual." },
-            { t: "The original target, from scratch.", why: "That would be bagging. Boosting trees only see what's left to fix." },
+            { t: "The residuals: how far off the model still is", ok: true, why: "Right. More generally it's the negative gradient of the loss, which for squared error is the residual." },
+            { t: "The original target again, on a fresh bootstrap sample", why: "That would be bagging. Boosting trees only see what's left to fix." },
             { t: "Which of the earlier trees was most accurate.", why: "Trees don't predict anything about each other. They predict corrections." },
             { t: "A random subset of the features.", why: "Subsampling features is an option in boosting, but it isn't what each tree predicts." },
           ],
@@ -675,12 +675,12 @@ export default {
         q: "How would you explain the difference between a random forest and boosting?",
         options: [
           {
-            t: "A forest grows many trees independently and lets them vote. Boosting grows trees one after another, each fixing what the previous ones got wrong.",
+            t: "A forest's trees vote independently; boosting's trees each fix the last ones' errors.",
             verdict: "right",
             why: "That's the difference in one breath: in parallel versus in sequence, voting versus correcting.",
           },
           {
-            t: "Boosting uses bigger trees than a random forest.",
+            t: "Boosting uses bigger, deeper trees than a forest, so it needs fewer of them.",
             verdict: "wrong",
             why: "It's usually the opposite: boosting likes small trees, forests like deep ones.",
           },
@@ -690,7 +690,7 @@ export default {
             why: "A good summary of their effects, but it doesn't say how either works. Pair it with the parallel-versus-sequence picture.",
           },
           {
-            t: "They're the same; boosting is just a faster forest.",
+            t: "They're the same idea underneath; boosting is just a forest that trains faster on modern hardware.",
             verdict: "wrong",
             why: "They build trees in fundamentally different ways and fail in different ways.",
           },
@@ -798,9 +798,9 @@ export default {
           kind: "choice",
           q: "You fill missing values with each column's mean, computed on the full dataset, and then run cross-validation. What's wrong?",
           options: [
-            { t: "The held-out rows helped compute the means, so information leaked from the check rows into training.", ok: true, why: "Right. The fix is to put the filling step in a pipeline so each fold computes its own means." },
-            { t: "Nothing; the mean is the same either way.", why: "It's close, but not the same, and with steps like feature selection the difference can be enormous." },
-            { t: "You should use the median instead.", why: "The median is often a better choice, but computing it on all rows leaks in exactly the same way." },
+            { t: "The check rows helped compute the means: a leak.", ok: true, why: "Right. The fix is to put the filling step in a pipeline so each fold computes its own means." },
+            { t: "Nothing: a column's mean barely moves when a fold is held out.", why: "It's close, but not the same, and with steps like feature selection the difference can be enormous." },
+            { t: "The median should be used instead, since it ignores outliers.", why: "The median is often a better choice, but computing it on all rows leaks in exactly the same way." },
             { t: "Cross-validation can't be used when there were missing values.", why: "It can, as long as the filling happens inside each fold." },
           ],
         },
@@ -815,9 +815,9 @@ export default {
           kind: "choice",
           q: "When only one of two settings matters, why does random search usually beat grid search with the same number of tries?",
           options: [
-            { t: "Every random try tests a new value of the setting that matters; the grid repeats the same few.", ok: true, why: "Exactly. Nine grid points give three values of each setting; nine random points give nine." },
+            { t: "Each random try tests a new value of the one that matters.", ok: true, why: "Exactly. Nine grid points give three values of each setting; nine random points give nine." },
             { t: "Random search uses a smarter model of the scores.", why: "That's Bayesian search. Random search has no model at all." },
-            { t: "Random search runs faster per try.", why: "Each try costs the same. The difference is where the tries land." },
+            { t: "Each random try trains faster, so more of them fit in the time.", why: "Each try costs the same. The difference is where the tries land." },
             { t: "Grid search can't handle more than one setting.", why: "It can; it just spends tries poorly." },
           ],
         },
@@ -826,22 +826,22 @@ export default {
         q: "Why do we put preprocessing inside a pipeline? Pick the explanation you'd give a teammate.",
         options: [
           {
-            t: "So that during cross-validation every step, like filling gaps or choosing features, is learned only from the training rows of each fold, and the score stays honest.",
+            t: "So each fold learns every step from its own training rows, keeping the score honest.",
             verdict: "right",
             why: "That's the reason that matters. The tidiness is a bonus.",
           },
           {
-            t: "It makes the code shorter.",
+            t: "It makes the code shorter and easier for the next person to follow.",
             verdict: "partly",
             why: "True, but it's a side benefit. The real reason is preventing leakage.",
           },
           {
-            t: "Models can't read raw data without one.",
+            t: "Models can't read raw data without one, so it's needed to run at all.",
             verdict: "wrong",
             why: "You can preprocess by hand. The point is where the statistics are learned from.",
           },
           {
-            t: "Pipelines make the model more accurate.",
+            t: "Pipelines make the model more accurate by tuning each step for it.",
             verdict: "wrong",
             why: "A pipeline can make the reported score lower, because it removes the leak. The model isn't better; the measurement is truer.",
           },
@@ -958,10 +958,10 @@ export default {
           kind: "choice",
           q: "Why can the default impurity-based feature importance mislead?",
           options: [
-            { t: "It favours features with many distinct values, which offer more possible split points.", ok: true, why: "Right. A random ID column can look important just because it can be split so many ways." },
-            { t: "It only works for linear models.", why: "It's specific to trees, actually." },
-            { t: "It's calculated on the test set.", why: "It's calculated from the training splits, which is part of the problem." },
-            { t: "It can't rank more than ten features.", why: "There's no such limit." },
+            { t: "It favours features with many distinct values.", ok: true, why: "Right. A random ID column can look important just because it can be split so many ways." },
+            { t: "It assumes each feature's effect on the target is linear.", why: "It assumes nothing about shape. It adds up how much each split on the feature cleaned up the groups." },
+            { t: "It's computed on the test set, so it leaks the answers.", why: "It's calculated from the training splits, which is part of the problem." },
+            { t: "It ignores features the tree never split on at the top.", why: "It counts every split on the feature, at any depth." },
           ],
         },
       ],
@@ -969,22 +969,22 @@ export default {
         q: "A colleague says: 'SHAP shows that support calls cause customers to leave.' How do you respond?",
         options: [
           {
-            t: "SHAP shows how much the model leaned on support calls for this prediction. That's about the model's reasoning, not cause and effect in the world.",
+            t: "SHAP shows how much the model leaned on support calls, not what causes leaving.",
             verdict: "right",
             why: "Exactly the distinction. Unhappy customers both call and leave; the calls may be a symptom.",
           },
           {
-            t: "That's right, SHAP values measure causal effects.",
+            t: "That's right: SHAP values measure each feature's causal effect on the outcome.",
             verdict: "wrong",
             why: "SHAP measures contributions to a prediction. Causal claims need experiments or causal methods.",
           },
           {
-            t: "SHAP can't be trusted at all for tree models.",
+            t: "SHAP can't be trusted at all for tree models, since trees split unevenly.",
             verdict: "wrong",
             why: "TreeSHAP is exact for trees. The issue is interpreting it as cause, not its accuracy.",
           },
           {
-            t: "It depends whether the SHAP value is positive.",
+            t: "It depends whether the SHAP value is positive; only positive ones show a cause.",
             verdict: "partly",
             why: "The sign tells you the direction of the push, but no sign turns a contribution into a cause.",
           },

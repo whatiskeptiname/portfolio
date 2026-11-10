@@ -78,10 +78,10 @@ export default {
           kind: "choice",
           q: "A weather model is unsure about tomorrow's rain in a region where it has only two years of records. What kind of uncertainty is mostly at play?",
           options: [
-            { t: "Epistemic: there isn't enough data about that region yet.", ok: true, why: "Right. More years of records would shrink it." },
-            { t: "Aleatoric: weather is random.", why: "Weather does have irreducible randomness, but the problem described is the thin data, which more records would fix." },
-            { t: "Neither; models are always certain.", why: "Every model is uncertain. The question is whether the uncertainty can be reduced." },
-            { t: "Both equally, by definition.", why: "There's no rule that they're equal. Here the thin data dominates." },
+            { t: "Epistemic: too little data about that region", ok: true, why: "Right. More years of records would shrink it." },
+            { t: "Aleatoric: rain is random however much you record", why: "Weather does have irreducible randomness, but the problem described is the thin data, which more records would fix." },
+            { t: "Neither: a trained model's output is fixed", why: "Every model is uncertain. The question is whether the uncertainty can be reduced." },
+            { t: "Both equally, since one always comes with the other", why: "There's no rule that they're equal. Here the thin data dominates." },
           ],
         },
         {
@@ -106,22 +106,22 @@ export default {
         q: "How would you explain the difference to a manager who wants 'certain' predictions?",
         options: [
           {
-            t: "Part of our uncertainty comes from limited data, and we can shrink it by collecting more. Part comes from genuine randomness in what we're predicting, and no amount of data removes it, so we should plan for a range.",
+            t: "Some uncertainty shrinks with more data; some is real randomness, so we plan for a range.",
             verdict: "right",
             why: "Clear, honest and actionable: it says what to invest in and what to plan around.",
           },
           {
-            t: "With enough data, all uncertainty goes away.",
+            t: "With enough data, all uncertainty goes away, so we just need to collect more.",
             verdict: "wrong",
             why: "Only the epistemic part does. Coin flips stay random however many you watch.",
           },
           {
-            t: "Uncertainty means the model is bad.",
+            t: "Uncertainty means the model is bad, and a better one would be certain.",
             verdict: "wrong",
             why: "A model that admits uncertainty is being honest. A model that hides it is the dangerous one.",
           },
           {
-            t: "Some uncertainty is about the model and some is noise in the data.",
+            t: "Some uncertainty is about the model and some is noise in the data, and both matter equally.",
             verdict: "partly",
             why: "Correct, but a manager needs the consequence: which part money and data can fix.",
           },
@@ -239,7 +239,7 @@ export default {
         q: "A colleague asks why you didn't just report 4 out of 5 as an 80% sign-up rate. What do you say?",
         options: [
           {
-            t: "Five visitors is too little to trust on its own. Combining it with what we know about similar pages gives about 38%, and the honest summary is a range, roughly 18 to 64%, that will narrow as visitors arrive.",
+            t: "Five visitors is too few; with what similar pages do, it's about 38%, within 18–64%.",
             verdict: "right",
             why: "It names the problem (tiny n), the fix (the prior) and the useful output (a range that narrows).",
           },
@@ -249,7 +249,7 @@ export default {
             why: "The prior does add bias, and that's the point: a little bias buys a lot less variance when data is scarce. 80% is the right MLE but a poor estimate.",
           },
           {
-            t: "Bayesian methods always give a lower number.",
+            t: "Bayesian methods always give a lower number, which is safer to report.",
             verdict: "wrong",
             why: "The posterior moves towards the prior, which can be higher or lower than the data.",
           },
@@ -367,7 +367,7 @@ export default {
           kind: "choice",
           q: "Why can conjugate updates be done one observation at a time, in any order?",
           options: [
-            { t: "The posterior depends only on running totals (sufficient statistics), which add up the same in any order.", ok: true, why: "Exactly. k and n don't care about order." },
+            { t: "The posterior depends only on running totals, which add up the same in any order.", ok: true, why: "Exactly. k and n don't care about order." },
             { t: "Because the prior is ignored after the first update.", why: "The prior stays in the totals forever; it just becomes a smaller share." },
             { t: "Because each observation is weighted by when it arrived.", why: "Standard conjugate updating weights every observation equally." },
             { t: "It can't; the order changes the answer.", why: "For independent observations it doesn't." },
@@ -378,7 +378,7 @@ export default {
         q: "Which is the best plain-language description of Bayesian updating?",
         options: [
           {
-            t: "You start with a belief, see some evidence, and shift your belief in proportion to how well each possibility explains that evidence. The result becomes your starting point for the next piece of evidence.",
+            t: "Shift your belief towards what explains the evidence best, then repeat with the next piece.",
             verdict: "right",
             why: "That's Bayes' rule in words, including the part that makes it sequential.",
           },
@@ -388,12 +388,12 @@ export default {
             why: "That throws away everything you knew. Updating blends, it doesn't replace.",
           },
           {
-            t: "You average all the data you've seen so far.",
+            t: "You average all the data you've seen so far, and that average is your belief.",
             verdict: "partly",
             why: "With a flat prior the posterior mean is close to the data average, but updating also tracks how sure you are, not just a single number.",
           },
           {
-            t: "You keep your prior unless the data is statistically significant.",
+            t: "You keep your prior belief unless the new data is statistically significant, then swap it.",
             verdict: "wrong",
             why: "That's the logic of a hypothesis test. Bayesian updating moves a little with every observation.",
           },
@@ -496,9 +496,9 @@ export default {
           kind: "choice",
           q: "A very tall parent's child is predicted to be tall, but less tall than the parent. Why?",
           options: [
-            { t: "The correlation is less than 1, so the conditional mean moves only part of the way from the average: regression to the mean.", ok: true, why: "Right. The prediction moves ρ of the way, not all the way." },
-            { t: "Children are always shorter than their parents.", why: "Not true; and by the same logic, very short parents' children are predicted to be taller than them." },
-            { t: "The Gaussian can't represent tall people.", why: "It can; the tails just get thinner." },
+            { t: "The correlation is below 1, so the prediction moves only part way from the average.", ok: true, why: "Right. The prediction moves ρ of the way, not all the way." },
+            { t: "Children are shorter than their parents on average, so the model shrinks the height.", why: "Not true; and by the same logic, very short parents' children are predicted to be taller than them." },
+            { t: "The Gaussian thins out at the tails, so it can't place a child that far out.", why: "It can; the tails just get thinner." },
             { t: "Because the variance shrinks when you condition.", why: "It does shrink, but that's about how sure you are, not where the centre goes." },
           ],
         },
@@ -507,7 +507,7 @@ export default {
         q: "How would you explain conditioning a Gaussian to a friend?",
         options: [
           {
-            t: "If two things tend to move together, learning one shifts your guess about the other in its direction, by an amount set by how strongly they're linked, and makes you more confident about it.",
+            t: "Learning one of two linked things shifts your guess about the other and sharpens it.",
             verdict: "right",
             why: "It covers both effects: the shift and the narrowing.",
           },
@@ -517,12 +517,12 @@ export default {
             why: "Only with perfect correlation. Usually the shift is partial.",
           },
           {
-            t: "You throw away the variables you don't care about.",
+            t: "You throw away the variables you don't care about and keep the rest exactly as they were.",
             verdict: "wrong",
             why: "That's marginalising, the other operation. Conditioning uses what you observed.",
           },
           {
-            t: "It makes the distribution narrower.",
+            t: "It makes the distribution narrower, so the prediction is more certain.",
             verdict: "partly",
             why: "True, but it leaves out that the centre moves too, which is usually the part you care about.",
           },
@@ -611,10 +611,10 @@ export default {
           kind: "choice",
           q: "In this network, rain and the sprinkler are independent of each other until you observe the wet grass. What is this structure called?",
           options: [
-            { t: "A collider (or v-structure)", ok: true, why: "Right. Two arrows meet at one node, and observing it links its causes." },
-            { t: "A chain", why: "A chain passes influence along a line, and observing the middle blocks it." },
-            { t: "A fork", why: "A fork has one common cause pointing to two effects." },
-            { t: "A Markov blanket", why: "That's the set of nodes that shields one node from the rest: parents, children and the children's other parents." },
+            { t: "A collider", ok: true, why: "Right. Two arrows meet at one node, and observing it links its causes." },
+            { t: "A chain, from rain through the grass to the sprinkler", why: "A chain passes influence along a line, and observing the middle blocks it." },
+            { t: "A fork, with the grass as the common cause", why: "A fork has one common cause pointing to two effects." },
+            { t: "A Markov blanket around the grass", why: "That's the set of nodes that shields one node from the rest: parents, children and the children's other parents." },
           ],
         },
         {
@@ -636,7 +636,7 @@ export default {
         q: "Which is the best way to explain 'explaining away'?",
         options: [
           {
-            t: "When two possible causes could explain an effect, confirming one makes the other less likely, because the effect no longer needs it.",
+            t: "If two causes could explain an effect, confirming one makes the other less likely.",
             verdict: "right",
             why: "That's it, in one sentence.",
           },
@@ -739,8 +739,8 @@ export default {
           kind: "choice",
           q: "You shrink the RBF kernel's length scale a lot. What happens to the predictions between two distant measurements?",
           options: [
-            { t: "The mean falls back towards the prior (zero) and the uncertainty swells, because each point's influence reaches less far.", ok: true, why: "Right. With a short reach, points far from data get almost no information." },
-            { t: "The predictions get more confident everywhere.", why: "The opposite: confidence now drops off quickly away from each point." },
+            { t: "The mean falls back to the prior and the band widens.", ok: true, why: "Right. With a short reach, points far from data get almost no information." },
+            { t: "The predictions get more confident everywhere, since the kernel is sharper.", why: "The opposite: confidence now drops off quickly away from each point." },
             { t: "The function becomes a straight line between points.", why: "That's closer to what a very long length scale does." },
             { t: "Nothing; the length scale only matters for noise.", why: "Noise has its own setting. The length scale controls smoothness and reach." },
           ],
@@ -767,22 +767,22 @@ export default {
         q: "How would you describe a Gaussian process to someone who knows linear regression?",
         options: [
           {
-            t: "Instead of fitting a line, you assume nearby inputs have similar outputs, and let the data shape the curve. You get a best guess plus an error bar that grows where there's no data.",
+            t: "Assume nearby inputs give similar outputs; you get a curve with error bars.",
             verdict: "right",
             why: "It captures the kernel idea, the flexibility and the honest uncertainty.",
           },
           {
-            t: "It's linear regression with Gaussian noise.",
+            t: "It's ordinary linear regression with Gaussian noise added to every measurement.",
             verdict: "partly",
             why: "Bayesian linear regression is in fact a GP with a linear kernel, but GPs are far more flexible than that.",
           },
           {
-            t: "It fits a very high-degree polynomial.",
+            t: "It fits a very high-degree polynomial and then smooths it out.",
             verdict: "wrong",
             why: "There's no polynomial. The function is described by its covariance between points.",
           },
           {
-            t: "It's a neural network with one hidden layer.",
+            t: "It's a neural network with one hidden layer and Gaussian weights.",
             verdict: "wrong",
             why: "There is a connection (an infinitely wide network becomes a GP), but that's a deep result, not a description.",
           },
@@ -881,10 +881,10 @@ export default {
           kind: "choice",
           q: "Why can Metropolis–Hastings sample from a posterior whose normalising constant you can't compute?",
           options: [
-            { t: "It only uses ratios of the density, and the constant cancels in the ratio.", ok: true, why: "Right. p(θ′)/p(θ) is the same whether or not you divide both by p(data)." },
+            { t: "It only uses ratios of the density, where the constant cancels.", ok: true, why: "Right. p(θ′)/p(θ) is the same whether or not you divide both by p(data)." },
             { t: "It estimates the constant first, then samples.", why: "It never needs the constant at all." },
             { t: "It uses the prior instead of the posterior.", why: "It targets the posterior; it just never normalises it." },
-            { t: "It only works for conjugate models.", why: "Conjugate models don't need MCMC. It's for everything else." },
+            { t: "It only works for conjugate models, where the constant is known.", why: "Conjugate models don't need MCMC. It's for everything else." },
           ],
         },
         {
@@ -898,10 +898,10 @@ export default {
           kind: "choice",
           q: "Four chains started in different places give clearly different averages. What should you conclude?",
           options: [
-            { t: "The chains haven't converged; run longer, or improve the sampler or the model, before trusting anything.", ok: true, why: "Right. This is what R̂ measures." },
+            { t: "They haven't converged, so nothing can be trusted yet.", ok: true, why: "Right. This is what R̂ measures." },
             { t: "Average the four chains together; that fixes it.", why: "Averaging chains that disagree hides the problem; it doesn't solve it." },
-            { t: "Keep the chain with the highest density.", why: "That throws away the evidence that something is wrong." },
-            { t: "The posterior must have four peaks.", why: "Possibly, but you can't tell until the chains mix between them." },
+            { t: "Keep the chain that reached the highest density, since it found the peak.", why: "That throws away the evidence that something is wrong." },
+            { t: "The posterior has four peaks, and each chain found one.", why: "Possibly, but you can't tell until the chains mix between them." },
           ],
         },
       ],
@@ -909,7 +909,7 @@ export default {
         q: "A friend asks what MCMC actually does. Which answer would you give?",
         options: [
           {
-            t: "It takes a random walk that's more likely to go to probable places than improbable ones, tuned so that in the long run it visits each place in proportion to its probability. The places it visited are your samples.",
+            t: "A random walk that visits each value in proportion to its probability.",
             verdict: "right",
             why: "That's the key property, stated without jargon.",
           },

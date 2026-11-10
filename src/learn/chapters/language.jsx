@@ -72,10 +72,10 @@ export default {
           kind: "choice",
           q: "Why do 'momo' and 'dumpling' end up close in an embedding space?",
           options: [
-            { t: "They appear in similar sentences, so training pushes their vectors together.", ok: true, why: "Right: similar company, similar vector." },
-            { t: "Someone labelled them as synonyms.", why: "Embeddings learn from raw text, with no labels." },
-            { t: "They are spelled similarly.", why: "They aren't; and spelling isn't what embeddings capture." },
-            { t: "Both are short words.", why: "Length plays no part in the meaning of the vector." },
+            { t: "They turn up in similar sentences.", ok: true, why: "Right: similar company, similar vector." },
+            { t: "Someone labelled them as synonyms in a dictionary.", why: "Embeddings learn from raw text, with no labels." },
+            { t: "They're spelled alike, and spelling sets the vector.", why: "They aren't; and spelling isn't what embeddings capture." },
+            { t: "Short words get vectors near the middle of the space.", why: "Length plays no part in the meaning of the vector." },
           ],
         },
         { kind: "task", q: "Find where king − man + woman lands.", Sim: EmbedSim, check: (s) => s.analogy && s.top === "queen", done: "The 'female' direction carried 'king' across to 'queen'." },
@@ -83,9 +83,9 @@ export default {
       explain: {
         q: "How would you explain an embedding to a non-technical colleague?",
         options: [
-          { t: "It's a set of map coordinates for each word or document, learned so that things with similar meanings sit close together.", verdict: "right", why: "That's the core idea, and it explains why it's useful for search." },
-          { t: "It's a dictionary definition stored as a number.", verdict: "wrong", why: "There's no definition in it. It's a position learned from usage." },
-          { t: "It's a way of compressing text.", verdict: "partly", why: "It is compact, but the point is that distances mean something." },
+          { t: "Map coordinates for each word, learned so similar meanings sit close.", verdict: "right", why: "That's the core idea, and it explains why it's useful for search." },
+          { t: "It's each word's dictionary definition, stored as a list of numbers the model can read.", verdict: "wrong", why: "There's no definition in it. It's a position learned from usage." },
+          { t: "It's a way of compressing text so it takes less space to store.", verdict: "partly", why: "It is compact, but the point is that distances mean something." },
           { t: "It's the model's understanding of the word.", verdict: "partly", why: "Loosely, but 'understanding' oversells it: it's where the word sits relative to others, learned from co-occurrence." },
         ],
       },
@@ -163,10 +163,10 @@ export default {
           kind: "choice",
           q: "Why can a language model struggle to count the letters in a word?",
           options: [
-            { t: "It sees the word as one or a few tokens, not as individual letters.", ok: true, why: "Right: the letters are hidden inside the token." },
-            { t: "It can't do arithmetic.", why: "Counting small numbers isn't the issue; seeing the letters is." },
+            { t: "It sees a few tokens, not the letters.", ok: true, why: "Right: the letters are hidden inside the token." },
+            { t: "It can't do arithmetic of any kind.", why: "Counting small numbers isn't the issue; seeing the letters is." },
             { t: "Its vocabulary has no single letters.", why: "It usually does have them; it just doesn't use them for common words." },
-            { t: "Counting letters is against its rules.", why: "There's no such rule. It's a side effect of tokenization." },
+            { t: "Counting letters is blocked by its safety rules.", why: "There's no such rule. It's a side effect of tokenization." },
           ],
         },
         { kind: "task", q: "Find text that needs at least two tokens per word.", Sim: TokenSim, check: (s) => s.words > 0 && s.tokens / s.words >= 2, done: "Rare words, other languages and long numbers all split finely." },
@@ -174,10 +174,10 @@ export default {
       explain: {
         q: "Why is an API priced per token rather than per word?",
         options: [
-          { t: "Because tokens are what the model actually processes: each one costs a step of computation, whatever language it's in.", verdict: "right", why: "The work is done token by token, so that's the honest unit." },
-          { t: "To make it more expensive.", verdict: "wrong", why: "It's the unit of work, not a trick, though it does cost more for some languages." },
-          { t: "Because words have different lengths.", verdict: "partly", why: "That's part of it, but the real reason is the model works in tokens." },
-          { t: "Tokens and words are the same thing.", verdict: "wrong", why: "They differ, especially for rare words and non-English text." },
+          { t: "Tokens are what the model processes, and each one costs computation.", verdict: "right", why: "The work is done token by token, so that's the honest unit." },
+          { t: "To charge more, since there are more tokens than words.", verdict: "wrong", why: "It's the unit of work, not a trick, though it does cost more for some languages." },
+          { t: "Because words have different lengths, and tokens are all the same size.", verdict: "partly", why: "That's part of it, but the real reason is the model works in tokens." },
+          { t: "Tokens and words are the same thing, so the price is the same either way.", verdict: "wrong", why: "They differ, especially for rare words and non-English text." },
         ],
       },
       readMore: [
@@ -226,7 +226,7 @@ export default {
           </p>
         </>
       ),
-      play: [{ Sim: AttentionSim, try: "Look at what 'it' attends to, then change the last word. Try looking from 'street' and 'cross' too." }],
+      play: [{ Sim: AttentionSim, try: "Look at what 'it' attends to, then change the last word. Tap 'street' and 'cross' too, to look from them instead." }],
       how: (
         <>
           <p>
@@ -250,10 +250,10 @@ export default {
           kind: "choice",
           q: "What does attention let a word do?",
           options: [
-            { t: "Weigh every other word in the context and mix in information from the most relevant ones.", ok: true, why: "That's it: a learned, weighted look around." },
-            { t: "Look up its definition in a dictionary.", why: "There's no dictionary; meaning comes from the context and training." },
+            { t: "Mix in information from the most relevant other words.", ok: true, why: "That's it: a learned, weighted look around." },
+            { t: "Look up its meaning in a built-in dictionary.", why: "There's no dictionary; meaning comes from the context and training." },
             { t: "Ignore all words except the one just before it.", why: "That's closer to old n-gram models. Attention looks at the whole context." },
-            { t: "Correct its own spelling.", why: "Attention is about relating words, not spelling." },
+            { t: "Correct its own spelling against the vocabulary.", why: "Attention is about relating words, not spelling." },
           ],
         },
         {
@@ -271,10 +271,10 @@ export default {
       explain: {
         q: "How does a language model know what 'it' refers to?",
         options: [
-          { t: "Attention lets 'it' weigh all the other words; training has taught it which clues (like 'tired' or 'wide') point where.", verdict: "right", why: "A learned, context-dependent weighting, not a rule." },
-          { t: "It follows a grammar rule that pronouns refer to the nearest noun.", verdict: "wrong", why: "The nearest noun here is 'street', which is wrong for 'tired'. It's learned, not rule-based." },
-          { t: "It looks at the words around 'it'.", verdict: "partly", why: "True, but it looks at all the words, weighted by relevance, not just the neighbours." },
-          { t: "It doesn't; it guesses randomly.", verdict: "wrong", why: "It gets these right far more often than chance." },
+          { t: "Attention lets 'it' weigh the other words, and training taught it the clues.", verdict: "right", why: "A learned, context-dependent weighting, not a rule." },
+          { t: "It follows a built-in grammar rule that a pronoun refers to the nearest noun before it.", verdict: "wrong", why: "The nearest noun here is 'street', which is wrong for 'tired'. It's learned, not rule-based." },
+          { t: "It looks at the words just around 'it' in the sentence.", verdict: "partly", why: "True, but it looks at all the words, weighted by relevance, not just the neighbours." },
+          { t: "It doesn't know; it guesses at random between the nouns.", verdict: "wrong", why: "It gets these right far more often than chance." },
         ],
       },
       readMore: [
@@ -356,8 +356,8 @@ export default {
       explain: {
         q: "How does a chatbot write a paragraph?",
         options: [
-          { t: "It repeatedly predicts the probabilities of the next token, picks one, adds it to the text, and predicts again.", verdict: "right", why: "That loop is all there is; everything else shapes the probabilities." },
-          { t: "It plans the paragraph, then writes it out.", verdict: "partly", why: "Its internal state can anticipate what comes next, but it still produces text strictly one token at a time." },
+          { t: "It predicts the next token, adds it to the text, and predicts again.", verdict: "right", why: "That loop is all there is; everything else shapes the probabilities." },
+          { t: "It plans the whole paragraph first, then writes it out word by word.", verdict: "partly", why: "Its internal state can anticipate what comes next, but it still produces text strictly one token at a time." },
           { t: "It searches the internet and copies an answer.", verdict: "wrong", why: "A plain model doesn't search. Some products add search (retrieval) on top." },
           { t: "It looks the answer up in a database of facts.", verdict: "wrong", why: "There's no fact database inside; facts are spread through its weights, imperfectly." },
         ],
@@ -430,9 +430,9 @@ export default {
           kind: "choice",
           q: "Why does a language model invent an answer instead of saying it doesn't know?",
           options: [
-            { t: "It's trained to produce plausible text, and a confident guess is more plausible than a refusal.", ok: true, why: "Right; nothing in plain training rewards admitting ignorance." },
-            { t: "It's designed to deceive users.", why: "There's no intent. It's a side effect of predicting plausible text." },
-            { t: "Its internet connection failed.", why: "A plain model doesn't use the internet." },
+            { t: "It's trained to sound plausible, and a guess sounds it.", ok: true, why: "Right; nothing in plain training rewards admitting ignorance." },
+            { t: "It's designed to keep users engaged, even if that means deceiving them.", why: "There's no intent. It's a side effect of predicting plausible text." },
+            { t: "Its web search failed, so it filled the gap.", why: "A plain model doesn't use the internet." },
             { t: "It always knows the answer but rounds it.", why: "It often genuinely lacks the fact; the guess fills the gap." },
           ],
         },
@@ -451,10 +451,10 @@ export default {
       explain: {
         q: "A colleague says the chatbot 'lied' about a date. How would you put it?",
         options: [
-          { t: "It produced the most plausible-sounding answer without having the fact; it can't tell guessing from knowing, so we give it the source and check.", verdict: "right", why: "Accurate about the cause, and points at the fix." },
-          { t: "It lied on purpose.", verdict: "wrong", why: "There's no intent to deceive in next-token prediction." },
-          { t: "It made a mistake.", verdict: "partly", why: "True, but it misses why: the mistake is systematic for rare facts, which is what tells you how to prevent it." },
-          { t: "The model is broken and shouldn't be used.", verdict: "wrong", why: "It's very useful with grounding and checks; it just isn't a database." },
+          { t: "It gave the most plausible answer without the fact; it can't tell guessing from knowing.", verdict: "right", why: "Accurate about the cause, and points at the fix." },
+          { t: "It lied on purpose, to give an answer instead of admitting it didn't know.", verdict: "wrong", why: "There's no intent to deceive in next-token prediction." },
+          { t: "It made a mistake, the way any software has the occasional bug.", verdict: "partly", why: "True, but it misses why: the mistake is systematic for rare facts, which is what tells you how to prevent it." },
+          { t: "The model is broken, and it shouldn't be used for anything that has dates or numbers in it.", verdict: "wrong", why: "It's very useful with grounding and checks; it just isn't a database." },
         ],
       },
       readMore: [
@@ -529,10 +529,10 @@ export default {
           kind: "choice",
           q: "Answers are wrong, and the logs show the right passage was never retrieved. What should you fix?",
           options: [
-            { t: "The retrieval: chunking, embeddings, or adding keyword search.", ok: true, why: "The model can't use what it never sees." },
-            { t: "Switch to a bigger language model.", why: "A bigger model still can't answer from a passage it wasn't given." },
-            { t: "Raise the temperature.", why: "That changes the wording, not what information is available." },
-            { t: "Fine-tune on the documents.", why: "Possible, but heavier, and it would still need updating; fix retrieval first." },
+            { t: "The retrieval step", ok: true, why: "The model can't use what it never sees." },
+            { t: "A bigger model", why: "A bigger model still can't answer from a passage it wasn't given." },
+            { t: "A higher temperature", why: "That changes the wording, not what information is available." },
+            { t: "Fine-tuning on the documents", why: "Possible, but heavier, and it would still need updating; fix retrieval first." },
           ],
         },
         { kind: "task", q: "Find the right document for the phone question.", Sim: RagSim, check: (s) => s.q === 0 && s.found, done: "It took a bigger k, because word matching doesn't know a phone is electronics. Embedding search would have found it first." },
@@ -540,9 +540,9 @@ export default {
       explain: {
         q: "What is retrieval-augmented generation, in one sentence?",
         options: [
-          { t: "Search your own documents for passages relevant to the question, then have the model answer from those passages.", verdict: "right", why: "Search, then generate from what was found." },
-          { t: "Retraining the model on your documents.", verdict: "wrong", why: "That's fine-tuning. RAG leaves the model unchanged." },
-          { t: "Letting the model search the web.", verdict: "partly", why: "Web search is one kind of retrieval, but RAG usually means your own document collection." },
+          { t: "Find relevant passages in your documents, then answer from them.", verdict: "right", why: "Search, then generate from what was found." },
+          { t: "Retraining the model on your documents so it knows them by heart.", verdict: "wrong", why: "That's fine-tuning. RAG leaves the model unchanged." },
+          { t: "Letting the model search the web for each question it gets.", verdict: "partly", why: "Web search is one kind of retrieval, but RAG usually means your own document collection." },
           { t: "A way to make the model's answers longer.", verdict: "wrong", why: "It's about grounding, not length." },
         ],
       },
@@ -615,20 +615,20 @@ export default {
           kind: "choice",
           q: "Your chatbot needs to know this month's prices. What's the right tool?",
           options: [
-            { t: "Retrieval: look the prices up and put them in the prompt.", ok: true, why: "Facts that change belong in documents the model reads, not in its weights." },
+            { t: "Retrieval: look them up and put them in the prompt.", ok: true, why: "Facts that change belong in documents the model reads, not in its weights." },
             { t: "Fine-tune it on the price list every month.", why: "Costly, slow and unreliable for facts; it'd be stale between retrains." },
-            { t: "A higher temperature.", why: "That doesn't add any information." },
-            { t: "Nothing; it already knows.", why: "It can't know prices set after its training." },
+            { t: "A higher temperature, so it doesn't repeat old prices.", why: "That doesn't add any information." },
+            { t: "Nothing: big models are updated with prices often.", why: "It can't know prices set after its training." },
           ],
         },
         {
           kind: "choice",
           q: "When is fine-tuning usually worth it?",
           options: [
-            { t: "Many good examples of a narrow, stable task, or to make a smaller model match a bigger one.", ok: true, why: "That's where its extra accuracy and lower cost per request pay back the effort." },
+            { t: "For a narrow, stable task with many good examples.", ok: true, why: "That's where its extra accuracy and lower cost per request pay back the effort." },
             { t: "With 20 examples, to save writing a prompt.", why: "Too few; a prompt with those examples will do as well." },
-            { t: "To teach the model breaking news.", why: "That's retrieval's job." },
-            { t: "Always, before trying prompts.", why: "Try the cheap options first and measure." },
+            { t: "To teach the model this week's breaking news.", why: "That's retrieval's job." },
+            { t: "Always, before spending time on prompts.", why: "Try the cheap options first and measure." },
           ],
         },
         { kind: "task", q: "Find a number of examples where fine-tuning beats prompting.", Sim: FinetuneSim, check: (s) => s.tuned > s.prompt, done: "With enough good examples, the trained-in behaviour wins, and it no longer pays for examples in every prompt." },
@@ -636,10 +636,10 @@ export default {
       explain: {
         q: "What's the difference between prompting and fine-tuning?",
         options: [
-          { t: "Prompting changes what you send the model; fine-tuning changes the model itself, by training it on examples.", verdict: "right", why: "Input versus weights: that's the whole distinction." },
-          { t: "Fine-tuning is just a longer prompt.", verdict: "wrong", why: "It changes the weights; the prompt can be short afterwards." },
+          { t: "Prompting changes what you send; fine-tuning changes the model itself.", verdict: "right", why: "Input versus weights: that's the whole distinction." },
+          { t: "Fine-tuning is just a longer prompt that's saved and sent every time.", verdict: "wrong", why: "It changes the weights; the prompt can be short afterwards." },
           { t: "They're different ways of teaching the model a task.", verdict: "partly", why: "True, but it leaves out the key difference: only one of them changes the model." },
-          { t: "Prompting is for chat, fine-tuning is for code.", verdict: "wrong", why: "Both work for any kind of task." },
+          { t: "Prompting is for chat, fine-tuning is for code and other structured work.", verdict: "wrong", why: "Both work for any kind of task." },
         ],
       },
       readMore: [

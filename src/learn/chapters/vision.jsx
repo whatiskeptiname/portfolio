@@ -106,9 +106,9 @@ export default {
           kind: "choice",
           q: "Why do convolutional layers need far fewer weights than fully connected ones on images?",
           options: [
-            { t: "The same small filter is reused at every position in the image.", ok: true, why: "Right. Weight sharing is the whole trick, and it also makes detection work anywhere in the image." },
-            { t: "They only look at grayscale images.", why: "They handle any number of channels." },
-            { t: "They skip half the pixels.", why: "Stride can skip positions, but that's not where the savings come from." },
+            { t: "The same small filter is reused at every position.", ok: true, why: "Right. Weight sharing is the whole trick, and it also makes detection work anywhere in the image." },
+            { t: "They work on grayscale copies, so there's one channel, not three.", why: "They handle any number of channels." },
+            { t: "They skip every other pixel, halving the inputs.", why: "Stride can skip positions, but that's not where the savings come from." },
             { t: "They don't use weights; the filters are fixed.", why: "The filters are the weights, and they're learned." },
           ],
         },
@@ -117,7 +117,7 @@ export default {
         q: "A friend asks what a convolutional layer actually does. Which answer would you give?",
         options: [
           {
-            t: "It slides a small learned pattern-detector across the whole image and records how strongly each spot matches. Stacking many layers builds up from edges to shapes to objects.",
+            t: "It slides a small learned pattern-detector over the image, scoring each spot.",
             verdict: "right",
             why: "The mechanism and why stacking matters, in two sentences.",
           },
@@ -132,7 +132,7 @@ export default {
             why: "That's closer to segmentation, a whole task built from many layers.",
           },
           {
-            t: "It multiplies the image by a matrix of weights.",
+            t: "It multiplies the whole image by one big matrix of learned weights, every pixel at once.",
             verdict: "partly",
             why: "Technically it's a (very structured) linear operation, but the friend learns nothing about the sliding, local, shared nature that makes it work.",
           },
@@ -237,20 +237,20 @@ export default {
           kind: "choice",
           q: "You have 300 labelled photos of three kinds of plant disease. What's the most sensible start?",
           options: [
-            { t: "Take an ImageNet-pretrained network, freeze the backbone, and train a new final layer.", ok: true, why: "Right. 300 images are far too few to train a deep network from scratch, but plenty to fit a new head on good features." },
-            { t: "Train a ResNet-152 from scratch.", why: "With 300 images it would memorise them. Pretrained features are the shortcut." },
-            { t: "Fine-tune every layer with a large learning rate.", why: "A large rate would wreck the pretrained features. If you fine-tune, use a small rate." },
-            { t: "Use a fully connected network on raw pixels.", why: "That needs far more data and ignores everything convolutions are good at." },
+            { t: "A pretrained network with a new final layer", ok: true, why: "Right. 300 images are far too few to train a deep network from scratch, but plenty to fit a new head on good features." },
+            { t: "A ResNet-152 trained from scratch on the 300", why: "With 300 images it would memorise them. Pretrained features are the shortcut." },
+            { t: "Fine-tune every layer with a large learning rate", why: "A large rate would wreck the pretrained features. If you fine-tune, use a small rate." },
+            { t: "A fully connected network on the raw pixels", why: "That needs far more data and ignores everything convolutions are good at." },
           ],
         },
         {
           kind: "choice",
           q: "A model with batch normalisation works well in training but gives poor predictions one image at a time in production. A likely cause?",
           options: [
-            { t: "It's still in training mode, normalising each single image with its own statistics instead of the running averages.", ok: true, why: "Right. Switch to evaluation mode (model.eval() in PyTorch)." },
-            { t: "Batch normalisation only works on GPUs.", why: "It works anywhere." },
+            { t: "It's still in training mode, normalising each image by itself.", ok: true, why: "Right. Switch to evaluation mode (model.eval() in PyTorch)." },
+            { t: "Batch normalisation only runs correctly on GPUs, not CPUs.", why: "It works anywhere." },
             { t: "The model needs batch sizes of exactly 32.", why: "In evaluation mode the batch size doesn't matter." },
-            { t: "Skip connections are missing.", why: "That's a training problem, not an inference one." },
+            { t: "Its skip connections are missing in the exported model.", why: "That's a training problem, not an inference one." },
           ],
         },
       ],
@@ -258,7 +258,7 @@ export default {
         q: "How would you explain why ResNets can be so deep?",
         options: [
           {
-            t: "Each block adds a correction to its input instead of replacing it, so there's always a direct path for the learning signal to flow back. Extra blocks can't make things much worse, because they can learn to add nothing.",
+            t: "Each block adds a correction to its input, so the signal always has a direct path.",
             verdict: "right",
             why: "Both reasons: gradient flow, and blocks that can default to doing nothing.",
           },
@@ -268,7 +268,7 @@ export default {
             why: "Cheaper layers make depth affordable, but they don't make it trainable.",
           },
           {
-            t: "Skip connections help the gradient flow.",
+            t: "Skip connections help the gradient flow back to the early layers.",
             verdict: "partly",
             why: "True, but a friend would need to hear why: the shortcut passes the signal straight through.",
           },
@@ -401,12 +401,12 @@ export default {
         q: "How would you explain non-maximum suppression?",
         options: [
           {
-            t: "The detector usually fires several times on the same object. NMS keeps the most confident box, deletes any box that overlaps it too much, and repeats with what's left.",
+            t: "Keep the most confident box, delete boxes that overlap it too much, repeat.",
             verdict: "right",
             why: "The problem and the algorithm, in two sentences.",
           },
           {
-            t: "It removes boxes with low confidence.",
+            t: "It removes boxes whose confidence falls below a set threshold.",
             verdict: "partly",
             why: "A confidence cut-off is a separate step. NMS removes boxes for overlapping a better one, whatever their own confidence.",
           },
@@ -534,9 +534,9 @@ export default {
           kind: "choice",
           q: "In a U-Net, what do the skip connections between encoder and decoder provide?",
           options: [
-            { t: "Fine spatial detail from the encoder, lost during downsampling, so the decoder can draw sharp boundaries.", ok: true, why: "Right. The decoder knows what is there from deep layers, and where exactly from the skips." },
+            { t: "Fine detail lost in downsampling, for sharp edges.", ok: true, why: "Right. The decoder knows what is there from deep layers, and where exactly from the skips." },
             { t: "A shortcut for gradients, as in ResNet, and nothing else.", why: "They do help gradients, but their main job is passing detail across." },
-            { t: "Extra training data.", why: "They pass features, not data." },
+            { t: "Extra training data, from copies of each encoder layer.", why: "They pass features, not data." },
             { t: "They let the model skip the decoder at inference.", why: "The decoder always runs; it produces the mask." },
           ],
         },
@@ -555,12 +555,12 @@ export default {
         q: "Which explanation of the difference between semantic and instance segmentation is best?",
         options: [
           {
-            t: "Semantic segmentation answers 'what kind of thing is each pixel'; instance segmentation also answers 'which particular object', so two cars side by side get separate outlines.",
+            t: "Semantic labels each pixel's kind; instance also says which object it belongs to.",
             verdict: "right",
             why: "Clear, and the side-by-side cars make the difference concrete.",
           },
           {
-            t: "Instance segmentation is more accurate.",
+            t: "Instance segmentation is more accurate, because it looks at each object separately and closely.",
             verdict: "wrong",
             why: "It answers a different question; accuracy isn't the difference.",
           },
@@ -681,10 +681,10 @@ export default {
           kind: "choice",
           q: "What does the network in a diffusion model learn to predict?",
           options: [
-            { t: "The noise that was added to the image at a given step", ok: true, why: "Right. Remove the predicted noise, a step at a time, and an image emerges." },
+            { t: "The noise added at a given step", ok: true, why: "Right. Remove the predicted noise, a step at a time, and an image emerges." },
             { t: "Whether an image is real or fake", why: "That's a GAN's discriminator." },
             { t: "A mean and spread for the latent code", why: "That's a VAE's encoder." },
-            { t: "The final image in one step", why: "Diffusion works in many small steps; that's what makes it stable." },
+            { t: "The finished image in a single step", why: "Diffusion works in many small steps; that's what makes it stable." },
           ],
         },
         {
@@ -702,7 +702,7 @@ export default {
         q: "How would you explain diffusion models to a friend?",
         options: [
           {
-            t: "You train a network to clean up slightly noisy images. Then you start from pure noise and ask it to clean up, over and over. Each pass removes a little noise, and a brand-new image appears.",
+            t: "Train it to remove a little noise, then start from pure noise and repeat.",
             verdict: "right",
             why: "The training and the generation, without a single formula.",
           },
@@ -712,12 +712,12 @@ export default {
             why: "It learns to remove noise, not to collage. (It can occasionally memorise training images, which is a known issue, but that's not how it works.)",
           },
           {
-            t: "It's a GAN that uses noise.",
+            t: "It's a GAN that starts from noise and has a second network judge each image it makes.",
             verdict: "wrong",
             why: "GANs also start from noise, but there's no discriminator in a diffusion model.",
           },
           {
-            t: "It slowly adds noise to an image.",
+            t: "It slowly adds noise to an image until something new appears.",
             verdict: "partly",
             why: "That's the forward process, used to make training examples. Generation runs the other way.",
           },
@@ -829,18 +829,18 @@ export default {
           kind: "choice",
           q: "Why do vision transformers typically need more training data than CNNs?",
           options: [
-            { t: "They lack the CNN's built-in assumptions that nearby pixels matter most and that patterns look the same anywhere, so they must learn these from data.", ok: true, why: "Right. Those inductive biases are free in a CNN; a ViT has to discover them." },
-            { t: "They have no position information.", why: "They do, through position embeddings." },
+            { t: "They don't assume that nearby pixels matter most, so they must learn it.", ok: true, why: "Right. Those inductive biases are free in a CNN; a ViT has to discover them." },
+            { t: "They have no position information, so they must learn the layout.", why: "They do, through position embeddings." },
             { t: "Attention can't be trained with gradient descent.", why: "It can and is." },
-            { t: "They only work on text.", why: "That's the point of ViT: the same architecture works on image patches." },
+            { t: "They were built for text, so images need extra conversion.", why: "That's the point of ViT: the same architecture works on image patches." },
           ],
         },
         {
           kind: "choice",
           q: "How does CLIP classify an image into classes it was never explicitly trained on?",
           options: [
-            { t: "It embeds a caption for each class, like 'a photo of a zebra', and picks the one most similar to the image's embedding.", ok: true, why: "Right. The text encoder turns any class name into a classifier." },
-            { t: "It searches the internet for similar images.", why: "Everything happens inside the two encoders." },
+            { t: "It picks the class caption whose embedding is closest.", ok: true, why: "Right. The text encoder turns any class name into a classifier." },
+            { t: "It searches the web for similar images and reads their tags.", why: "Everything happens inside the two encoders." },
             { t: "It fine-tunes on the new classes first.", why: "Zero-shot means no fine-tuning." },
             { t: "It uses a fixed list of 1,000 ImageNet classes.", why: "It can use any classes you can describe in words." },
           ],
@@ -850,7 +850,7 @@ export default {
         q: "Explain self-attention in a vision transformer to a friend.",
         options: [
           {
-            t: "Each patch of the image asks every other patch how relevant it is, then builds its new description as a weighted mix of the others, with more weight on the relevant ones. So context from anywhere in the image arrives in one step.",
+            t: "Each patch mixes in information from the other patches, weighted by relevance.",
             verdict: "right",
             why: "It covers the comparison, the weighted mix, and why it beats local convolutions on context.",
           },
@@ -860,12 +860,12 @@ export default {
             why: "Attention does weight some patches more, but every patch does this for itself, and nothing is fully ignored.",
           },
           {
-            t: "It's a convolution with a very large kernel.",
+            t: "It's a convolution with a very large kernel that covers the whole image.",
             verdict: "wrong",
             why: "A convolution's weights are fixed per position; attention's weights depend on the content.",
           },
           {
-            t: "It focuses the camera on the object.",
+            t: "It focuses on the object, the way a camera's autofocus picks a subject.",
             verdict: "wrong",
             why: "Nothing physical happens; it's all a weighting of features.",
           },
@@ -925,7 +925,7 @@ export default {
       play: [
         {
           Sim: GradCamSim,
-          try: "Switch between explaining 'dog' and 'ball'. The same feature maps get different weights, so the heat lands in different places.",
+          try: "Tap the dog, then the ball, to explain each score. The same feature maps get different weights, so the heat lands in different places.",
         },
         {
           Sim: QuantSim,
@@ -981,10 +981,10 @@ export default {
           kind: "choice",
           q: "A Grad-CAM heat map for 'ship' lights up the water, not the ship. What should you suspect?",
           options: [
-            { t: "The model learned a shortcut: in the training data, ships come with water, so it uses water as evidence.", ok: true, why: "Right. Test it on ships out of water, and collect more varied data." },
-            { t: "Grad-CAM is broken.", why: "Possible, but the far likelier story is a real shortcut." },
-            { t: "The model is very accurate.", why: "Accuracy on test data with the same shortcut can hide the problem." },
-            { t: "The image resolution is too low.", why: "Resolution affects detail, not which region the evidence comes from." },
+            { t: "A shortcut: it learned that water means ship.", ok: true, why: "Right. Test it on ships out of water, and collect more varied data." },
+            { t: "Grad-CAM is pointing at the wrong layer.", why: "Possible, but the far likelier story is a real shortcut." },
+            { t: "The model is very accurate: water is good evidence.", why: "Accuracy on test data with the same shortcut can hide the problem." },
+            { t: "The image is too low-resolution to show the ship.", why: "Resolution affects detail, not which region the evidence comes from." },
           ],
         },
       ],
@@ -992,22 +992,22 @@ export default {
         q: "Why check a heat map before trusting a vision model with high test accuracy?",
         options: [
           {
-            t: "High accuracy can come from shortcuts that happen to hold in the test set, like snow for wolves. The heat map shows whether the model looks at the object or at something that merely comes with it.",
+            t: "Accuracy can come from shortcuts, like snow for wolves; the map shows what it uses.",
             verdict: "right",
             why: "It names the risk and how the heat map reveals it.",
           },
           {
-            t: "Heat maps make the model more accurate.",
+            t: "Heat maps make the model more accurate by showing it where to look.",
             verdict: "wrong",
             why: "They explain a model; they don't change it.",
           },
           {
-            t: "To find which pixels are most important.",
+            t: "To find which pixels are most important for the prediction.",
             verdict: "partly",
             why: "That's what it shows, but the reason to look is to catch the model relying on the wrong ones.",
           },
           {
-            t: "Regulations require it for every model.",
+            t: "Regulations require one for every vision model put into use.",
             verdict: "wrong",
             why: "Some settings require explanations, but that's not why it's good practice everywhere.",
           },
