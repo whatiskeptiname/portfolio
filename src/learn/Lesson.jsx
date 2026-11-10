@@ -2,7 +2,8 @@
 // these systems more than they build them: the idea in 60 seconds, an example,
 // a simulation, and what working with it is like in practice. The maths and
 // details fold away, then a quick check, saying it back, and where to go deeper.
-import React, { useEffect, useId, useState } from "react";
+import React, { useEffect, useId, useMemo, useState } from "react";
+import { optionOrder } from "./math";
 import Icon from "../components/Icon";
 import Reel from "./Reel";
 
@@ -162,24 +163,30 @@ function Question({ item, onAnswer }) {
   return null;
 }
 
+// Works like a radio button: the mark moves to whichever option you click, before or
+// after the right one is found, and shows whether that one is right. Only the first
+// round counts for the score.
 function ChoiceQuestion({ item, onAnswer }) {
   const [tried, setTried] = useState([]);
+  const [last, setLast] = useState(undefined);
+  const order = useMemo(() => optionOrder(item.q, item.options.length), [item]);
   const solved = tried.some((i) => item.options[i].ok);
   const pick = (i) => {
-    if (solved || tried.includes(i)) return;
+    setLast(i);
+    if (tried.includes(i)) return;
     const next = [...tried, i];
     setTried(next);
-    if (item.options[i].ok) onAnswer(next.length === 1);
+    if (!solved && item.options[i].ok) onAnswer(next.length === 1);
   };
-  const last = tried[tried.length - 1];
   return (
     <>
       <p className="q">{item.q}</p>
-      <div className="options" role="group" aria-label={item.q}>
-        {item.options.map((o, i) => {
-          const state = tried.includes(i) ? (o.ok ? "is-right" : "is-wrong") : solved ? "is-faded" : "";
+      <div className="options" role="radiogroup" aria-label={item.q}>
+        {order.map((i) => {
+          const o = item.options[i];
+          const state = i === last ? (o.ok ? "is-right" : "is-wrong") : "";
           return (
-            <button key={i} type="button" className={`option ${state}`} onClick={() => pick(i)} aria-pressed={tried.includes(i)} disabled={solved && !tried.includes(i)}>
+            <button key={i} type="button" role="radio" className={`option ${state}`} onClick={() => pick(i)} aria-checked={i === last}>
               <span className="option-mark" aria-hidden="true" />
               {o.t}
             </button>
@@ -190,50 +197,62 @@ function ChoiceQuestion({ item, onAnswer }) {
         <p className={`feedback ${item.options[last].ok ? "is-right" : "is-wrong"}`} role="status">
           {item.options[last].ok ? "" : "Not quite. "}
           {item.options[last].why}
-          {!item.options[last].ok && " Try another."}
+          {!item.options[last].ok && !solved && " Try another."}
         </p>
       )}
     </>
   );
 }
 
+// Picks can be changed at any time, even after it's solved; changing them hides the
+// old verdict until you check again. Only the first solve counts for the score.
 function MultiQuestion({ item, onAnswer }) {
   const [picked, setPicked] = useState([]);
   const [checked, setChecked] = useState(0);
   const [solved, setSolved] = useState(false);
-  const toggle = (i) => !solved && setPicked((p) => (p.includes(i) ? p.filter((x) => x !== i) : [...p, i]));
+  const [ok, setOk] = useState(false);
+  const [stale, setStale] = useState(false);
+  const order = useMemo(() => optionOrder(item.q, item.options.length), [item]);
+  const toggle = (i) => {
+    setPicked((p) => (p.includes(i) ? p.filter((x) => x !== i) : [...p, i]));
+    setStale(true);
+  };
   const check = () => {
-    const ok = item.options.every((o, i) => !!o.ok === picked.includes(i));
+    const right = item.options.every((o, i) => !!o.ok === picked.includes(i));
     setChecked((c) => c + 1);
-    if (ok) {
+    setOk(right);
+    setStale(false);
+    if (right && !solved) {
       setSolved(true);
       onAnswer(checked === 0);
     }
   };
+  const shown = checked > 0 && !stale;
   return (
     <>
       <p className="q">{item.q}</p>
       <div className="options" role="group" aria-label={item.q}>
-        {item.options.map((o, i) => {
+        {order.map((i) => {
+          const o = item.options[i];
           const on = picked.includes(i);
-          const state = checked ? (on && o.ok ? "is-right" : on && !o.ok ? "is-wrong" : !on && o.ok && solved ? "is-right" : "") : "";
+          const state = shown ? (on && o.ok ? "is-right" : on && !o.ok ? "is-wrong" : !on && o.ok && ok ? "is-right" : "") : "";
           return (
             <button key={i} type="button" className={`option is-multi ${on ? "is-on" : ""} ${state}`} onClick={() => toggle(i)} aria-pressed={on}>
               <span className="option-mark" aria-hidden="true" />
               {o.t}
-              {checked > 0 && (on || solved) && <span className="option-why">{o.why}</span>}
+              {shown && (on || ok) && <span className="option-why">{o.why}</span>}
             </button>
           );
         })}
       </div>
-      {!solved && (
+      {!(shown && ok) && (
         <button type="button" className="ctl-btn is-primary" onClick={check} disabled={!picked.length}>
           Check
         </button>
       )}
-      {checked > 0 && (
-        <p className={`feedback ${solved ? "is-right" : "is-wrong"}`} role="status">
-          {solved ? "All right." : "Not all right yet. The notes under your picks say why; change them and check again."}
+      {shown && (
+        <p className={`feedback ${ok ? "is-right" : "is-wrong"}`} role="status">
+          {ok ? "All right." : "Not all right yet. The notes under your picks say why; change them and check again."}
         </p>
       )}
     </>
@@ -327,6 +346,7 @@ const VERDICT = { right: "Spot on", partly: "Partly right", wrong: "Not quite" }
 function Explain({ explain, onPick }) {
   const [picked, setPicked] = useState(null);
   const [all, setAll] = useState(false);
+  const order = useMemo(() => optionOrder(explain.q, explain.options.length), [explain]);
   const pick = (i) => {
     setPicked(i);
     onPick(i);
@@ -335,7 +355,8 @@ function Explain({ explain, onPick }) {
     <div className="explain">
       <p className="q">{explain.q}</p>
       <div className="options" role="radiogroup" aria-label={explain.q}>
-        {explain.options.map((o, i) => {
+        {order.map((i) => {
+          const o = explain.options[i];
           const show = all || picked === i;
           return (
             <button key={i} type="button" role="radio" aria-checked={picked === i} className={`option is-explain ${picked === i ? "is-on" : ""} ${show ? `verdict-${o.verdict}` : ""}`} onClick={() => pick(i)}>

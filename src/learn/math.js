@@ -635,3 +635,20 @@ export function softmax(xs, temperature = 1) {
   const s = sum(e);
   return e.map((x) => x / s);
 }
+
+/**
+ * The order to show a question's options in: a shuffle seeded by the question's own
+ * text, so it's the same on every visit but the right answer isn't always first
+ * (the lessons are written with it first).
+ */
+export function optionOrder(key, n) {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 16777619);
+  const rand = rng(h >>> 0);
+  const order = Array.from({ length: n }, (_, i) => i);
+  for (let i = n - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return order;
+}

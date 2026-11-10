@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  optionOrder,
   acf,
   arma,
   bestSplit,
@@ -279,5 +280,18 @@ describe("vision", () => {
     const p = softmax([1, 2, 3]);
     expect(p.reduce((a, b) => a + b)).toBeCloseTo(1);
     expect(softmax([1, 2, 3], 0.1)[2]).toBeGreaterThan(p[2]);
+  });
+});
+
+describe("optionOrder", () => {
+  it("is a shuffle of every option, the same each time for the same question", () => {
+    const a = optionOrder("Which activation do transformers use?", 4);
+    expect([...a].sort()).toEqual([0, 1, 2, 3]);
+    expect(optionOrder("Which activation do transformers use?", 4)).toEqual(a);
+  });
+  it("puts the first option in every position across many questions", () => {
+    const firstAt = [0, 0, 0, 0];
+    for (let q = 0; q < 400; q++) firstAt[optionOrder(`question ${q}`, 4).indexOf(0)]++;
+    for (const n of firstAt) expect(n).toBeGreaterThan(60);
   });
 });
