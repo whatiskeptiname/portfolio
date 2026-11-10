@@ -183,7 +183,8 @@ export function RadioPanel({ onClose, volume, onVolume }) {
       {linkError && <p className="radio-error">{linkError}</p>}
       <p className="gfx-note">
         Songs stream from the artists&rsquo; and labels&rsquo; official YouTube channels through YouTube&rsquo;s own player —
-        nothing is downloaded. The player loads only after you press play.
+        nothing is downloaded. The player loads only after you press play, and from then on YouTube sees the
+        visit as it would any video.
       </p>
     </aside>
   );

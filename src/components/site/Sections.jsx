@@ -226,7 +226,8 @@ export function Hero() {
             <div className="hero-who">
               <img
                 className="avatar"
-                src={`https://github.com/${profile.github}.png?size=96`}
+                // A copy kept on this site: loading it from GitHub told GitHub about every visit.
+                src="/avatar.png"
                 alt={`Portrait of ${profile.name}`}
                 width="48"
                 height="48"

@@ -17,8 +17,8 @@
   --shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 10px 30px rgb(22 23 22 / 0.05);
   --radius: 22px;
   --gap: 16px;
-  --font-body: "Schibsted Grotesk", system-ui, -apple-system, sans-serif;
-  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Schibsted Grotesk Variable", "Schibsted Grotesk", system-ui, -apple-system, sans-serif;
+  --font-display: "Fraunces Variable", "Fraunces", Georgia, serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
   color-scheme: light;
 }
