@@ -4,6 +4,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Icon from "../Icon";
 import { SIMS } from "./registry";
+import { countEvent } from "../../lib/visits";
 import "./sims.css";
 
 // Playback runs a little faster than real time; every animation keeps its proportions.
@@ -93,6 +94,8 @@ export default function SimPlayer({ study, onClose }) {
   }, [sim]);
   const [playing, setPlaying] = useState(true);
   const [scrubbing, setScrubbing] = useState(false);
+  // Counts which case studies get opened.
+  useEffect(() => countEvent("case-study", study.id), [study.id]);
   const [T, setT] = useLoopClock(playing && !scrubbing, total);
   const stage = Math.max(0, starts.findLastIndex((s) => s <= T));
   const t = T - starts[stage];

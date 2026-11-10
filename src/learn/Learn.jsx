@@ -13,6 +13,7 @@ import Lesson from "./Lesson";
 import { STEPS } from "./steps";
 import { lessonKey, useProgress } from "./progress";
 import { learnHash, neighbours, resolve } from "./route";
+import { countEvent } from "../lib/visits";
 import "./learn.css";
 
 /** Dark by default here, unless the visitor has picked a theme themselves. */
@@ -242,7 +243,16 @@ function LessonPage({ chapter, lesson, progress, mark }) {
   const content = Array.isArray(full) ? full.find((l) => l.id === lesson.id) : null;
   const { prev, next } = neighbours(CHAPTERS, chapter, lesson);
   const step = useStepInView(key);
-  const onDone = useCallback((patch) => mark(key, patch), [mark, key]);
+  const onDone = useCallback(
+    (patch) => {
+      if (patch.done) {
+        countEvent("lesson-done", key);
+        if (patch.of) countEvent("lesson-score", key, `${patch.score}-of-${patch.of}`);
+      }
+      mark(key, patch);
+    },
+    [mark, key]
+  );
   const index = chapter.lessons.indexOf(lesson);
   const steps = STEPS.filter((s) => (s.id !== "how" || content?.how) && (s.id !== "practice" || content?.practice));
   // On narrow screens the lessons are a row of chips: bring this lesson's chip into view.

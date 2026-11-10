@@ -1,23 +1,38 @@
 // The building blocks every lesson simulation is made of: a drawing area,
 // controls under it, and live readouts. Colours come from CSS classes, so the
 // drawings follow the light/dark theme.
-import React, { useId } from "react";
+import React, { createContext, useContext, useId } from "react";
+import { countOnce, here, shortName } from "../lib/visits";
+
+// Which simulation a control belongs to, so a count can say "the depth slider in the tree sim".
+const SimName = createContext("");
+
+/** Counts a control being used: once per page visit for each control (and each choice made). */
+function useCountControl() {
+  const sim = useContext(SimName);
+  return (...what) => countOnce("control", here(), sim, ...what);
+}
 
 /** A linear map from a data range onto a pixel range. */
 /** An SVG path through points, skipping gaps (null y). */
 /** A filled band between a lower and an upper line. */
 /** A simulation's frame: the picture, then its controls and readouts. */
 export function Sim({ children, controls, readouts, label, wide = false }) {
+  // Counts the first touch of each simulation, to see which ones get played with.
+  const name = shortName(label?.split(":")[0] || "sim");
+  const touch = () => countOnce("sim", here(), name);
   return (
-    <figure className={`sim${wide ? " sim-wide" : ""}`} aria-label={label}>
-      <div className="sim-stage">{children}</div>
-      {(controls || readouts) && (
-        <div className="sim-bottom">
-          {controls && <div className="sim-controls">{controls}</div>}
-          {readouts && <dl className="sim-readouts">{readouts}</dl>}
-        </div>
-      )}
-    </figure>
+    <SimName.Provider value={name}>
+      <figure className={`sim${wide ? " sim-wide" : ""}`} aria-label={label} onPointerDownCapture={touch} onKeyDownCapture={touch}>
+        <div className="sim-stage">{children}</div>
+        {(controls || readouts) && (
+          <div className="sim-bottom">
+            {controls && <div className="sim-controls">{controls}</div>}
+            {readouts && <dl className="sim-readouts">{readouts}</dl>}
+          </div>
+        )}
+      </figure>
+    </SimName.Provider>
   );
 }
 
@@ -32,20 +47,33 @@ export function Canvas({ width = 640, height = 300, children, className = "", ..
 
 export function Slider({ label, value, min, max, step = 1, onChange, format = (v) => v }) {
   const id = useId();
+  const count = useCountControl();
   return (
     <div className="ctl ctl-slider">
       <label htmlFor={id}>
         {label} <output>{format(value)}</output>
       </label>
-      <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} />
+      <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={(e) => {
+          count(label);
+          onChange(Number(e.target.value));
+        }}
+      />
     </div>
   );
 }
 
 export function Toggle({ label, checked, onChange }) {
+  const count = useCountControl();
   return (
     <label className="ctl ctl-toggle">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => {
+          count(label, e.target.checked ? "on" : "off");
+          onChange(e.target.checked);
+        }}
+      />
       <span className="ctl-switch" aria-hidden="true" />
       {label}
     </label>
@@ -54,6 +82,7 @@ export function Toggle({ label, checked, onChange }) {
 
 /** A row of mutually exclusive buttons. */
 export function Choice({ label, options, value, onChange }) {
+  const count = useCountControl();
   return (
     <div className="ctl ctl-choice" role="group" aria-label={label}>
       {label && <span className="ctl-label">{label}</span>}
@@ -61,7 +90,15 @@ export function Choice({ label, options, value, onChange }) {
         {options.map((o) => {
           const [v, text] = Array.isArray(o) ? o : [o, o];
           return (
-            <button key={String(v)} type="button" aria-pressed={value === v} onClick={() => onChange(v)}>
+            <button
+              key={String(v)}
+              type="button"
+              aria-pressed={value === v}
+              onClick={() => {
+                count(label || "choice", typeof text === "string" ? text : String(v));
+                onChange(v);
+              }}
+            >
               {text}
             </button>
           );
@@ -72,8 +109,17 @@ export function Choice({ label, options, value, onChange }) {
 }
 
 export function Button({ children, onClick, primary = false, disabled = false }) {
+  const count = useCountControl();
   return (
-    <button type="button" className={`ctl-btn${primary ? " is-primary" : ""}`} onClick={onClick} disabled={disabled}>
+    <button
+      type="button"
+      className={`ctl-btn${primary ? " is-primary" : ""}`}
+      onClick={(e) => {
+        count(typeof children === "string" ? children : "button");
+        onClick?.(e);
+      }}
+      disabled={disabled}
+    >
       {children}
     </button>
   );

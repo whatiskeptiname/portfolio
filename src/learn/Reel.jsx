@@ -3,9 +3,10 @@
 // drawn live (no video files), so it follows the theme and weighs nothing.
 // It starts when you press play; with reduced motion, each scene shows its
 // finished frame and you step through them.
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Icon from "../components/Icon";
 import { reducedMotion, useLoop } from "./plot";
+import { countOnce, here } from "../lib/visits";
 
 export default function Reel({ scenes, title, method }) {
   const still = reducedMotion();
@@ -39,8 +40,14 @@ export default function Reel({ scenes, title, method }) {
   const Scene = scene.Scene;
   const startOf = (i) => scenes.slice(0, i).reduce((s, x) => s + x.duration, 0);
   const done = time >= total;
+  // Counts walkthroughs played, and played to the end (or stepped to the last scene).
+  const finished = started && (still ? index === scenes.length - 1 : done);
+  useEffect(() => {
+    if (finished) countOnce("walkthrough", here(), "finished");
+  }, [finished]);
 
   const play = () => {
+    countOnce("walkthrough", here(), "played");
     setStarted(true);
     if (still) {
       setTime(startOf((index + (started ? 1 : 0)) % scenes.length));

@@ -4,6 +4,7 @@
 // details fold away, then a quick check, saying it back, and where to go deeper.
 import React, { useEffect, useId, useMemo, useState } from "react";
 import { optionOrder } from "./math";
+import { countEvent, countOnce, here } from "../lib/visits";
 import Icon from "../components/Icon";
 import Reel from "./Reel";
 
@@ -26,7 +27,24 @@ export default function Lesson({ lesson, record, onDone, where }) {
     if (complete && !record?.done) onDone({ done: true, score: firstTry, of: total });
   }, [complete, record?.done, onDone, firstTry, total]);
 
-  const answer = (i, rightFirstTime) => setAnswers((a) => (i in a ? a : { ...a, [i]: rightFirstTime }));
+  // Counts how far down the lesson people get: each section, the first time it's on screen.
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+    const seen = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) if (e.isIntersecting) countOnce("reached", here(), e.target.id);
+      },
+      { threshold: 0.25 }
+    );
+    document.querySelectorAll(".lesson .step[id]").forEach((el) => seen.observe(el));
+    return () => seen.disconnect();
+  }, [lesson]);
+
+  const answer = (i, rightFirstTime) => {
+    // Each question's first try, right or wrong, shows which ones are too hard or too easy.
+    if (!(i in answers)) countEvent("quiz", here(), `q${i + 1}`, rightFirstTime ? "right" : "wrong");
+    setAnswers((a) => (i in a ? a : { ...a, [i]: rightFirstTime }));
+  };
 
   return (
     <article className="lesson">
@@ -96,7 +114,7 @@ export default function Lesson({ lesson, record, onDone, where }) {
       {lesson.how && (
         <section className="step" id="how" aria-labelledby="h-how">
           <h2 id="h-how">The details</h2>
-          <details className="details">
+          <details className="details" onToggle={(e) => e.currentTarget.open && countOnce("details", here())}>
             <summary>Show the maths and the finer points</summary>
             <div className="prose-col">{lesson.how}</div>
           </details>
@@ -276,6 +294,7 @@ function NumberQuestion({ item, onAnswer }) {
     }
   };
   const giveUp = () => {
+    countOnce("quiz-answer-shown", here(), item.q.slice(0, 40));
     setShown(true);
     if (!solved) {
       setSolved(true);
@@ -322,6 +341,7 @@ function TaskQuestion({ item, onAnswer }) {
   const { Sim } = item;
   useEffect(() => {
     if (!solved && state && item.check(state)) {
+      countOnce("task-solved", here(), item.q.slice(0, 40));
       setSolved(true);
       onAnswer(true);
     }
@@ -348,6 +368,8 @@ function Explain({ explain, onPick }) {
   const [all, setAll] = useState(false);
   const order = useMemo(() => optionOrder(explain.q, explain.options.length), [explain]);
   const pick = (i) => {
+    // The first explanation picked: right, partly right or wrong.
+    if (picked === null) countEvent("say-it-back", here(), explain.options[i].verdict);
     setPicked(i);
     onPick(i);
   };
@@ -372,7 +394,14 @@ function Explain({ explain, onPick }) {
         })}
       </div>
       {picked !== null && !all && (
-        <button type="button" className="link-btn" onClick={() => setAll(true)}>
+        <button
+          type="button"
+          className="link-btn"
+          onClick={() => {
+            countOnce("say-it-back", here(), "see-all");
+            setAll(true);
+          }}
+        >
           See what's right and wrong in the others
         </button>
       )}

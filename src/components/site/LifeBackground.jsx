@@ -20,6 +20,7 @@
 import React, { useEffect, useRef } from "react";
 import { censusOf, glowMap, linePoints, plantCells, randomCluster, seedUniverse, stepUniverse, universeEnd, watchUniverse } from "../../lib/life";
 import { restingOffset, rubber, settled, springStep } from "../../lib/parallax";
+import { countOnce, here } from "../../lib/visits";
 
 const TICK = 1400; // ms per generation
 const FADE = 500; // ms of each generation spent fading; the rest is idle
@@ -301,6 +302,7 @@ export default function LifeBackground() {
         tap = null;
         if (phase === "live") {
           brighten();
+          countOnce("life", here(), "tapped");
           plant(randomCluster(...cellAt(e)));
           watch = undefined;
           relax();

@@ -25,12 +25,13 @@ import { placeSignals } from "../lib/traffic";
 import { VIEW } from "../lib/perception";
 import { Buildings } from "./Buildings";
 import { StreetSigns } from "./StreetSigns";
-import { PRESETS, TRAFFIC_CARS, loadGraphics, pixelRatio, saveGraphics } from "../lib/graphics";
+import { PRESETS, TRAFFIC_CARS, loadGraphics, pixelRatio, presetOf, saveGraphics } from "../lib/graphics";
 import { CRUISE_MIN } from "../lib/pedals";
 import { audibility, heard, nearestCars } from "../lib/carSound";
 import { velocityOf } from "../lib/carPhysics";
 import { BlackHole, Sky } from "./Space";
 import { Clouds } from "./Clouds";
+import { countEvent, countOnce } from "../lib/visits";
 import { openingCamera, shiftFor } from "../lib/opening";
 import { ChaseCamera, Vehicle } from "./Vehicles";
 import Minimap from "./Minimap";
@@ -266,6 +267,21 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
   const keys = useRef(new Set());
   const focus = useRef(null); // world point the orbit camera should swing over
 
+  // Counts what people do here, each thing once per visit: vehicle, camera, panels opened, settings.
+  useEffect(() => countOnce("planet", "mode", mode), [mode]);
+  useEffect(() => countOnce("planet", "vehicle", vehicle), [vehicle]);
+  // Camera, time of day and drone handling count only when someone changes them, not their defaults.
+  const firstPick = useRef({ view, timeMode, droneMode });
+  useEffect(() => void (view !== firstPick.current.view && countOnce("planet", "camera", view)), [view]);
+  useEffect(() => void (timeMode !== firstPick.current.timeMode && countOnce("planet", "time", timeMode)), [timeMode]);
+  useEffect(() => void (droneMode !== firstPick.current.droneMode && countOnce("planet", "drone-mode", droneMode)), [droneMode]);
+  useEffect(() => countOnce("planet", "graphics", presetOf(gfx)), [gfx]);
+  useEffect(() => void (showHelp && countOnce("planet", "help")), [showHelp]);
+  useEffect(() => void (showRadio && countOnce("planet", "radio")), [showRadio]);
+  useEffect(() => void (musicActive && countOnce("planet", "music")), [musicActive]);
+  useEffect(() => void (showGraphics && countOnce("planet", "settings")), [showGraphics]);
+  useEffect(() => void (selectedId && countOnce("planet", "opened", selectedId)), [selectedId]);
+
   const selected = selectedId ? buildingsById.get(selectedId) : null;
   const driving = mode === "drive";
 
@@ -283,6 +299,7 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
 
   // Autopilot on/off. Turned on away from the highway, it drives back to it by road.
   const toggleAutopilot = useCallback(() => {
+    countOnce("planet", "autopilot");
     const s = vehicleState.current;
     if (s.transform != null) return;
     if (s.route && !s.auto) {
@@ -362,6 +379,7 @@ export default function CityExplorer({ onExit, initialVehicle, initialView }) {
   const screenshot = useCallback(() => {
     const url = capture.current?.();
     if (!url) return;
+    countEvent("planet", "screenshot");
     audio.ui("shutter");
     setFlash((n) => n + 1);
     const a = document.createElement("a");
