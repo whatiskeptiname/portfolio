@@ -5,6 +5,7 @@ import LifeBackground from "./components/site/LifeBackground";
 import { PLANET, canonicalHash, isPlanet, pageTitle } from "./lib/sections";
 import { profile } from "./content/profile";
 import { isLearn } from "./learn/route";
+import { countOnce, countPage, startCounting } from "./lib/visits";
 
 // The 3D city (and three.js) only downloads when someone opens it.
 const CityExplorer = lazy(() => import("./city/CityExplorer"));
@@ -31,6 +32,8 @@ function useHash() {
 
 export default function App() {
   const hash = useHash();
+  useEffect(startCounting, []);
+  useEffect(() => countPage(hash), [hash]);
   const inCity = isPlanet(hash);
   const inLearn = isLearn(hash);
   const away = inCity || inLearn;
@@ -56,6 +59,23 @@ export default function App() {
       target?.scrollIntoView();
     }
   }, [away, hash]);
+
+  // Counts which home sections people scroll to, each once per visit to the home page.
+  useEffect(() => {
+    if (away || typeof IntersectionObserver === "undefined") return;
+    const seen = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) if (e.isIntersecting) countOnce("section", e.target.id);
+      },
+      { threshold: 0.3 }
+    );
+    // The sections render a moment after the page does.
+    const t = setTimeout(() => document.querySelectorAll("main section[id]").forEach((el) => seen.observe(el)), 500);
+    return () => {
+      clearTimeout(t);
+      seen.disconnect();
+    };
+  }, [away]);
 
   // The landing page's Header titles its own sections.
   useEffect(() => {

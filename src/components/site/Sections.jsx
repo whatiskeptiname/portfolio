@@ -725,7 +725,12 @@ export function Footer() {
         <span>
           © {new Date().getFullYear()} {profile.name}
         </span>
-        <span>Built with React, Vite &amp; three.js</span>
+        <span>
+          Built with React, Vite &amp; three.js · Cookie-free stats by{" "}
+          <a href="https://www.goatcounter.com" target="_blank" rel="noreferrer">
+            GoatCounter
+          </a>
+        </span>
       </div>
     </footer>
   );
