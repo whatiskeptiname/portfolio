@@ -6,12 +6,9 @@ import { Eq, M } from "../kit";
 import { DescentSim, KMeansSim, LineSim, LogisticSim, OutlierSim, PcaSim, RidgeSim, ScaleSim } from "../sims/foundations";
 
 export default {
-  history: "Least squares is over two hundred years old; gradient descent dates from the 1840s; most of the rest arrived in the twentieth century. Nearly every model you'll meet, a giant language model included, is built from these few ideas.",
   lessons: [
     {
       id: "regression",
-      title: "Drawing the best straight line",
-      lead: "Linear regression, and what 'best' means.",
       history: "In 1801 the young Carl Friedrich Gauss predicted where the lost dwarf planet Ceres would reappear, using the method of least squares; Adrien-Marie Legendre published the method first, in 1805. Francis Galton gave 'regression' its name in the 1880s, studying how children's heights relate to their parents'.",
       gist: [
         "A linear model predicts with a starting value plus a weight times each input.",
@@ -103,8 +100,6 @@ export default {
 
     {
       id: "gradient-descent",
-      title: "Rolling downhill",
-      lead: "How almost every model actually learns.",
       history: "Augustin-Louis Cauchy described the method of steepest descent in 1847, to solve equations from astronomy. Its random, bite-sized variant, stochastic gradient descent, comes from Herbert Robbins and Sutton Monro in 1951, and it now trains every large neural network, language models included.",
       gist: [
         "A model learns by measuring how wrong it is (the loss) and nudging its weights downhill.",
@@ -189,8 +184,6 @@ export default {
 
     {
       id: "logistic",
-      title: "Yes or no, with odds",
-      lead: "Logistic regression: a line bent into a probability.",
       history: "The S-shaped logistic curve was introduced by Pierre-François Verhulst in the 1830s to model population growth. David Cox turned it into a regression method in 1958, and it is still the default first model for any yes/no question, from credit risk to clinical trials.",
       gist: [
         "Logistic regression computes a score like a line, then squashes it into a 0–1 probability.",
@@ -280,8 +273,6 @@ export default {
 
     {
       id: "regularisation",
-      title: "Shrink on purpose",
-      lead: "Regularisation: making a model simpler so it guesses better.",
       history: "Andrey Tikhonov proposed penalising large solutions in 1943, for unstable problems in physics; Arthur Hoerl and Robert Kennard brought it to statistics as ridge regression in 1970. Robert Tibshirani's lasso (1996), which can set weights exactly to zero, made it a way to choose features too.",
       gist: [
         "A flexible model can bend to fit the noise in its training data, and then fails on new data.",
@@ -368,8 +359,6 @@ export default {
 
     {
       id: "features",
-      title: "Garbage in, garbage out",
-      lead: "Features: getting data into a shape a model can use.",
       history: "Statisticians have recoded variables for as long as there have been statistics, but 'feature engineering' became the heart of applied machine learning in the 2000s, when competition winners were usually whoever built the best inputs. Deep learning automated much of it for images and text; for tables of data it still matters most.",
       gist: [
         "Models see numbers, so every column must become numbers on sensible scales.",
@@ -462,8 +451,6 @@ export default {
 
     {
       id: "clustering",
-      title: "Finding groups nobody labelled",
-      lead: "Clustering with k-means.",
       history: "Stuart Lloyd worked out the k-means algorithm at Bell Labs in 1957 to compress signals, though it wasn't published until 1982; James MacQueen named it in 1967. It is still the first thing most people reach for when they want to find groups in data without being told what they are.",
       gist: [
         "Clustering finds groups in data that has no labels, by putting similar rows together.",
@@ -556,8 +543,6 @@ export default {
 
     {
       id: "pca",
-      title: "Squashing many columns into two",
-      lead: "Dimensionality reduction with PCA.",
       history: "Karl Pearson described principal components in 1901 as 'lines and planes of closest fit'; Harold Hotelling developed them in 1933 to study test scores. Newer methods for drawing data, t-SNE (2008) and UMAP (2018), are the ones behind most of today's colourful embedding maps.",
       gist: [
         "Many columns often move together, so the data really lives in fewer directions.",
@@ -645,8 +630,6 @@ export default {
 
     {
       id: "anomalies",
-      title: "Spotting the odd one out",
-      lead: "Anomaly detection, when you have few or no examples of trouble.",
       history: "Statisticians have argued about outliers since at least the 1850s, when Benjamin Peirce proposed a rule for rejecting suspect astronomical observations. Modern methods such as the isolation forest (2008) came from fraud and intrusion detection, where the bad cases are rare, varied and constantly changing.",
       gist: [
         "Anomaly detection learns what normal looks like and flags whatever doesn't fit it.",

@@ -6,12 +6,9 @@ import { Eq } from "../kit";
 import { ActivationSim, BackpropSim, LayersSim, MemorySim, NeuronSim, NormSim, TraceSim, TrainingSim } from "../sims/neural";
 
 export default {
-  history: "The artificial neuron is from 1943 and the first learning machine, the perceptron, from 1958. The field nearly died twice, then backpropagation (1986), big datasets and graphics cards (2012) made deep networks the engine behind today's vision and language models.",
   lessons: [
     {
       id: "neurons",
-      title: "A neuron is a weighted vote",
-      lead: "The artificial neuron, and the one thing it can't do.",
       history: "Warren McCulloch and Walter Pitts proposed a mathematical neuron in 1943. Frank Rosenblatt built the perceptron in 1958, a machine that learned its own weights. In 1969 Marvin Minsky and Seymour Papert showed a single perceptron can't learn even XOR, and funding for the idea dried up for over a decade.",
       gist: [
         "A neuron multiplies each input by a weight, adds them up with a bias, and passes the total through an activation.",
@@ -93,8 +90,6 @@ export default {
 
     {
       id: "layers",
-      title: "Bending the line",
-      lead: "Hidden layers and activation functions: why depth works.",
       history: "It was known by the 1960s that layers of neurons could represent XOR; nobody knew how to train them. George Cybenko proved in 1989 that one hidden layer of enough neurons can approximate almost any function, which made multilayer networks the general-purpose tool they are today.",
       gist: [
         "Put neurons in layers: the first layer's outputs become the next layer's inputs.",
@@ -179,8 +174,6 @@ export default {
 
     {
       id: "activations",
-      title: "The bend in the wire",
-      lead: "Activation functions, and which one goes where.",
       history: "Early networks used the sigmoid, modelled on a neuron's firing rate, and tanh. Vinod Nair and Geoffrey Hinton popularised the rectified linear unit (ReLU) in 2010, and its use in AlexNet (2012) made deep networks trainable. Transformers since 2018 mostly use GELU, a smooth cousin of ReLU.",
       gist: [
         "The activation is the bend after each layer; without it a deep network collapses into a single straight line.",
@@ -370,8 +363,6 @@ export default {
 
     {
       id: "backprop",
-      title: "Passing the blame backwards",
-      lead: "Backpropagation: how a network works out which weights to change.",
       history: "The maths of propagating derivatives backwards was worked out several times, by Seppo Linnainmaa in 1970 and Paul Werbos in 1974 among others. David Rumelhart, Geoffrey Hinton and Ronald Williams showed in 1986 that it trains hidden layers to learn useful features, and it has trained essentially every neural network since.",
       gist: [
         "To learn, every weight needs to know how much it contributed to the error.",
@@ -455,8 +446,6 @@ export default {
 
     {
       id: "normalisation",
-      title: "Keeping the numbers in range",
-      lead: "Normalisation: batch norm, layer norm, and which network uses which.",
       history: "Standardising inputs is as old as statistics. Sergey Ioffe and Christian Szegedy introduced batch normalisation in 2015, letting very deep CNNs train fast; layer normalisation (Jimmy Ba and colleagues, 2016) followed for RNNs and became part of every transformer; group normalisation (2018) covered small batches.",
       gist: [
         "Through many layers, values drift: slightly too-big weights make them explode, too-small ones make them vanish.",
@@ -636,8 +625,6 @@ export default {
 
     {
       id: "training",
-      title: "Teaching a big network",
-      lead: "Training deep networks: optimisers, dropout and early stopping.",
       history: "Geoffrey Hinton's group introduced dropout in 2012, the same year AlexNet won ImageNet with deep networks trained on graphics cards. Diederik Kingma and Jimmy Ba's Adam optimiser (2014) became the default way to train them, and early stopping, much older, is still one of the simplest guards against memorising.",
       gist: [
         "Big networks learn fast and memorise fast, so you watch training and validation loss together.",
@@ -728,8 +715,6 @@ export default {
 
     {
       id: "sequences",
-      title: "Remembering what came before",
-      lead: "Recurrent networks and LSTMs for sequences.",
       history: "Jeffrey Elman's simple recurrent network (1990) read sequences one step at a time with a memory. Sepp Hochreiter and Jürgen Schmidhuber's LSTM (1997) added gates so the memory could last; LSTMs powered speech recognition and translation through the 2010s, until transformers (the language chapter) replaced them for most text.",
       gist: [
         "A recurrent network reads a sequence one step at a time, carrying a memory from step to step.",

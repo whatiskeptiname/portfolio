@@ -4,12 +4,9 @@ import { Eq, M, Table } from "../kit";
 import { BoostSim, BootstrapSim, CrowdSim, DepthSim, LeakSim, SearchSim, ShapSim, SplitSim, ThresholdSim } from "../sims/trees";
 
 export default {
-  history: "Decision trees grew up in the 1980s to turn data into rules a person could read. Ensembles of them, from the late 1990s on, made them the go-to model for tables of data, which they still are.",
   lessons: [
     {
       id: "splits",
-      title: "Twenty questions with data",
-      lead: "How a decision tree picks its questions.",
       history: "In the 1980s, statisticians wanted rules a person could read straight off the data. Leo Breiman and colleagues published CART in 1984, and Ross Quinlan published ID3 in 1986. Their purity scores are older still: Corrado Gini proposed his index in 1912 to measure inequality, and entropy is from Claude Shannon's 1948 theory of communication.",
       gist: [
         "A tree is a list of yes/no questions, each about one column, learned from data.",
@@ -148,8 +145,6 @@ export default {
 
     {
       id: "overfitting",
-      title: "Too clever by half",
-      lead: "Depth, overfitting, and the trade between bias and variance.",
       history: "Trees that grow until they fit everything were a problem from the start. The CART book of 1984 deliberately grew trees too big and then pruned them back, because stopping early often stopped too soon. The name for the underlying trade-off, bias against variance, was made famous by a 1992 paper by Geman, Bienenstock and Doursat.",
       gist: [
         "A tree can always memorise its training data if you let it grow.",
@@ -287,8 +282,6 @@ export default {
 
     {
       id: "metrics",
-      title: "94% accurate, 100% useless",
-      lead: "Precision, recall, F1 and ROC curves, and why accuracy lies when one answer is rare.",
       history: "ROC curves come from Second World War radar, where operators had to tell enemy planes from noise and the trade-off between misses and false alarms was a matter of life and death. Precision and recall come from information retrieval, where researchers in the 1950s and 60s measured how well search systems found the right documents; Keith van Rijsbergen's 1979 book gave us the measure behind F1.",
       gist: [
         "Accuracy hides failure when one outcome is rare.",
@@ -426,8 +419,6 @@ export default {
 
     {
       id: "forests",
-      title: "Wisdom of the random crowd",
-      lead: "Bagging, random forests and the wisdom of a crowd.",
       history: "In 1906 Francis Galton watched about 800 people guess the weight of an ox at a country fair. The middle guess was 1,207 pounds; the ox weighed 1,198. Ninety years later Leo Breiman turned that idea into bagging (1996) and then random forests (2001), building on Tin Kam Ho's random-feature trees from 1995.",
       gist: [
         "A forest averages many deep trees, each trained on a random resample of rows and columns.",
@@ -571,8 +562,6 @@ export default {
 
     {
       id: "boosting",
-      title: "Fail, fix, repeat",
-      lead: "Gradient boosting, and what XGBoost, LightGBM and CatBoost each add.",
       history: "In 1988 Michael Kearns and Leslie Valiant asked whether many models that are only slightly better than guessing could be combined into one excellent model. Robert Schapire proved they could in 1990, and with Yoav Freund built AdaBoost (1995). Jerome Friedman's gradient boosting (2001) generalised it, and XGBoost (2016) made it the tool that won data-science competitions.",
       gist: [
         "Boosting builds small trees one after another, each fixing what the earlier ones got wrong.",
@@ -706,8 +695,6 @@ export default {
 
     {
       id: "honest-testing",
-      title: "No peeking at the exam",
-      lead: "Cross-validation, searching for settings, pipelines that don't leak, and saving the result.",
       history: "Statisticians Mervyn Stone and Seymour Geisser formalised cross-validation in the mid-1970s, because testing a model on the data it was built from gave flattering answers. Leakage got its own well-known paper in 2011, after leaks kept turning up in data-mining competitions, where models had in effect been shown the answers.",
       gist: [
         "A score only counts if nothing about the test rows leaked into training.",
@@ -858,8 +845,6 @@ export default {
 
     {
       id: "explaining",
-      title: "Why did it say that?",
-      lead: "Feature importance and SHAP values.",
       history: "Lloyd Shapley worked out in 1953 how to split a team's winnings fairly among its players, work that later earned him a Nobel Memorial Prize in economics (2012). In 2017 Scott Lundberg and Su-In Lee applied the same idea to model predictions as SHAP, just as models became too complex to read and people started asking for explanations.",
       gist: [
         "SHAP splits one prediction into pushes from each feature, starting from the average case.",

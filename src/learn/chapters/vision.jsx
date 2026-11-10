@@ -4,12 +4,9 @@ import { Eq, M, Table } from "../kit";
 import { CLIPSim, ConvSim, DepthSignalSim, DiffusionSim, GradCamSim, IoUSim, LatentSim, MaskSim, NMSSim, PatchSim, QuantSim, ReceptiveSim } from "../sims/vision";
 
 export default {
-  history: "The idea of stacked edge detectors goes back to experiments on cats' visual cortex in 1959. It took until 2012, with enough data and graphics cards, for it to beat everything else, and since then vision has moved from recognising objects to outlining and creating them.",
   lessons: [
     {
       id: "convolution",
-      title: "A picture is a spreadsheet",
-      lead: "Pixels, filters and convolution, the building block of vision models.",
       history: "In 1959 David Hubel and Torsten Wiesel found cells in a cat's visual cortex that fire for edges at particular angles, work that won a Nobel Prize in 1981. Kunihiko Fukushima built a network inspired by it in 1980, and in 1989 Yann LeCun trained a convolutional network to read handwritten zip codes; versions of it later read cheques in American banks.",
       gist: [
         "To a computer, an image is a grid of numbers.",
@@ -148,8 +145,6 @@ export default {
 
     {
       id: "deep-networks",
-      title: "Deeper, with shortcuts",
-      lead: "From LeNet to ResNet: skip connections, batch normalisation and transfer learning.",
       history: "In 2012 AlexNet won the ImageNet challenge with a top-5 error of 15.3%, against 26.2% for the runner-up, and deep learning took over computer vision. Networks kept getting deeper until, past about twenty layers, they got worse. In 2015 Kaiming He and colleagues fixed that with skip connections; their 152-layer ResNet won ImageNet that year.",
       gist: [
         "Deeper networks learn richer features; skip connections make very deep ones trainable.",
@@ -289,8 +284,6 @@ export default {
 
     {
       id: "detection",
-      title: "Draw a box around it",
-      lead: "Object detection: boxes, IoU, non-maximum suppression and mAP.",
       history: "In 2001 Paul Viola and Michael Jones built a face detector fast enough for consumer cameras. The PASCAL VOC challenge (from 2005) fixed the rule that a box counts when IoU is at least 0.5. Deep learning arrived with R-CNN in 2014, and YOLO (2016) made detection fast enough for live video.",
       gist: [
         "Detection gives a box, a label and a confidence for every object.",
@@ -433,8 +426,6 @@ export default {
 
     {
       id: "segmentation",
-      title: "Colouring inside the lines",
-      lead: "Semantic, instance and panoptic segmentation, U-Net, dilated convolutions and SAM.",
       history: "In 2015 Olaf Ronneberger, Philipp Fischer and Thomas Brox designed U-Net for microscope images, where labelled examples are scarce, and it won a cell-tracking challenge that year. In 2023 Meta released Segment Anything, trained on over a billion masks, which outlines objects it was never specifically taught.",
       gist: [
         "Segmentation labels every pixel instead of drawing boxes.",
@@ -586,8 +577,6 @@ export default {
 
     {
       id: "generative",
-      title: "Sculpting pictures out of noise",
-      lead: "Autoencoders, GANs and diffusion models.",
       history: "Variational autoencoders (Kingma and Welling, 2013) and GANs (Ian Goodfellow and colleagues, 2014) were the first generators that worked well. Diffusion models began in 2015 with Jascha Sohl-Dickstein and colleagues, inspired by thermodynamics, became practical with Jonathan Ho's DDPM in 2020, and reached the public with Stable Diffusion in 2022.",
       gist: [
         "Generative models learn to turn random numbers into realistic images.",
@@ -734,8 +723,6 @@ export default {
 
     {
       id: "transformers",
-      title: "An image is worth 16×16 words",
-      lead: "Vision transformers, Swin, self-supervised learning and CLIP.",
       history: "Transformers were invented in 2017 for translating text ('Attention is all you need'). In 2020 a Google team tried the same architecture on images cut into patches, and titled their paper with the phrase above. OpenAI's CLIP followed in 2021, trained on 400 million image–caption pairs from the internet.",
       gist: [
         "Vision transformers treat image patches like words and let every patch look at every other.",
@@ -882,8 +869,6 @@ export default {
 
     {
       id: "shipping",
-      title: "Trust it, then shrink it",
-      lead: "Grad-CAM explanations, ONNX export and quantisation.",
       history: "Explanation tools spread after models were caught cheating: in a 2016 experiment, researchers deliberately trained a husky-or-wolf classifier where every wolf photo had snow, and their explanation method showed it was looking at the snow. Grad-CAM followed in 2017, the same year Facebook and Microsoft launched ONNX, and Google's 2018 work on integer-only inference helped make 8-bit models standard on phones.",
       gist: [
         "Check what the model looks at before trusting it.",

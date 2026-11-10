@@ -4,12 +4,9 @@ import { Eq } from "../kit";
 import { AttentionSim, EmbedSim, FinetuneSim, HallucinationSim, NextTokenSim, RagSim, TokenSim } from "../sims/language";
 
 export default {
-  history: "Computers have handled text since the 1950s, but by counting words. In 2013 word vectors gave words a meaning-shaped place in space; in 2017 the transformer let a model read a whole passage at once; by 2022 large language models trained on much of the web could hold a conversation.",
   lessons: [
     {
       id: "embeddings",
-      title: "Words as places on a map",
-      lead: "Embeddings: turning meaning into numbers.",
       history: "The linguist J. R. Firth wrote in 1957 that 'you shall know a word by the company it keeps'. Tomáš Mikolov's team at Google turned that into word2vec in 2013, learning a vector for every word from which words appear near it, and showed that king − man + woman lands near queen.",
       gist: [
         "An embedding gives each word (or sentence, or image) a list of numbers: a position in space.",
@@ -98,8 +95,6 @@ export default {
 
     {
       id: "tokens",
-      title: "Tokens, not words",
-      lead: "How language models actually read text, and why it costs what it costs.",
       history: "Byte-pair encoding was invented by Philip Gage in 1994 to compress files. In 2016 Rico Sennrich and colleagues used it to split rare words into pieces for translation, and almost every large language model since reads text in these pieces, called tokens.",
       gist: [
         "Models read tokens: common words whole, rarer words in pieces, anything odd letter by letter.",
@@ -189,8 +184,6 @@ export default {
 
     {
       id: "attention",
-      title: "Who's 'it'?",
-      lead: "Attention: how a transformer reads a sentence all at once.",
       history: "Dzmitry Bahdanau and colleagues added attention to translation models in 2014, letting them look back at the right source word. In 2017 Ashish Vaswani and seven co-authors at Google published 'Attention Is All You Need', a model built from attention alone: the transformer, the T in GPT.",
       gist: [
         "Attention lets every word look at every other word and decide which ones matter for it.",
@@ -286,8 +279,6 @@ export default {
 
     {
       id: "generation",
-      title: "One word at a time",
-      lead: "How a language model writes: predicting the next token, again and again.",
       history: "Claude Shannon generated text in 1948 by picking each next letter according to how often it followed the previous ones. GPT-2 (2019) and GPT-3 (2020) did the same with tokens and transformers at huge scale; ChatGPT (2022) added training on human feedback to make the result follow instructions.",
       gist: [
         "A language model does one thing: give the chance of every possible next token.",
@@ -371,8 +362,6 @@ export default {
 
     {
       id: "hallucination",
-      title: "Confidently wrong",
-      lead: "Why language models make things up, and what helps.",
       history: "'Hallucination' was used for neural translation systems that produced fluent sentences with no basis in the source, around 2018. When chatbots reached the public in 2022, invented facts, quotes and court cases became the best-known weakness of large language models.",
       gist: [
         "A model writes the most plausible continuation, and plausible isn't the same as true.",
@@ -465,8 +454,6 @@ export default {
 
     {
       id: "rag",
-      title: "An open-book exam",
-      lead: "Retrieval-augmented generation: giving the model your documents.",
       history: "Patrick Lewis and colleagues at Facebook AI named retrieval-augmented generation in 2020, pairing a search step with a language model. By 2023 it was the standard way to make chatbots answer from a company's own documents, cheaper and easier to update than retraining.",
       gist: [
         "First search your documents for the passages relevant to the question, then put them in the prompt.",
@@ -555,8 +542,6 @@ export default {
 
     {
       id: "fine-tuning",
-      title: "Teach it, or tell it?",
-      lead: "Prompting, examples in the prompt, or fine-tuning.",
       history: "Fine-tuning a pretrained model on a smaller task became standard with ULMFiT and BERT in 2018. GPT-3 (2020) showed that a few examples in the prompt could often do the job instead, and LoRA (2021) made fine-tuning big models cheap by training only a small add-on.",
       gist: [
         "Prompting tells the model what you want; a few examples in the prompt show it.",

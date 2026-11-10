@@ -4,12 +4,9 @@ import { Eq, M, Table } from "../kit";
 import { ACFSim, BacktestSim, ComponentsSim, FanSim, ForecastSim, HierarchySim, MetricsSim, MLForecastSim, StationaritySim } from "../sims/time";
 
 export default {
-  history: "Most of the forecasting toolkit was built in the 1950s to 70s for inventory, economics and engineering. Forecasting competitions since 1982 have kept everyone honest, and since 2018 machine learning has joined the winners.",
   lessons: [
     {
       id: "components",
-      title: "Don't shuffle the calendar",
-      lead: "What a time series is, and the four parts most of them are made of.",
       history: "Governments needed to know whether unemployment had really risen or it was just January, so statisticians built seasonal adjustment. The US Census Bureau's X-11 method (1965) did it for official statistics for decades, and STL, published in 1990 by Robert Cleveland and colleagues, is the flexible version most people use today.",
       gist: [
         "A time series is data where order matters: today depends on yesterday.",
@@ -144,8 +141,6 @@ export default {
 
     {
       id: "stationarity",
-      title: "Making a series sit still",
-      lead: "Stationarity, logs and differencing.",
       history: "George Box and Gwilym Jenkins' 1970 book made 'difference the series until it's stationary' the standard first step in forecasting. David Dickey and Wayne Fuller gave us a test for it in 1979, and the KPSS test, which asks the opposite question, followed in 1992.",
       gist: [
         "Many models assume a series behaves the same way all the time.",
@@ -284,8 +279,6 @@ export default {
 
     {
       id: "memory",
-      title: "Echoes of last month",
-      lead: "Autocorrelation, partial autocorrelation, and reading AR and MA patterns.",
       history: "In 1927 Udny Yule modelled the number of sunspots each year as a weighted echo of the previous years, the first autoregressive model. The same year Eugen Slutsky showed that averaging random shocks produces wave-like patterns, the idea behind moving-average models.",
       gist: [
         "Autocorrelation shows how much a value resembles its own past values.",
@@ -419,8 +412,6 @@ export default {
 
     {
       id: "classical",
-      title: "Beat 'same as last year' first",
-      lead: "Naive, seasonal naive, moving averages and exponential smoothing.",
       history: "Exponential smoothing came from practical jobs in the 1950s: Robert Brown used it for US Navy inventory and tracking, Charles Holt added a trend in 1957, and Peter Winters added seasons in 1960. From 1982 Spyros Makridakis ran forecasting competitions that kept finding these simple methods hard to beat.",
       gist: [
         "Simple forecasts such as \"same as last year\" are often hard to beat.",
@@ -552,8 +543,6 @@ export default {
 
     {
       id: "arima",
-      title: "ARIMA and friends",
-      lead: "AR, MA, ARIMA and SARIMA, automatic selection, and Prophet.",
       history: "Box and Jenkins published their method in 1970, and for decades fitting an ARIMA meant an expert reading ACF plots. Rob Hyndman and Yeasmin Khandakar's automatic ARIMA (2008) made it one function call, and Facebook released Prophet in 2017 so analysts without that expertise could forecast business data.",
       gist: [
         "ARIMA models what's left after steadying the series, using its own past and past surprises.",
@@ -698,8 +687,6 @@ export default {
 
     {
       id: "ml-forecasting",
-      title: "Trees can't predict a record",
-      lead: "Lag features, why trees can't extrapolate, and where deep learning fits.",
       history: "For years the forecasting competitions were won by statistical methods. That changed in 2018, when the M4 competition was won by Slawek Smyl's hybrid of exponential smoothing and a neural network, and in 2020 the M5 competition, on Walmart sales, was dominated by LightGBM models built on lag features.",
       gist: [
         "Turn a series into a table of past values and any regression model can forecast.",
@@ -843,8 +830,6 @@ export default {
 
     {
       id: "evaluation",
-      title: "No time travel allowed",
-      lead: "Walk-forward validation and choosing an error metric.",
       history: "Forecasters learned the hard way that models tested on the past they were built from look far better than they perform. Rolling-origin testing became standard advice by 2000, and in 2006 Rob Hyndman and Anne Koehler proposed MASE because percentage errors blew up on series with zeros, like spare-part demand.",
       gist: [
         "Test forecasts the way reality will: train on the past, predict the future.",
@@ -981,8 +966,6 @@ export default {
 
     {
       id: "hierarchies",
-      title: "Forecasts that add up",
-      lead: "Hierarchical forecasting: bottom-up, top-down and reconciliation.",
       history: "Companies have always needed store, region and national plans that agree. For decades the choice was bottom-up or top-down. In 2011 Rob Hyndman and colleagues showed how to reconcile forecasts from every level at once, and the MinT method (2019) improved on it.",
       gist: [
         "Forecasts for stores, regions and the total should add up.",

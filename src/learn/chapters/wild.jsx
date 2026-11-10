@@ -5,12 +5,9 @@ import { Eq } from "../kit";
 import { AbSim, DriftSim, FairSim, RecSim, RetrainSim, ServeSim, VersionSim } from "../sims/wild";
 
 export default {
-  history: "For most of machine learning's history the work ended with a good score on a test set. As models moved into products in the 2010s, Google's 2015 paper on the 'hidden technical debt' of ML systems made the point that the model is a small part of the system; MLOps grew up to handle the rest.",
   lessons: [
     {
       id: "serving",
-      title: "From notebook to service",
-      lead: "Serving a model: latency, throughput and batching.",
       history: "Early production models were rewritten by engineers into the company's main code. Dedicated model servers arrived in the late 2010s, Google's TensorFlow Serving in 2016 and NVIDIA's Triton in 2018, built around the trade-off between answering each request fast and answering many at once.",
       gist: [
         "In production a model is a service: requests come in, predictions go out, under a time budget.",
@@ -94,8 +91,6 @@ export default {
 
     {
       id: "versioning",
-      title: "Which model was that?",
-      lead: "Versioning data, code and models so results can be repeated.",
       history: "Software engineers have versioned code since the 1970s. Machine learning added two more things that change a result, the data and the randomness, and tools to track them appeared in the late 2010s: DVC for data (2017) and MLflow for experiments and models (2018).",
       gist: [
         "A model is the product of its data, its code, its settings and its random seed.",
@@ -181,8 +176,6 @@ export default {
 
     {
       id: "drift",
-      title: "The world moves on",
-      lead: "Data drift: when live data stops looking like training data.",
       history: "Statisticians called it 'dataset shift' and studied it from the 1990s; spam filters met it first in practice, as spammers adapted. The COVID-19 pandemic in 2020 broke models everywhere at once, from demand forecasts to fraud detection, and made drift monitoring standard.",
       gist: [
         "A model learns the world as it was in its training data; the world keeps changing.",
@@ -273,8 +266,6 @@ export default {
 
     {
       id: "ab-testing",
-      title: "Let the users decide",
-      lead: "A/B testing a new model against the old one.",
       history: "Randomised experiments go back to Ronald Fisher's crop trials at Rothamsted in the 1920s. Online companies scaled them up in the 2000s; Microsoft, Google and Amazon now run thousands of experiments a year, and a better offline score only counts once it wins one.",
       gist: [
         "A better test-set score doesn't prove a model helps users; an experiment does.",
@@ -365,8 +356,6 @@ export default {
 
     {
       id: "retraining",
-      title: "When to retrain",
-      lead: "Keeping a model fresh without wasting effort.",
       history: "Retraining was a manual project until the mid-2010s. Continuous training, pipelines that rebuild and test models automatically on new data, became a pillar of MLOps from around 2018, alongside continuous integration for code.",
       gist: [
         "Accuracy decays as the world drifts from the training data.",
@@ -448,8 +437,6 @@ export default {
 
     {
       id: "fairness",
-      title: "Fair for whom?",
-      lead: "Checking that a model's mistakes don't fall on one group.",
       history: "ProPublica's 2016 investigation of the COMPAS reoffending score found it wrongly flagged Black defendants as high-risk about twice as often as white defendants. Researchers then proved that several reasonable definitions of fairness can't all hold at once, which made fairness a choice to be argued, not a box to tick.",
       gist: [
         "A model can be accurate overall and still make far more mistakes for one group.",
@@ -543,8 +530,6 @@ export default {
 
     {
       id: "recommenders",
-      title: "People who liked this also liked…",
-      lead: "Recommender systems and the hidden tastes behind ratings.",
       history: "Amazon's 'customers who bought this also bought' launched in the late 1990s. The Netflix Prize (2006–2009) offered a million dollars to beat Netflix's own film recommender by 10%; the winners leaned on matrix factorisation, which finds hidden tastes in a grid of ratings.",
       gist: [
         "A recommender predicts how much someone would like things they haven't seen yet.",

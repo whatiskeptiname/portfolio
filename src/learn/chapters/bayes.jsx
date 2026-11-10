@@ -4,12 +4,9 @@ import { Eq, M, Table } from "../kit";
 import { EstimatorSim, GaussianSim, GPSim, MCMCSim, NetworkSim, UncertaintySim, UpdateSim } from "../sims/bayes";
 
 export default {
-  history: "Bayes' rule is from 1763, but for two centuries it was mostly too hard to compute with. Computers, and sampling methods from around 1990, turned it into everyday practice wherever being honest about uncertainty matters.",
   lessons: [
     {
       id: "uncertainty",
-      title: "Two kinds of not knowing",
-      lead: "Uncertainty you can shrink with data, and uncertainty you can't.",
       history: "Economist Frank Knight drew a similar line in 1921, between risk you can measure and uncertainty you can't. In machine learning the words aleatoric and epistemic were popularised by a 2017 paper by Alex Kendall and Yarin Gal on vision models, such as those in self-driving cars, that need to know when they're unsure.",
       gist: [
         "Some uncertainty comes from too little data, and more data shrinks it.",
@@ -136,8 +133,6 @@ export default {
 
     {
       id: "estimation",
-      title: "Four out of five isn't 80%",
-      lead: "Maximum likelihood, MAP and the full posterior.",
       history: "Thomas Bayes' essay on updating beliefs was published in 1763, two years after he died, by his friend Richard Price. Pierre-Simon Laplace worked out the same ideas independently and used them, among other things, to ask how sure we can be that the sun will rise tomorrow. Ronald Fisher championed maximum likelihood, which needs no prior, in the 1910s and 1920s.",
       gist: [
         "With little data, a raw rate like 4 out of 5 is unreliable.",
@@ -269,8 +264,6 @@ export default {
 
     {
       id: "updating",
-      title: "Strong opinions, weakly held",
-      lead: "Sequential updating, conjugate priors and the exponential family.",
       history: "At Bletchley Park during the Second World War, Alan Turing and Jack Good updated their beliefs about German Enigma settings one clue at a time, adding up the weight of evidence in units Turing called bans. The same arithmetic, applied one observation at a time, is what this lesson is about.",
       gist: [
         "Today's conclusion is tomorrow's starting point: you update as each piece of evidence arrives.",
@@ -408,8 +401,6 @@ export default {
 
     {
       id: "gaussians",
-      title: "Tall parents, slightly tall children",
-      lead: "The multivariate Gaussian: correlation, marginals and conditioning.",
       history: "Carl Friedrich Gauss used the bell curve in 1809 to handle errors in astronomical measurements. In 1886 Francis Galton measured the heights of parents and their grown children and noticed that children of very tall parents were tall, but less extreme. He called it regression towards mediocrity; we still call it regression to the mean.",
       gist: [
         "When two quantities move together, knowing one narrows down the other.",
@@ -536,8 +527,6 @@ export default {
 
     {
       id: "networks",
-      title: "The sprinkler did it",
-      lead: "Bayesian networks, Markov random fields and conditional independence.",
       history: "Judea Pearl coined the term Bayesian network in 1985 and set out the theory in a 1988 book, to let computers reason with uncertain evidence. The work earned him the Turing Award in 2011. The wet grass and sprinkler is the textbook example used ever since.",
       gist: [
         "A Bayesian network is a diagram of what directly influences what.",
@@ -666,8 +655,6 @@ export default {
 
     {
       id: "gaussian-processes",
-      title: "Join the dots, honestly",
-      lead: "Gaussian processes for regression with honest error bars.",
       history: "In 1951 Danie Krige, a South African mining engineer, needed to estimate how much gold lay between boreholes. His method, later formalised by Georges Matheron and named kriging after him, is Gaussian process regression. Machine learning rediscovered it in the 1990s, notably through Christopher Williams and Carl Rasmussen.",
       gist: [
         "A Gaussian process fits a smooth curve through data and gives an error bar everywhere.",
@@ -798,8 +785,6 @@ export default {
 
     {
       id: "mcmc",
-      title: "The random walk that maps the hills",
-      lead: "Markov chain Monte Carlo, Metropolis–Hastings and modern samplers.",
       history: "In 1953 at Los Alamos, Nicholas Metropolis, Arianna and Marshall Rosenbluth, and Augusta and Edward Teller used one of the first computers to simulate atoms with a random walk. W. K. Hastings generalised it in 1970, and from around 1990 it transformed Bayesian statistics, because suddenly almost any model could be fitted.",
       gist: [
         "When the maths has no neat answer, you can still get one by sampling.",

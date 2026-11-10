@@ -7,7 +7,7 @@ import LifeBackground from "../components/site/LifeBackground";
 import ThemeToggle from "../components/site/ThemeToggle";
 import { profile } from "../content/profile";
 import { pageTitle } from "../lib/sections";
-import { CHAPTERS } from "./chapters";
+import { CHAPTERS, loadChapter } from "./chapters";
 import Cover from "./Covers";
 import Lesson from "./Lesson";
 import { STEPS } from "./steps";
@@ -139,6 +139,10 @@ function Library({ progress }) {
 function ChapterPage({ chapter, progress }) {
   const next = nextUp(chapter, progress);
   const done = doneIn(chapter, progress);
+  // Start fetching this chapter's lessons now, so opening one is instant.
+  useEffect(() => {
+    loadChapter(chapter).catch(() => {});
+  }, [chapter]);
   return (
     <div className="chapter-page">
       <div className="chapter-hero">
@@ -188,6 +192,22 @@ function ChapterPage({ chapter, progress }) {
 
 // ---------------------------------------------------------------------------
 
+/** This chapter's lessons in full, once they've downloaded (null until then, or "failed"). */
+function useFullLessons(chapter) {
+  const [state, setState] = useState({ id: null, lessons: null });
+  useEffect(() => {
+    let live = true;
+    loadChapter(chapter).then(
+      (lessons) => live && setState({ id: chapter.id, lessons }),
+      () => live && setState({ id: chapter.id, lessons: "failed" })
+    );
+    return () => {
+      live = false;
+    };
+  }, [chapter]);
+  return state.id === chapter.id ? state.lessons : null;
+}
+
 /** Which step of the lesson is on screen, for the rail. */
 function useStepInView(lessonId) {
   const [current, setCurrent] = useState("idea");
@@ -218,11 +238,13 @@ function useStepInView(lessonId) {
 
 function LessonPage({ chapter, lesson, progress, mark }) {
   const key = lessonKey(chapter, lesson);
+  const full = useFullLessons(chapter);
+  const content = Array.isArray(full) ? full.find((l) => l.id === lesson.id) : null;
   const { prev, next } = neighbours(CHAPTERS, chapter, lesson);
   const step = useStepInView(key);
   const onDone = useCallback((patch) => mark(key, patch), [mark, key]);
   const index = chapter.lessons.indexOf(lesson);
-  const steps = STEPS.filter((s) => (s.id !== "how" || lesson.how) && (s.id !== "practice" || lesson.practice));
+  const steps = STEPS.filter((s) => (s.id !== "how" || content?.how) && (s.id !== "practice" || content?.practice));
   // On narrow screens the lessons are a row of chips: bring this lesson's chip into view.
   const chips = useRef(null);
   useEffect(() => {
@@ -272,7 +294,30 @@ function LessonPage({ chapter, lesson, progress, mark }) {
       </aside>
 
       <div className="lesson-col">
-        <Lesson key={key} lesson={lesson} record={progress[key]} onDone={onDone} where={`Lesson ${index + 1} of ${chapter.lessons.length} in ${chapter.title}`} />
+        {content ? (
+          <Lesson key={key} lesson={content} record={progress[key]} onDone={onDone} where={`Lesson ${index + 1} of ${chapter.lessons.length} in ${chapter.title}`} />
+        ) : (
+          <div className="lesson lesson-loading" aria-busy={full !== "failed"}>
+            <header className="lesson-head">
+              <p className="topic-tag">{lesson.topic}</p>
+              <h1>{lesson.title}</h1>
+              <p className="lesson-lead">{lesson.lead}</p>
+            </header>
+            <p className="lesson-loading-note" role="status">
+              {full === "failed" ? (
+                <>
+                  This lesson didn't download. Check the connection and{" "}
+                  <a href={learnHash(chapter.id, lesson.id)} onClick={() => window.location.reload()}>
+                    try again
+                  </a>
+                  .
+                </>
+              ) : (
+                "Loading the lesson…"
+              )}
+            </p>
+          </div>
+        )}
         <nav className="pager" aria-label="Next and previous lessons">
           {prev ? (
             <a className="pager-prev" href={learnHash(prev.chapter.id, prev.lesson.id)}>
